@@ -1,0 +1,10 @@
+'use client';
+import { ReactNode } from 'react';
+import { Select,SelectTrigger,SelectValue,SelectContent,SelectItem } from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
+import { Checkbox } from '@/components/ui/checkbox';
+export function Choice({value,onChange,items,label}:{value:string;onChange:(v:string)=>void;items:[string,string][];label:string}){return <Select value={value} onValueChange={onChange}><SelectTrigger className="compact-select" aria-label={label}><SelectValue/></SelectTrigger><SelectContent className="compact-options">{items.map(([v,text])=><SelectItem key={v} value={v}>{text}</SelectItem>)}</SelectContent></Select>;}
+export function Tool({label,onClick,children,active=false,disabled=false}:{label:string;onClick:()=>void;children:ReactNode;active?:boolean;disabled?:boolean}){return <button type="button" className={`tool ${active?'active':''}`} title={label} aria-label={label} aria-pressed={active||undefined} onClick={onClick} disabled={disabled}>{children}</button>;}
+export function Range({value,onChange,min=0,max=1,step=.01,label}:{value:number;onChange:(v:number)=>void;min?:number;max?:number;step?:number;label:string}){return <Slider className="compact-slider" aria-label={label} value={[value]} min={min} max={max} step={step} onValueChange={v=>onChange(v[0])}/>;}
+export function Check({checked,onChange,children}:{checked:boolean;onChange:(v:boolean)=>void;children:ReactNode}){return <label className="check"><Checkbox checked={checked} onCheckedChange={v=>onChange(v===true)}/>{children}</label>;}
+export function Field({label,value,onChange,min,max,step=1}:{label:string;value:number;onChange:(v:number)=>void;min?:number;max?:number;step?:number}){return <label className="field"><span>{label}</span><input type="number" value={Number(value.toFixed(4))} min={min} max={max} step={step} onChange={e=>{if(e.target.value==='')return;const n=Number(e.target.value);if(Number.isFinite(n))onChange(Math.max(min??-Infinity,Math.min(max??Infinity,n)));}}/></label>;}

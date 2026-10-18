@@ -1,0 +1,7 @@
+1
+00:00:00,000 --> 00:00:01,200
+Hola, esto es un subtítulo de prueba
+
+2
+00:00:01,400 --> 00:00:02,800
+Y esta es la segunda línea

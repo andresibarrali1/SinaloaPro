@@ -1,0 +1,3 @@
+riff.ARCHIVO DE PRUEBA CON LA FIRMA DE UN PROYECTO VEGAS
+Este archivo NO es un proyecto .veg real: solo reproduce los primeros bytes (la firma «riff.») para
+comprobar que el editor detecta el formato y explica con claridad que no lo interpreta.

@@ -1,0 +1,1775 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "../vendor/shadcn-tailwind-4.13.0.css";
+
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+@utility scrollbar-none {
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@utility scrollbar-gutter-stable {
+  scrollbar-gutter: stable;
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --card: #ffffff;
+  --card-foreground: #171717;
+  --popover: #ffffff;
+  --popover-foreground: #171717;
+  --primary: #171717;
+  --primary-foreground: #fafafa;
+  --secondary: #f5f5f5;
+  --secondary-foreground: #171717;
+  --muted: #f5f5f5;
+  --muted-foreground: #737373;
+  --accent: #f5f5f5;
+  --accent-foreground: #171717;
+  --destructive: #e7000b;
+  --border: #e5e5e5;
+  --input: #e5e5e5;
+  --ring: #a1a1a1;
+  --chart-1: #f54900;
+  --chart-2: #009689;
+  --chart-3: #104e64;
+  --chart-4: #ffb900;
+  --chart-5: #fe9a00;
+  --radius: 0.625rem;
+  --sidebar: #fafafa;
+  --sidebar-foreground: #171717;
+  --sidebar-primary: #171717;
+  --sidebar-primary-foreground: #fafafa;
+  --sidebar-accent: #f5f5f5;
+  --sidebar-accent-foreground: #171717;
+  --sidebar-border: #e5e5e5;
+  --sidebar-ring: #a1a1a1;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: Arial, Helvetica, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+    --card: #171717;
+    --card-foreground: #ededed;
+    --popover: #171717;
+    --popover-foreground: #ededed;
+    --primary: #ededed;
+    --primary-foreground: #171717;
+    --secondary: #262626;
+    --secondary-foreground: #ededed;
+    --muted: #262626;
+    --muted-foreground: #a1a1a1;
+    --accent: #262626;
+    --accent-foreground: #ededed;
+    --destructive: #ff6467;
+    --border: #ffffff1a;
+    --input: #ffffff26;
+    --ring: #737373;
+    --chart-1: #8e51ff;
+    --chart-2: #00bc7d;
+    --chart-3: #fe9a00;
+    --chart-4: #ad46ff;
+    --chart-5: #ff2056;
+    --sidebar: #171717;
+    --sidebar-foreground: #ededed;
+    --sidebar-primary: #8e51ff;
+    --sidebar-primary-foreground: #ededed;
+    --sidebar-accent: #262626;
+    --sidebar-accent-foreground: #ededed;
+    --sidebar-border: #ffffff1a;
+    --sidebar-ring: #737373;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.capability-warning {
+  margin: 0;
+  padding: 4px 8px;
+  background: #4a3a1c;
+  border-bottom: 1px solid #1c1509;
+  color: #f0dcae;
+  font-size: 11px;
+}
+
+.export-warning {
+  margin: 6px 0;
+  padding: 5px 7px;
+  background: #4a2a2a;
+  border: 1px solid #7d4a4a;
+  color: #ffd9d9;
+  font-size: 11px;
+}
+
+/* Tramo de renderizado: grupo compacto en el pie de la línea de tiempo. */
+.range-group {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 6px;
+  padding-left: 6px;
+  border-left: 1px solid #5d5d5d;
+  font-size: 11px;
+}
+
+.range-label {
+  color: #b9c2c8;
+}
+
+.range-value {
+  min-width: 168px;
+  color: #8fd0f0;
+  font-family: Consolas, "Courier New", monospace;
+}
+
+.range-button {
+  min-width: 22px;
+  padding: 1px 5px;
+  background: #3a3a3a;
+  border: 1px solid #6a6a6a;
+}
+
+.range-button.wide {
+  min-width: auto;
+}
+
+.range-status {
+  color: #8fd0f0;
+  font-family: Consolas, "Courier New", monospace;
+}
+
+/* Barra de tramo sobre la regla, con tiradores en los extremos.
+   editor.css la deja con pointer-events:none, así que aquí se reactiva con más especificidad para que los
+   tiradores y el doble clic para quitarla funcionen de verdad. */
+.ruler .region {
+  pointer-events: auto;
+  cursor: grab;
+}
+
+.region span {
+  position: absolute;
+  left: 5px;
+  top: 1px;
+  font-size: 10px;
+  color: #eaf6ff;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.region-handle {
+  position: absolute;
+  top: 0;
+  width: 6px;
+  height: 100%;
+  background: #8fd0f0;
+  cursor: ew-resize;
+  pointer-events: auto;
+}
+
+.region-handle.start {
+  left: 0;
+}
+
+.region-handle.end {
+  right: 0;
+}
+
+/* Diálogo de renderizado: resumen y detalle de progreso. */
+.export-toggles {
+  display: flex;
+  gap: 16px;
+  margin: 6px 0;
+}
+
+.export-plan {
+  margin: 6px 0;
+  padding: 5px 7px;
+  background: #333a3f;
+  border: 1px solid #4d5a63;
+  color: #dce6ec;
+  font-size: 11px;
+}
+
+.export-progress-detail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin: 2px 0 4px;
+  color: #c9d2d8;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 11px;
+}
+
+.help-note {
+  margin-top: 8px;
+}
+
+/* Las etiquetas de una línea mantienen el campo a su derecha alineado. */
+.editor-dialog .field > span {
+  white-space: nowrap;
+}
+
+/* Los diálogos del editor nunca son más altos que la pantalla: si el contenido crece (la galería de
+   plantillas de texto, por ejemplo), se desplaza por dentro en vez de salirse por arriba. La ventana
+   flotante de Panoramización y recorte se excluye: se coloca ella misma y no debe desplazarse. */
+.editor-dialog:not(.floating-dialog) {
+  max-height: 92vh;
+  overflow-y: auto;
+}
+
+/* Ventana de títulos y texto: vista previa a la izquierda y ajustes a la derecha, con las acciones siempre a
+   la vista. Así la ventana cabe entera en la pantalla (antes medía 1 280 px de alto y la mitad de los ajustes
+   quedaba por debajo del borde del diálogo). La única columna que se desplaza es la de ajustes, y solo si la
+   ventana es muy baja. El selector se ancla en el diálogo para ganar a la regla de `editor.css`, que la pone en
+   columna. */
+.editor-dialog .titles-window {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "preview fields"
+    "actions actions";
+  gap: 8px 12px;
+  max-height: min(72vh, 620px);
+}
+
+.editor-dialog .titles-preview-pane {
+  grid-area: preview;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.editor-dialog .titles-preview-pane .titles-preview {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border: 1px solid #6d6d6d;
+  background: #000;
+}
+
+.editor-dialog .titles-fields {
+  grid-area: fields;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.editor-dialog .titles-actions {
+  grid-area: actions;
+  margin-top: 0;
+}
+
+/* En ventanas estrechas la vista previa sube arriba y los ajustes van debajo, también sin salirse. */
+@media (max-width: 860px) {
+  .editor-dialog .titles-window {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "preview"
+      "fields"
+      "actions";
+  }
+
+  .editor-dialog .titles-preview-pane {
+    max-height: 34vh;
+  }
+}
+
+.text-presets h4 {  margin: 0 0 4px;
+  color: #dbe6ec;
+  font-size: 11px;
+  font-weight: normal;
+}
+
+.text-preset-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.text-preset-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.text-preset-group-name {
+  flex-shrink: 0;
+  width: 120px;
+  padding-top: 3px;
+  color: #9aa4aa;
+  font-size: 10px;
+}
+
+.text-preset-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.text-preset-buttons button {
+  padding: 3px 8px;
+  border: 1px solid #5a5a5a;
+  border-radius: 2px;
+  background: #3a3a3a;
+  color: #e6e6e6;
+  font: inherit;
+  font-size: 11px;
+  cursor: default;
+}
+
+.text-preset-buttons button:hover {
+  background: #454545;
+}
+
+.text-preset-buttons button.active {
+  border-color: #f0d983;
+  background: #3f6f8a;
+  color: #ffffff;
+}
+
+/* Asas de redimensionado sobre la vista previa: la caja del evento seleccionado, con sus ocho asas. La capa
+   no intercepta el ratón; solo la caja y las asas lo hacen, para que el monitor siga siendo un monitor. */
+.monitor {
+  position: relative;
+  overflow: auto;
+}
+
+/* Marco del fotograma dentro del monitor: envuelve al lienzo y a la capa de asas, así que los dos miden
+   exactamente lo mismo y las asas caen sobre el vídeo (antes la capa cubría todo el monitor y, con un proyecto
+   vertical o un panel ancho, la caja se dibujaba donde no estaba la imagen). El tamaño lo pone el editor, que
+   multiplica el encaje del monitor por el zoom de la vista. */
+.monitor-frame {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.monitor-frame > canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  background: #000;
+}
+
+/* Con la vista ampliada el fotograma se ancla arriba a la izquierda para poder desplazarse hasta cualquier
+   esquina; al 100 % o menos sigue centrado. */
+.monitor[data-zoomed="true"] {
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+.preview-zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-right: 6px;
+}
+
+.preview-zoom .range-button {
+  min-width: 46px;
+  text-align: center;
+}
+
+.preview-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.preview-box {
+  position: absolute;
+  border: 2px solid #ffd166;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .6) inset;
+  cursor: move;
+  pointer-events: auto;
+  z-index: 1;
+}
+
+.preview-handle {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  margin: -6px 0 0 -6px;
+  background: #ffd166;
+  border: 1px solid #1b1b1b;
+  pointer-events: auto;
+}
+
+.preview-handle.active {
+  background: #fff3c4;
+}
+
+.preview-handle.nw { cursor: nwse-resize; }
+.preview-handle.n { cursor: ns-resize; }
+.preview-handle.ne { cursor: nesw-resize; }
+.preview-handle.e { cursor: ew-resize; }
+.preview-handle.se { cursor: nwse-resize; }
+.preview-handle.s { cursor: ns-resize; }
+.preview-handle.sw { cursor: nesw-resize; }
+.preview-handle.w { cursor: ew-resize; }
+
+.preview-badge {
+  position: absolute;
+  z-index: 2;
+  left: 4px;
+  bottom: 4px;
+  padding: 1px 6px;
+  border-radius: 2px;
+  background: rgba(20, 20, 20, .82);
+  color: #ffe9a8;
+  font: 10px Consolas, "Courier New", monospace;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* El modo de las asas: redimensionar o recortar. Va pegado a la esquina del monitor, así que siempre está a la
+   vista y nunca queda fuera de la vista previa. */
+.preview-modes {
+  position: absolute;
+  z-index: 3;
+  top: 4px;
+  left: 4px;
+  display: inline-flex;
+  gap: 2px;
+  padding: 1px;
+  border-radius: 2px;
+  background: rgba(20, 20, 20, .85);
+  pointer-events: auto;
+}
+
+.preview-modes button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  background: transparent;
+  color: #e6e6e6;
+  cursor: default;
+}
+
+.preview-modes button:hover {
+  background: #4a4a4a;
+}
+
+.preview-modes button.active {
+  border-color: #ffd166;
+  background: #3f6f8a;
+  color: #ffffff;
+}
+
+/* Vista previa de la exportación de marcadores: unas pocas líneas en monoespaciada. */
+.marker-preview {
+  max-height: 30vh;
+  overflow: auto;
+  margin: 6px 0;
+  padding: 6px 8px;
+  border: 1px solid #4a4a4a;
+  background: #262626;
+  color: #dce6ec;
+  font: 11px Consolas, "Courier New", monospace;
+  white-space: pre;
+}
+
+/* Diálogo de «Elegir qué atributos pegar»: una casilla por grupo, con su explicación. */
+.attribute-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 0;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.attribute-groups .check {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 8px;
+  padding: 4px 6px;
+  border: 1px solid #4a4a4a;
+  background: #2f2f2f;
+}
+
+.attribute-groups .check small {
+  grid-column: 2;
+  color: #9aa4aa;
+  font-size: 10px;
+}
+
+.attribute-groups .check.disabled {
+  opacity: .55;
+}
+
+/* Fila de plantilla del proyecto: la etiqueta y la lista en la misma línea, como en la ventana de VEGAS. */.template-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 6px 0;
+}
+
+.template-row [role="combobox"],
+.template-row .compact-select {
+  flex: 1;
+  min-width: 240px;
+}
+
+/* Eventos del mismo grupo que la selección: se sombrean para verse como un conjunto. */
+.timeline-event.group-member {
+  outline: 1px dashed #f0d983;
+  outline-offset: -1px;
+  box-shadow: inset 0 0 0 999px rgba(240, 217, 131, 0.22);
+}
+
+/* Informe de importación de proyectos de intercambio. */
+.import-report h4 {
+  margin: 8px 0 2px;
+  font-size: 12px;
+}
+
+.import-report ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.import-report li {
+  margin: 2px 0;
+}
+
+.import-report code {
+  color: #8fd0f0;
+}
+
+/* Botones de las funciones que usan APIs externas, en la barra del panel de medios. */
+.ai-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 8px;
+  background: #3f5561;
+  border: 1px solid #6d8b9a;
+  color: #e7f4fb;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.ai-button svg {
+  flex-shrink: 0;
+}
+
+.subtitle-badge {
+  background: #2f4a58;
+  color: #bfe6ff;
+}
+
+/* Informe del análisis de un proyecto .veg. */
+.veg-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 12px;
+  margin: 8px 0;
+}
+
+.veg-grid section:first-child {
+  grid-row: span 2;
+}
+
+.veg-grid h4 {
+  margin: 0 0 4px;
+  font-size: 12px;
+}
+
+.veg-grid ul {
+  margin: 0;
+  padding-left: 16px;
+  max-height: 148px;
+  overflow: auto;
+}
+
+.veg-grid li {
+  margin: 2px 0;
+  word-break: break-all;
+}
+
+.veg-report code {
+  color: #8fd0f0;
+}
+
+/* Pista seleccionada en la lista de pistas: se sombrea, como en VEGAS, para poder eliminarla con el clic
+   derecho o con Supr. El sombreado abarca también el carril para que se vea qué pista está activa. */
+#track-headers .track-header.selected {
+  background: #597079;
+  outline: 1px solid #f0d983;
+  outline-offset: -1px;
+  box-shadow: inset 3px 0 0 0 #f0d983;
+}
+
+#track-headers .track-header.selected.audio {
+  background: #6d3a47;
+}
+
+.track-lane.selected {
+  background-color: #33414a;
+}
+
+/* Pista bajo el puntero mientras se arrastra para cambiarla de sitio. */
+#track-headers .track-header.drop-target {
+  outline: 2px dashed #8fd0f0;
+  outline-offset: -2px;
+}
+
+/* «Ir a»: vive al pie de la columna de pistas, no entre el timecode y las cabeceras. Colocado arriba
+   empujaba las cabeceras 41 px hacia abajo, así que cada pista dejaba de coincidir con su carril y los
+   recursos parecían desplazados. Aquí abajo no altera esa alineación. */
+.goto-timecode {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-top: 1px solid #454545;
+  background: #2b2b2b;
+}
+
+.goto-timecode .field {
+  margin: 2px 0;
+}
+
+.goto-timecode .field > span {
+  color: #b9c2c8;
+  font-size: 10px;
+}
+
+.goto-timecode .field > input {
+  width: 96px;
+  padding: 2px 4px;
+  font: 11px Consolas, "Courier New", monospace;
+}
+
+/* Región de bucle: barra propia dentro de la regla, encima de la del tramo de renderizado. Las dos son
+   independientes, así que cada una lleva su color y sus propios tiradores: la del tramo es la clara de abajo
+   y la del bucle, la verde de arriba. */
+.ruler .loop-region {
+  position: absolute;
+  top: 17px;
+  height: 9px;
+  background: #3f6d5a;
+  border: 1px solid #6fbf9a;
+  pointer-events: auto;
+  cursor: grab;
+}
+
+.ruler .loop-region.active {
+  background: #4f8b6f;
+  border-color: #b6f2d6;
+  box-shadow: 0 0 5px #b6f2d6;
+}
+
+.loop-region span {
+  position: absolute;
+  left: 5px;
+  top: -2px;
+  font-size: 9px;
+  color: #e2fbef;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.loop-handle {
+  position: absolute;
+  top: 0;
+  width: 5px;
+  height: 100%;
+  background: #b6f2d6;
+  cursor: ew-resize;
+  pointer-events: auto;
+}
+
+.loop-handle.start {
+  left: 0;
+}
+
+.loop-handle.end {
+  right: 0;
+}
+
+/* Botón de repetición del pie: encendido mientras el bucle está activo. */
+.range-button.loop-live {
+  background: #3f6d5a;
+  border-color: #9be8c4;
+  color: #eafff5;
+}
+
+/* El pie de la línea de tiempo lleva muchas herramientas (rizo, envolvente, mezclador, tramo, bucle y zoom): con
+   una ventana estrecha envuelve en una segunda fila en lugar de recortar los controles de la derecha. editor.css
+   le fija 34 px de alto, así que aquí se deja crecer. */
+.editor .bottom-toolbar {
+  flex-wrap: wrap;
+  row-gap: 2px;
+  height: auto;
+  min-height: 34px;
+}
+
+/* El valor de la región de bucle no reserva el ancho del tramo: solo ocupa lo que mida el texto. */
+.loop-group .range-value {
+  min-width: auto;
+}
+
+/* Lote de renderizado: la cola de trabajos del diálogo de renderizado. */
+.batch-block {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #5a5a5a;
+}
+
+.batch-block h3 {
+  margin: 0 0 4px;
+  font-size: 12px;
+  color: #e7f4fb;
+}
+
+.batch-note {
+  margin: 0 0 6px;
+  color: #b9c2c8;
+  font-size: 11px;
+}
+
+.batch-list {
+  margin: 6px 0;
+  padding: 0;
+  list-style: none;
+  max-height: 190px;
+  overflow-y: auto;
+  border: 1px solid #4d5a63;
+  background: #2b3136;
+}
+
+.batch-job {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-bottom: 1px solid #3a4147;
+}
+
+.batch-job:last-child {
+  border-bottom: 0;
+}
+
+.batch-order {
+  width: 16px;
+  color: #8fd0f0;
+  font-family: Consolas, "Courier New", monospace;
+  text-align: right;
+}
+
+.batch-label {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.batch-label small {
+  color: #a9b1b6;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+
+.batch-state {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border: 1px solid #6a6a6a;
+  background: #3a3a3a;
+  color: #dce6ec;
+  font-size: 10px;
+}
+
+.batch-job.renderizando .batch-state {
+  background: #465c6b;
+  border-color: #728b9a;
+  color: #e7f7ff;
+}
+
+.batch-job.hecho .batch-state {
+  background: #2f4a3a;
+  border-color: #5f9b78;
+  color: #d9f5e5;
+}
+
+.batch-job.error .batch-state {
+  background: #4a2a2a;
+  border-color: #7d4a4a;
+  color: #ffd9d9;
+}
+
+.batch-job.cancelado .batch-label {
+  opacity: .6;
+}
+
+.batch-summary {
+  margin: 6px 0;
+  color: #c9d2d8;
+  font-size: 11px;
+}
+
+/* ---------------------------------------------------------------------------------------------------------
+   Ventanas flotantes de Panoramización y recorte y de Movimiento de pista.
+   El contenido del diálogo se queda como un lienzo transparente a pantalla completa (el fondo oscurecido lo
+   pone la capa del diálogo) y la ventana se coloca, se mueve y se redimensiona por su cuenta, como las
+   ventanas de VEGAS: se agarra por cualquier borde, por la barra de título o por sus márgenes, y los ocho
+   tiradores de los extremos cambian el tamaño.
+   --------------------------------------------------------------------------------------------------------- */
+.editor-dialog.floating-dialog {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  transform: none !important;
+  /* Tailwind v4 centra el diálogo con la propiedad `translate` (no con `transform`), así que hay que anular
+     las dos. */
+  translate: none !important;
+  scale: none !important;
+  /* La animación de entrada del diálogo mueve el contenido con un `translate(-50%,-50%)`: dentro de un lienzo
+     a pantalla completa eso desplazaría la ventana flotante fuera de la pantalla mientras dura. Se apaga. */
+  animation: none !important;
+  transition: none !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: none !important;
+  max-height: 100vh !important;
+  display: block !important;
+  padding: 0 !important;
+  gap: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+  pointer-events: none;
+}
+
+.editor-dialog.floating-dialog > * {
+  pointer-events: auto;
+}
+
+/* La ventana vive dentro del contenido del diálogo, que está en un portal fuera de .editor: por eso el
+   selector se ancla en el diálogo y no en el editor, y así gana a las reglas de editor.css. */
+.editor-dialog .pan-crop-window {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-height: none;
+  overflow: hidden;
+  padding: 0;
+  background: #2f2f2f;
+  border: 1px solid #6a6a6a;
+  box-shadow: 0 16px 60px #000d;
+  user-select: none;
+  pointer-events: auto;
+}
+
+/* Barra de título: el asa principal para mover la ventana. */
+.pan-crop-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 24px;
+  flex-shrink: 0;
+  padding: 0 4px 0 6px;
+  background: #3d3d3d;
+  border-bottom: 1px solid #232323;
+  cursor: move;
+}
+
+.pan-crop-titlebar .pan-crop-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #e4eef4;
+}
+
+/* La chapa «ƒx» de la barra, como la del complemento en VEGAS. */
+.pan-crop-plugin {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  background: #4c3a58;
+  border: 1px solid #8a6aa0;
+  color: #e8d8f4;
+  font: italic bold 10px Georgia, serif;
+}
+
+.pan-crop-close {
+  width: 22px;
+  height: 20px;
+  flex-shrink: 0;
+  background: #8c2b2b;
+  border: 1px solid #c05a5a;
+  color: #ffecec;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.pan-crop-close:hover:not(:disabled) {
+  background: #a83434;
+}
+
+.pan-crop-size {
+  color: #8f989e;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 10px;
+}
+
+.pan-crop-titlebar .range-button {
+  min-width: 22px;
+  padding: 1px 6px;
+}
+
+/* Fila del preestablecido, como «Parámetro preestablecido» del diálogo de VEGAS. */
+.pan-crop-preset {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  background: #383838;
+  border-bottom: 1px solid #232323;
+}
+
+.pan-crop-preset .range-button {
+  padding: 1px 6px;
+}
+
+/* Cuerpo en tres columnas, como la ventana de VEGAS: la barra de herramientas, el árbol de parámetros y el
+   monitor con su tira de fotogramas clave. */
+.pan-crop-body {
+  display: grid;
+  grid-template-columns: 30px minmax(286px, 330px) minmax(240px, 1fr);
+  gap: 6px;
+  flex: 1;
+  min-height: 0;
+  padding: 6px;
+  background: #2b2b2b;
+}
+
+/* Barra de herramientas lateral: mover, zoom, girar, recortar, máscara y 3D, como la de VEGAS. */
+.pan-crop-tools {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 0;
+  background: #333;
+  border: 1px solid #4a4a4a;
+  overflow-y: auto;
+}
+
+.pan-crop-tool {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  background: transparent;
+  color: #cfd6da;
+  cursor: default;
+}
+
+.pan-crop-tool:hover:not(:disabled) {
+  background: #454545;
+}
+
+.pan-crop-tool.active {
+  background: #3f6f8a;
+  border-color: #7fc4e6;
+  color: #ffffff;
+}
+
+.pan-crop-tool:disabled {
+  color: #6d6d6d;
+}
+
+.pan-crop-tools-gap {
+  flex: 1;
+  min-height: 6px;
+}
+
+.pan-crop-params {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.param-group {
+  background: #333;
+  border: 1px solid #4a4a4a;
+}
+
+/* El título del grupo es un botón plegable con el cuadro [+]/[−] de VEGAS. */
+.param-group-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 3px 6px;
+  border: 0;
+  border-bottom: 1px solid #4a4a4a;
+  background: #3f3f3f;
+  color: #dbe6ec;
+  font: inherit;
+  font-size: 11px;
+  text-align: left;
+  cursor: default;
+}
+
+.param-group.closed .param-group-title {
+  border-bottom: 0;
+}
+
+.param-group-title:hover {
+  background: #4a4a4a;
+}
+
+.param-group-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  border: 1px solid #7a7a7a;
+  background: #2b2b2b;
+  color: #dbe6ec;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.param-group-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Subtítulo dentro de un grupo (por ejemplo «Movimiento 3D», dentro de Rotación). */
+.param-subhead {
+  margin: 6px 6px 2px;
+  color: #cfe0ea;
+  font-size: 11px;
+  font-weight: normal;
+  border-top: 1px solid #4a4a4a;
+  padding-top: 4px;
+}
+
+.param-group-body fieldset {
+  border: 0;
+  margin: 0;
+  padding: 2px 0;
+  min-width: 0;
+}
+
+.param-group-body fieldset:disabled {
+  opacity: .6;
+}
+
+.param-group h4 {
+  margin: 0;
+  padding: 3px 6px;
+  background: #3f3f3f;
+  border-bottom: 1px solid #4a4a4a;
+  font-size: 11px;
+  font-weight: normal;
+  color: #dbe6ec;
+}
+
+.param-group .field {
+  margin: 2px 0;
+  padding: 0 6px;
+}
+
+.param-group .field > span {
+  white-space: nowrap;
+}
+
+.param-group .button-row {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  padding: 2px 6px 6px;
+}
+
+.param-group p,
+.param-group small {
+  display: block;
+  margin: 0;
+  padding: 0 6px 6px;
+}
+
+.param-list {
+  margin: 0;
+  padding: 2px 6px 6px;
+  font-size: 10px;
+  color: #b9c2c8;
+}
+
+.param-list div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.param-list dt {
+  color: #9aa4aa;
+}
+
+.param-list dd {
+  margin: 0;
+  font-family: Consolas, "Courier New", monospace;
+  color: #dce6ec;
+}
+
+.pan-crop-view {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  overflow: auto;
+}
+
+/* El monitor va sobre un tablero de cuadros, como el fondo de transparencia del monitor de VEGAS. */
+.pan-crop-monitor {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 8px;
+  border: 1px solid #4a4a4a;
+  background-color: #6e6e6e;
+  background-image:
+    linear-gradient(45deg, #5a5a5a 25%, transparent 25%),
+    linear-gradient(-45deg, #5a5a5a 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #5a5a5a 75%),
+    linear-gradient(-45deg, transparent 75%, #5a5a5a 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+}
+
+.pan-crop-monitor .pan-crop-stage {
+  max-width: 100%;
+  border: 1px solid #1a1a1a;
+}
+
+/* Tira de fotogramas clave bajo el monitor: parámetro, casillero de máscara, navegación entre claves, la tira
+   y el zoom, como la barra inferior de la ventana de VEGAS. */
+.pan-crop-keybar {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 3px 4px;
+  background: #333;
+  border: 1px solid #4a4a4a;
+}
+
+/* Primera fila de la barra de claves: parámetro, máscara, navegación y zoom. La tira va debajo, a todo lo
+   ancho, que es donde se lee la escala de tiempos. */
+.pan-crop-keyrow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pan-crop-keyparam {
+  margin: 0;
+  padding: 0;
+  gap: 4px;
+  font-size: 10px;
+}
+
+.pan-crop-maskcheck {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: #dbe6ec;
+  white-space: nowrap;
+}
+
+.pan-crop-keytools,
+.pan-crop-zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.pan-crop-keycount {
+  flex-shrink: 0;
+  color: #9aa4aa;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+/* Botón de icono de la ventana (menú, candado, navegación de claves y zoom). */
+.pan-crop-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 3px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  background: transparent;
+  color: #dce6ec;
+  font: inherit;
+  cursor: default;
+}
+
+.pan-crop-icon:hover:not(:disabled) {
+  background: #4a4a4a;
+  border-color: #5f5f5f;
+}
+
+.pan-crop-icon.active {
+  background: #3f6f8a;
+  border-color: #7fc4e6;
+  color: #ffffff;
+}
+
+.pan-crop-icon:disabled {
+  color: #6d6d6d;
+}
+
+/* Barra de pestañas de la ventana: el nombre del panel, el candado y la ayuda de la herramienta activa. */
+.pan-crop-tabstrip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 6px;
+  background: #333;
+  border-bottom: 1px solid #232323;
+}
+
+.pan-crop-tab {
+  padding: 2px 8px;
+  border: 1px solid #5a5a5a;
+  border-bottom: 0;
+  border-radius: 2px 2px 0 0;
+  background: #454545;
+  color: #e6e6e6;
+  font-size: 11px;
+}
+
+.pan-crop-hint {
+  overflow: hidden;
+  color: #9aa4aa;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Menú desplegable de la ventana (el botón ≡ de la barra de título). */
+.pan-crop-windowmenu {
+  position: relative;
+}
+
+.pan-crop-windowmenu-list {
+  position: absolute;
+  top: 20px;
+  right: 0;
+  z-index: 30;
+  min-width: 200px;
+  padding: 3px;
+  border: 1px solid #5a5a5a;
+  background: #2b2b2b;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .5);
+}
+
+.pan-crop-windowmenu-list button {
+  display: block;
+  width: 100%;
+  padding: 4px 8px;
+  border: 0;
+  background: transparent;
+  color: #e6e6e6;
+  font: inherit;
+  font-size: 11px;
+  text-align: left;
+  cursor: default;
+}
+
+.pan-crop-windowmenu-list button:hover {
+  background: #3f6f8a;
+}
+
+/* Tira de fotogramas clave bajo el monitor. */
+.pan-crop-keys {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 160px;
+}
+
+.pan-crop-keys-track {
+  position: relative;
+  flex: 1;
+  height: 22px;
+  margin-right: 4px;
+  background: #262626;
+  border: 1px solid #4a4a4a;
+  cursor: pointer;
+}
+
+/* Las marcas de tiempo de la tira se reparten a lo ancho y se recortan en su celda: así nunca se solapan,
+   ni siquiera cuando la ventana es estrecha. */
+.key-tick {
+  position: absolute;
+  top: 2px;
+  max-width: 64px;
+  overflow: hidden;
+  transform: translateX(-50%);
+  color: #9aa4aa;
+  font: 9px Consolas, "Courier New", monospace;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+.key-mark {
+  position: absolute;
+  bottom: 3px;
+  width: 7px;
+  height: 7px;
+  margin-left: -3px;
+  background: #e0c26a;
+  border: 1px solid #7a6a2a;
+  transform: rotate(45deg);
+}
+
+.key-mark.current {
+  background: #fff3c4;
+  border-color: #c8a63a;
+}
+
+.key-playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: #9accf0;
+}
+
+.pan-crop-timecode {
+  flex-shrink: 0;
+  min-width: 54px;
+  text-align: right;
+  color: #dce6ec;
+  font: 10px Consolas, "Courier New", monospace;
+}
+
+/* Barra inferior de la ventana: claves, duración y cierre. Se queda pegada abajo aunque la columna tenga que
+   desplazarse, para no perder los botones de las claves. */
+.pan-crop-status {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 4px 6px;
+  background: #383838;
+  border: 1px solid #4a4a4a;
+}
+
+.pan-crop-status-time {
+  margin-left: auto;
+  color: #9accf0;
+  font: 10px Consolas, "Courier New", monospace;
+}
+
+.pan-crop-view .export-plan {
+  margin: 0;
+}
+
+/* Tiradores de los extremos: cuatro lados y cuatro esquinas. */
+.pan-crop-resize {
+  position: absolute;
+  z-index: 3;
+}
+
+.pan-crop-resize.n,
+.pan-crop-resize.s {
+  left: 12px;
+  right: 12px;
+  height: 7px;
+}
+
+.pan-crop-resize.w,
+.pan-crop-resize.e {
+  top: 12px;
+  bottom: 12px;
+  width: 7px;
+}
+
+.pan-crop-resize.n { top: 0; }
+.pan-crop-resize.s { bottom: 0; }
+.pan-crop-resize.w { left: 0; }
+.pan-crop-resize.e { right: 0; }
+
+.pan-crop-resize.nw,
+.pan-crop-resize.ne,
+.pan-crop-resize.sw,
+.pan-crop-resize.se {
+  width: 13px;
+  height: 13px;
+  background: #b9c2c8;
+  border: 1px solid #6d6d6d;
+}
+
+.pan-crop-resize.nw { top: 0; left: 0; }
+.pan-crop-resize.ne { top: 0; right: 0; }
+.pan-crop-resize.sw { bottom: 0; left: 0; }
+.pan-crop-resize.se { bottom: 0; right: 0; }
+
+/* Ventana estrecha (o pantalla pequeña): una sola columna, con los parámetros arriba. */
+@media (max-width: 900px) {
+  .pan-crop-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Botones del encabezado del evento: el de recorte (Panoramización y recorte) y el de propiedades y efectos.
+   Se marcan al pasar por encima para que se vea que son pulsables, como en el encabezado de evento de VEGAS. */
+.event-title .event-button {
+  padding: 0 2px;
+  border-radius: 2px;
+  line-height: 1;
+}
+
+.event-title .event-button:hover {
+  background: #ffffff2e;
+}
+
+/* Menú del clic derecho del editor: sustituye al del navegador, que no conoce el proyecto. Se coloca en el
+   puntero y se mantiene dentro de la pantalla. */
+.workspace-menu {
+  position: fixed;
+  z-index: 60;
+  min-width: 220px;
+  max-width: 360px;
+  padding: 4px;
+  border: 1px solid #5a5a5a;
+  border-radius: 3px;
+  background: #2b2b2b;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  font-size: 12px;
+}
+
+.workspace-menu-title {
+  padding: 4px 8px 5px;
+  border-bottom: 1px solid #454545;
+  margin-bottom: 4px;
+  color: #a8a8a8;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: #e6e6e6;
+  font: inherit;
+  text-align: left;
+  cursor: default;
+}
+
+.workspace-menu-item:hover:not(:disabled),
+.workspace-menu-item:focus-visible {
+  background: #3f6f8a;
+  outline: none;
+}
+
+.workspace-menu-item:disabled {
+  color: #7a7a7a;
+}
+
+/* Las entradas que se activan y desactivan (silencio, solo, ajuste magnético, bucle) llevan una marca. */
+.workspace-menu-item.checked::before {
+  content: '·';
+  position: absolute;
+  margin-left: -8px;
+  color: #f0d983;
+  font-weight: 700;
+}
+
+.workspace-menu-hint {
+  color: #a0a0a0;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+
+.workspace-menu-separator {
+  height: 1px;
+  margin: 4px 6px;
+  background: #454545;
+}
+
+/* Submenús del clic derecho (Modificadores, Toma, Grupo, Sincronizar, Enlace sinc…). El panel cuelga de su
+   entrada, a la derecha; el componente lo voltea a la izquierda o lo sube cuando no cabe en la pantalla. */
+.workspace-menu-sub {
+  position: relative;
+}
+.workspace-menu-subpanel {
+  position: absolute;
+  z-index: 61;
+  min-width: 190px;
+  max-width: 340px;
+  padding: 4px;
+  border: 1px solid #5a5a5a;
+  border-radius: 3px;
+  background: #2b2b2b;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  font-size: 12px;
+}
+
+/* Ventana «Propiedades» del evento, como la de VEGAS 15: pestañas «Evento de vídeo» y «Medios», grupos con
+   título, interruptores y botones de opción. */
+.event-properties .panel-tabs {
+  margin-bottom: 6px;
+}
+
+/* Los paneles de la ventana de Propiedades son bloques, no el contenedor flexible del panel de medios
+   (`.media-content` de editor.css), que pondría las secciones en fila. */
+.property-tab {
+  display: block;
+}
+
+.property-media {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 16px;
+  align-items: start;
+}
+
+.property-media > .property-group:last-child {
+  grid-column: 1 / -1;
+}
+
+.property-group {
+  padding: 6px 8px 8px;
+  border: 1px solid #454545;
+  border-radius: 3px;
+  margin-bottom: 8px;
+}
+
+.property-group > h3 {
+  margin: 0 0 6px;
+  color: #cfd8dd;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.property-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 6px 0;
+}
+
+.property-checks .check {
+  min-width: 190px;
+}
+
+.property-radios {
+  padding: 4px 8px 6px;
+  border: 1px solid #3d3d3d;
+  border-radius: 3px;
+  margin: 4px 0 6px;
+}
+
+.property-radios legend {
+  padding: 0 4px;
+  color: #9aa4aa;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.radio {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  color: #e6e6e6;
+  font-size: 11px;
+}
+
+.property-value {
+  margin: 2px 0 6px;
+  font-size: 11px;
+}
+
+.property-value > span {
+  color: #9aa4aa;
+}
+
+.property-list {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 10px;
+  margin: 0;
+  font-size: 11px;
+}
+
+.property-list > div {
+  display: contents;
+}
+
+.property-list dt {
+  color: #9aa4aa;
+  white-space: nowrap;
+}
+
+.property-list dd {
+  margin: 0;
+  color: #e6e6e6;
+}
+
+.property-note {
+  margin: 4px 0;
+}
+
+.property-notes {
+  margin: 4px 0 0;
+  padding-left: 16px;
+  color: #c9d2d8;
+  font-size: 11px;
+}
+
+.property-notes li {
+  margin-bottom: 3px;
+}
+
+.extras-title {
+  margin: 12px 0 4px;
+  padding-top: 8px;
+  border-top: 1px solid #454545;
+  color: #9aa4aa;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* La sección de extras (lo que VEGAS no tiene en su ventana de Propiedades) se puede plegar: así la parte
+   replicada se ve entera sin desplazarse en pantallas bajas. Empieza desplegada para no esconder nada. */
+.editor-dialog details.extras {
+  display: block;
+}
+
+.editor-dialog details.extras > summary.extras-title {
+  cursor: pointer;
+  list-style: none;
+  text-transform: none;
+  font-weight: normal;
+}
+
+.editor-dialog details.extras > summary.extras-title::marker,
+.editor-dialog details.extras > summary.extras-title::-webkit-details-marker {
+  display: none;
+  content: '';
+}
+
+.editor-dialog details.extras > summary.extras-title::before {
+  content: '▾ ';
+}
+
+.editor-dialog details.extras:not([open]) > summary.extras-title::before {
+  content: '▸ ';
+}
+
+
+

@@ -1,0 +1,485 @@
+.ec-window {
+  position: fixed;
+  z-index: 120;
+  display: flex;
+  flex-direction: column;
+  min-width: 580px;
+  min-height: 390px;
+  max-width: 100vw;
+  max-height: 100vh;
+  resize: both;
+  overflow: hidden;
+  background: #454545;
+  color: #eee;
+  border: 1px solid #777;
+  border-radius: 0;
+  box-shadow: 0 4px 20px #0008;
+  font:
+    12px Tahoma,
+    "Segoe UI",
+    sans-serif;
+}
+.ec-window * {
+  box-sizing: border-box;
+}
+.ec-window button {
+  border: 1px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0;
+  cursor: default;
+}
+.ec-window button:hover:not(:disabled) {
+  background: #606060;
+  border-color: #999;
+}
+.ec-window button:disabled {
+  opacity: 0.35;
+}
+.ec-window button.active {
+  background: #252525;
+  border-color: #646464;
+}
+.ec-window input,
+.ec-window select {
+  font: inherit;
+  color: inherit;
+  background: #2c2c2c;
+  border: 0;
+  border-radius: 0;
+  min-width: 0;
+  outline: none;
+}
+.ec-window input:focus,
+.ec-window select:focus {
+  outline: 1px solid #98b5cb;
+  background: #202020;
+}
+.ec-title {
+  height: 30px;
+  min-height: 30px;
+  background: #f1f1f1;
+  color: #777;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 5px 0 8px;
+  cursor: move;
+}
+.ec-title button {
+  height: 20px;
+  width: 20px;
+  background: #d7d7d7;
+  color: #fff;
+  display: grid;
+  place-items: center;
+}
+.ec-plugin {
+  height: 29px;
+  min-height: 29px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 3px 6px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-weight: bold;
+  font-size: 11px;
+  background: repeating-linear-gradient(
+    90deg,
+    #454545 0,
+    #454545 1px,
+    #505050 1px,
+    #505050 2px
+  );
+}
+.ec-badge {
+  background: #71859d;
+  color: #fff;
+  padding: 2px 5px;
+}
+.ec-chain {
+  height: 26px;
+  min-height: 26px;
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+}
+.ec-tab {
+  background: #080808;
+  padding: 3px 5px;
+  color: #fff;
+}
+.ec-presets {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0 5px 5px;
+}
+.ec-presets label {
+  line-height: 12px;
+  width: 82px;
+  flex-shrink: 0;
+}
+.ec-presets select {
+  flex: 1;
+  height: 22px;
+}
+.ec-presets button {
+  width: 21px;
+  height: 23px;
+  display: grid;
+  place-items: center;
+  color: #b8dae8;
+}
+.ec-main {
+  display: grid;
+  grid-template-columns: 29px 199px minmax(0, 1fr);
+  gap: 4px;
+  flex: 1;
+  min-height: 0;
+  padding: 0 5px 4px;
+  background: #454545;
+}
+.ec-tools {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #292929;
+  background: #303030;
+  padding: 3px 1px;
+  gap: 1px;
+}
+.ec-tools button {
+  height: 21px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.ec-tools sup {
+  font-size: 9px;
+  position: absolute;
+  right: 0;
+  bottom: 0;
+}
+.ec-params {
+  background: #292929;
+  border: 2px solid #222;
+  overflow: auto;
+  min-width: 0;
+  scrollbar-width: thin;
+}
+.ec-group {
+  padding: 0;
+  margin: 0;
+}
+.ec-group summary {
+  list-style: none;
+  cursor: default;
+  background: #494949;
+  border-top: 1px solid #686868;
+  border-bottom: 1px solid #222;
+  height: 19px;
+  line-height: 17px;
+  font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ec-group summary:before {
+  content: "+";
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin: 0 4px 0 1px;
+  line-height: 7px;
+  font-size: 10px;
+  background: #e7e7e7;
+  color: #46627a;
+  border: 1px solid #8e9fae;
+  vertical-align: 1px;
+}
+.ec-group[open] > summary:before {
+  content: "−";
+}
+.ec-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 76px;
+  align-items: center;
+  height: 18px;
+  padding: 0 4px 0 15px;
+  font-size: 11px;
+}
+.ec-field > span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.ec-field > span:before {
+  content: "·";
+  color: #6b9cae;
+  margin-right: 6px;
+}
+.ec-field input {
+  width: 100%;
+  height: 17px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+.ec-field select {
+  width: 100%;
+  height: 17px;
+}
+.ec-workspace {
+  position: relative;
+  overflow: hidden;
+  background: #e8e8e8;
+  border: 1px solid #161616;
+  touch-action: none;
+}
+.ec-workspace canvas {
+  position: absolute;
+  pointer-events: none;
+}
+.ec-workspace svg {
+  position: absolute;
+  inset: 0;
+  touch-action: none;
+}
+.ec-frame {
+  fill: transparent;
+  stroke: #202020;
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+  cursor: move;
+}
+.ec-ring {
+  fill: none;
+  stroke: #333;
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  cursor: crosshair;
+  pointer-events: stroke;
+}
+.ec-orientation {
+  fill: #ffffff14;
+  stroke: #151515;
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+}
+.ec-handle {
+  fill: #e4e7e7;
+  stroke: #263e43;
+  stroke-width: 1;
+}
+.ec-pivot {
+  fill: #ddd;
+  stroke: #253238;
+  stroke-width: 1;
+  cursor: move;
+}
+.ec-keyeditor {
+  height: 96px;
+  min-height: 96px;
+  display: grid;
+  grid-template-columns: 146px minmax(0, 1fr);
+  grid-template-rows: 65px 27px;
+  gap: 3px;
+  padding: 0 7px 4px;
+}
+.ec-keylabels {
+  background: #292929;
+  padding-top: 17px;
+  border: 1px solid #292929;
+  font-size: 11px;
+}
+.ec-keylabels > div,
+.ec-keylabels > label {
+  height: 15px;
+  display: flex;
+  align-items: center;
+  margin: 0 2px;
+}
+.ec-keylabels .selected {
+  background: #777;
+}
+.ec-keylabels input {
+  appearance: auto;
+  width: 12px;
+  height: 12px;
+  margin: 0 4px 0 0;
+}
+.ec-keyscroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #777 #2b2b2b;
+}
+.ec-keytrack {
+  position: relative;
+  height: 49px;
+  min-width: 100%;
+  background: #464646;
+  touch-action: none;
+}
+.ec-ruler {
+  height: 18px;
+  border-bottom: 1px solid #aaa;
+  background: repeating-linear-gradient(
+      90deg,
+      transparent 0,
+      transparent 9px,
+      #858585 9px,
+      #858585 10px
+    )
+    bottom/100% 4px no-repeat;
+  overflow: hidden;
+}
+.ec-ruler span {
+  position: absolute;
+  top: 0;
+  font-size: 10px;
+  white-space: nowrap;
+}
+.ec-keylane,
+.ec-masklane {
+  height: 15px;
+  border-bottom: 1px solid #aaa;
+  background: #333;
+}
+.ec-masklane {
+  background: #484848;
+}
+.ec-diamond {
+  position: absolute !important;
+  top: 19px !important;
+  transform: translateX(-50%);
+  width: 12px;
+  height: 12px !important;
+  display: grid;
+  place-items: center;
+  z-index: 2;
+  touch-action: none;
+}
+.ec-diamond.selected {
+  color: #a9dded !important;
+}
+.ec-keycursor {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: #eee;
+  pointer-events: none;
+}
+.ec-keycursor:before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -3px;
+  border-top: 7px solid #fff;
+  border-left: 3px solid transparent;
+  border-right: 3px solid transparent;
+}
+.ec-keytools {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.ec-keytools button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 23px;
+  height: 22px;
+  color: #b5dfee;
+}
+.ec-keytools button:nth-child(6) {
+  color: #bce2c2;
+}
+.ec-keytools button:nth-child(7) {
+  color: #e5bdbd;
+}
+.ec-spacer {
+  flex: 1;
+}
+.ec-keytools output {
+  font-size: 11px;
+  background: #303030;
+  border: 1px solid #777;
+  padding: 1px 3px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.ec-context {
+  position: absolute;
+  z-index: 5;
+  width: 215px;
+  background: #353535;
+  border: 1px solid #aaa;
+  padding: 3px;
+  box-shadow: 2px 2px 8px #0008;
+}
+.ec-context button {
+  display: block;
+  text-align: left;
+  width: 100%;
+  height: 25px;
+  padding: 0 8px;
+}
+.ec-error,
+.ec-mask-note {
+  font-size: 11px;
+  background: #4b2929;
+  color: #fff;
+  padding: 6px;
+}
+.ec-error {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+@media (max-width: 750px) {
+  .ec-window {
+    min-width: 440px;
+  }
+  .ec-main {
+    grid-template-columns: 26px 170px minmax(0, 1fr);
+  }
+  .ec-field {
+    grid-template-columns: minmax(0, 1fr) 60px;
+    padding-left: 7px;
+  }
+  .ec-keyeditor {
+    grid-template-columns: 120px minmax(0, 1fr);
+  }
+}
+.ec-key-context button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 26px;
+}
+.ec-key-context [role="separator"] {
+  height: 1px;
+  background: #666;
+  margin: 3px 0;
+}
+.ec-menu-check {
+  width: 14px;
+  flex-shrink: 0;
+  color: #b9dfe9;
+}
+.ec-key-context button:focus-visible {
+  outline: 1px solid #9ccadd;
+  background: #535e66;
+}
