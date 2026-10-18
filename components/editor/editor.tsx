@@ -149,7 +149,7 @@ export default function Editor(){
  const [attributeTarget,setAttributeTarget]=useState<{id:string;groups:AttributeGroupId[]}|null>(null);
  // Formato elegido para exportar los marcadores (capítulos o subtítulos).
  const [markerFormat,setMarkerFormat]=useState<MarkerExportFormat>('txt');
- const canvas=useRef<HTMLCanvasElement>(null),fileInput=useRef<HTMLInputElement>(null),projectInput=useRef<HTMLInputElement>(null),relinkInput=useRef<HTMLInputElement>(null),timeline=useRef<HTMLDivElement>(null),clipboard=useRef<Event[]>([]),abort=useRef<AbortController|null>(null),paint=useRef<Promise<void>>(Promise.resolve()),paintVersion=useRef(0),ready=useRef(false),zoomRef=useRef(zoom),trackIdRef=useRef<string|null>(null),trackDropRef=useRef<number|null>(null),pendingScroll=useRef<{time:number;pointerX:number}|null>(null),aiAbort=useRef<AbortController|null>(null);
+ const canvas=useRef<HTMLCanvasElement>(null),fileInput=useRef<HTMLInputElement>(null),projectInput=useRef<HTMLInputElement>(null),relinkInput=useRef<HTMLInputElement>(null),timeline=useRef<HTMLDivElement>(null),clipboard=useRef<Event[]>([]),abort=useRef<AbortController|null>(null),paint=useRef<Promise<void>>(Promise.resolve()),paintVersion=useRef(0),previewBack=useRef<HTMLCanvasElement|null>(null),ready=useRef(false),zoomRef=useRef(zoom),trackIdRef=useRef<string|null>(null),trackDropRef=useRef<number|null>(null),pendingScroll=useRef<{time:number;pointerX:number}|null>(null),aiAbort=useRef<AbortController|null>(null);
  // La aguja y el timecode grande se actualizan por referencia durante la reproducción (ver el bucle de
  // reproducción); los medidores van por su propio almacén para que su lectura por fotograma no repinte el editor.
  const playheadRef=useRef<HTMLDivElement>(null),timecodeRef=useRef<HTMLDivElement>(null),meterStore=useRef(createMeterStore()),syncedCursor=useRef(0),dialogRef=useRef('');
@@ -226,16 +226,18 @@ useEffect(()=>{let next:Project;try{next=recover()||newProject();const layout=JS
   paint.current=paint.current.catch(()=>{}).then(async()=>{
    if(version!==paintVersion.current||!canvas.current)return;
    const divisor=quality==='full'?1:quality==='half'?2:4;
-   const back=document.createElement('canvas');
-   back.width=Math.max(16,Math.round(current.width/divisor));
-   back.height=Math.max(16,Math.round(current.height/divisor));
+   // El lienzo de trabajo se reutiliza entre fotogramas: crearlo y destruirlo en cada composición era la mayor
+   // fuente de basura del editor (medio megapíxel por fotograma y por cada capa con efectos).
+   const back=previewBack.current??(previewBack.current=document.createElement("canvas"));
+   const backWidth=Math.max(16,Math.round(current.width/divisor)),backHeight=Math.max(16,Math.round(current.height/divisor));
+   if(back.width!==backWidth)back.width=backWidth;
+   if(back.height!==backHeight)back.height=backHeight;
    await compose(back,current,library.current,at);
    if(canvas.current){
     if(canvas.current.width!==back.width)canvas.current.width=back.width;
     if(canvas.current.height!==back.height)canvas.current.height=back.height;
     canvas.current.getContext('2d')!.drawImage(back,0,0);
    }
-   back.width=1;back.height=1;
   }).catch(report);
  },[quality]);
  useEffect(()=>{if(!p||!canvas.current)return;void paintPreview(cursor);},[p,cursor,quality,busy,paintPreview]);

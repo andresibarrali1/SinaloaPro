@@ -122,6 +122,51 @@ export function detectFilterSupport(createCanvas: CanvasFactory): boolean {
 
 // Aplica la pila completa sobre la capa del evento, en orden. `scale` convierte píxeles del proyecto a
 // píxeles de la capa (la vista previa y la exportación tienen tamaños distintos).
+// La detección de filtros crea dos lienzos de 2×2 y se llamaba una vez por efecto y fotograma: el resultado no
+// cambia para una misma fábrica, así que se recuerda.
+const filterSupportCache = new WeakMap<CanvasFactory, boolean>();
+function filterSupportFor(createCanvas: CanvasFactory): boolean {
+  const cached = filterSupportCache.get(createCanvas);
+  if (cached !== undefined) return cached;
+  const support = detectFilterSupport(createCanvas);
+  filterSupportCache.set(createCanvas, support);
+  return support;
+}
+
+// Lienzos de trabajo compartidos entre eventos y fotogramas: los efectos de un fotograma se aplican uno detrás
+// de otro, sin esperas de por medio, así que reutilizar el lienzo del evento anterior es seguro (se limpia al
+// tomarlo). Se guardan pocos por medida para que la memoria retenida quede acotada.
+const SCRATCH_POOL_LIMIT = 2;
+const SCRATCH_POOL_SIZES = 4;
+const scratchPools = new Map<string, HTMLCanvasElement[]>();
+function takeScratch(createCanvas: CanvasFactory, width: number, height: number): HTMLCanvasElement {
+  const key = `${width}x${height}`;
+  const pool = scratchPools.get(key);
+  const canvas = pool && pool.length ? pool.pop()! : createCanvas(width, height);
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.filter = 'none';
+    ctx.clearRect(0, 0, width, height);
+  }
+  return canvas;
+}
+function giveScratch(canvas: HTMLCanvasElement | null | undefined): void {
+  if (!canvas) return;
+  const key = `${canvas.width}x${canvas.height}`;
+  const pool = scratchPools.get(key) ?? [];
+  if (pool.length < SCRATCH_POOL_LIMIT) pool.push(canvas);
+  // Se acota también el número de medidas distintas: cambiar de calidad o de resolución no debe ir acumulando
+  // lienzos de cada tamaño.
+  if (!scratchPools.has(key) && scratchPools.size >= SCRATCH_POOL_SIZES) {
+    const oldest = scratchPools.keys().next().value;
+    if (oldest !== undefined) scratchPools.delete(oldest);
+  }
+  scratchPools.set(key, pool);
+}
+
 export function applyEffects(layer: HTMLCanvasElement, effects: VideoEffect[], options: { scale: number; createCanvas: CanvasFactory; note?: (message: string) => void }): void {
   const ctx = layer.getContext('2d');
   if (!ctx) return;
@@ -129,9 +174,11 @@ export function applyEffects(layer: HTMLCanvasElement, effects: VideoEffect[], o
   const scale = Number.isFinite(options.scale) && options.scale > 0 ? options.scale : 1;
   const width = layer.width, height = layer.height;
 
+
+
   // Vuelca la capa en otro lienzo con un filtro de Canvas aplicado.
   const throughFilter = (filter: string, blend: GlobalCompositeOperation = 'source-over', alpha = 1) => {
-    const scratch = createCanvas(width, height);
+    const scratch = takeScratch(createCanvas, width, height);
     const scratchCtx = scratch.getContext('2d');
     if (!scratchCtx) return;
     scratchCtx.filter = filter;
@@ -141,14 +188,16 @@ export function applyEffects(layer: HTMLCanvasElement, effects: VideoEffect[], o
     scratchCtx.filter = 'none';
     ctx.clearRect(0, 0, width, height);
     ctx.drawImage(scratch, 0, 0);
+    giveScratch(scratch);
   };
   const withCopy = (draw: (copy: CanvasRenderingContext2D) => void) => {
-    const scratch = createCanvas(width, height);
+    const scratch = takeScratch(createCanvas, width, height);
     const scratchCtx = scratch.getContext('2d');
     if (!scratchCtx) return;
     draw(scratchCtx);
     ctx.clearRect(0, 0, width, height);
     ctx.drawImage(scratch, 0, 0);
+    giveScratch(scratch);
   };
 
   for (const effect of activeEffects(effects)) {
@@ -235,14 +284,14 @@ export function applyEffects(layer: HTMLCanvasElement, effects: VideoEffect[], o
       case 'blur': {
         const radius = effect.amount * scale;
         if (radius <= .01) break;
-        if (!detectFilterSupport(createCanvas)) { if (options.note) options.note('Este motor no aplica filtros de Canvas: el desenfoque se omitió.'); break; }
+        if (!filterSupportFor(createCanvas)) { if (options.note) options.note('Este motor no aplica filtros de Canvas: el desenfoque se omitió.'); break; }
         throughFilter(`blur(${radius.toFixed(2)}px)`);
         break;
       }
       case 'glow': {
         const radius = Math.max(1, effect.size * scale);
-        if (!detectFilterSupport(createCanvas)) { if (options.note) options.note('Este motor no aplica filtros de Canvas: el centelleo se omitió.'); break; }
-        const glowLayer = createCanvas(width, height);
+        if (!filterSupportFor(createCanvas)) { if (options.note) options.note('Este motor no aplica filtros de Canvas: el centelleo se omitió.'); break; }
+        const glowLayer = takeScratch(createCanvas, width, height);
         const glowCtx = glowLayer.getContext('2d');
         if (!glowCtx) break;
         glowCtx.filter = `blur(${radius.toFixed(2)}px)`;
@@ -252,6 +301,7 @@ export function applyEffects(layer: HTMLCanvasElement, effects: VideoEffect[], o
         ctx.globalCompositeOperation = 'lighter';
         ctx.globalAlpha = clamp01(effect.amount);
         ctx.drawImage(glowLayer, 0, 0);
+        giveScratch(glowLayer);
         ctx.restore();
         break;
       }

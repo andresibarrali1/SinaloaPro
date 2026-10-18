@@ -230,6 +230,9 @@ export async function compose(canvas:HTMLCanvasElement,p:Project,library:MediaLi
  const ctx=canvas.getContext('2d',{alpha:false})!;const w=canvas.width,h=canvas.height;ctx.resetTransform();ctx.globalAlpha=1;ctx.filter='none';ctx.globalCompositeOperation='source-over';ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);
  const createCanvas=options.createCanvas??browserCanvas??undefined;
  const note=(message:string)=>{if(options.notes&&!options.notes.includes(message))options.notes.push(message);};
+ // Una sola capa de trabajo para todos los eventos del fotograma: se limpia antes de dibujar cada uno, así que
+ // reaprovecharla da los mismos píxeles y evita crear una capa del tamaño del fotograma por evento.
+ let sharedLayer:HTMLCanvasElement|null=null;
  const byTrack=new Map<string,typeof p.events>();
  for(const e of p.events)if(time>=e.start&&time<e.start+e.duration){const list=byTrack.get(e.trackId);list?list.push(e):byTrack.set(e.trackId,[e]);}
  for(const track of activeTracks(p,'video').reverse()){
@@ -262,7 +265,7 @@ export async function compose(canvas:HTMLCanvasElement,p:Project,library:MediaLi
    const mask=maskAt(e,local);
    const effects=activeEffects(e.effects);
    const masked=maskActive(e.maskPath);
-   const layer=(effects.length||transition!==null||masked||warped3D||e.reduceFlicker)&&createCanvas?createCanvas(w,h):null;
+   const needsLayer=Boolean((effects.length||transition!==null||masked||warped3D||e.reduceFlicker)&&createCanvas);if(needsLayer&&!sharedLayer)sharedLayer=(createCanvas as NonNullable<typeof createCanvas>)(w,h);const layer=needsLayer?sharedLayer:null;
    const layerCtx=layer?layer.getContext('2d'):null;
    if(layer&&layerCtx){
     // Con efectos, transición o 3D, el evento se pinta primero en su propia capa transparente: así el
