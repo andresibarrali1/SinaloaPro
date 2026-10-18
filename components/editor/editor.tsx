@@ -1,6 +1,6 @@
 ﻿'use client';
 import { useCallback,useEffect,useLayoutEffect,useRef,useState, type PointerEvent as ReactPointerEvent } from 'react';
-import { FilePlus,FolderOpen,Save,Undo2,Redo2,Scissors,Copy,Clipboard,Trash2,Magnet,Repeat2,Play,Pause,Square,SkipBack,SkipForward,StepBack,StepForward,Film,Music,Type,Plus,Settings,Download,Link,ZoomIn,ZoomOut,HelpCircle,SlidersHorizontal,Folder,Search,Palette,Flag,Crop } from 'lucide-react';
+import { FilePlus,FolderOpen,Save,Undo2,Redo2,Scissors,Copy,Clipboard,Trash2,Magnet,Repeat2,Play,Pause,Square,SkipBack,SkipForward,StepBack,StepForward,Film,Music,Type,Plus,Settings,Download,Link,ZoomIn,ZoomOut,HelpCircle,SlidersHorizontal,Folder,Search,Palette,Flag } from 'lucide-react';
 import { Tabs,TabsList,TabsTrigger,TabsContent } from '@/components/ui/tabs';
 import { Dialog,DialogContent,DialogTitle,DialogDescription } from '@/components/ui/dialog';
 import { DropdownMenu,DropdownMenuTrigger,DropdownMenuContent,DropdownMenuItem,DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
@@ -25,9 +25,7 @@ import { PreviewOverlay } from './preview-overlay';
 import { TitlesWindow } from './titles';
 import {planTimelineZoom,minimumTimelineZoom,timelineTickStep} from '@/lib/editor/timeline-zoom';
 import {frameThrottle} from '@/lib/editor/frame-throttle';
-import { EventOpacity } from './event-opacity';
 import {setEventOpacity} from '@/lib/editor/event-opacity';
-import { AudioWaveform } from './audio-waveform';
 import { Meters } from './meters';
 import { createMeterStore, SILENT_READING } from '@/lib/editor/meter-store';
 import { EffectsWindow } from './effects';
@@ -1149,8 +1147,11 @@ if(e.altKey&&(k==='arrowleft'||k==='arrowright')){e.preventDefault();const direc
 if(mod&&e.shiftKey&&k==='l'){e.preventDefault();clearLoop();return;}if(mod&&e.shiftKey&&k==='c'){e.preventDefault();copySelectedAttributes();return;}if(mod&&e.shiftKey&&k==='v'){e.preventDefault();pasteSelectedAttributes();return;}if(mod&&k==='t'){e.preventDefault();trimToRange();return;}if(mod)return;if(k===' '){e.preventDefault();transport();}else if(k==='l'){e.preventDefault();if(e.altKey)toggleLoop();else if(e.shiftKey)markLoopEnd();else markLoopStart();}else if(k==='s')doSplit();else if(k==='m')marker();else if(k==='g')group();else if(k==='u')group(true);else if(k==='delete'||k==='backspace'){e.preventDefault();const locked=p?lockedIds(p):new Set<string>();const ids=selected.filter(id=>!locked.has(id));if(selected.length&&!ids.length){setStatus('Los eventos seleccionados están bloqueados: desmarca «Bloqueo» en sus Propiedades.');}else if(ids.length){edit(d=>removeEvents(d,ids,ripple));setSelected([]);}else if(trackId)removeTrack(trackId);}else if(k==='z'){e.preventDefault();const first=p.events.find(x=>x.id===selected[0]);if(first)selectToEnd(first);}else if(k==='arrowleft'||k==='arrowright'){e.preventDefault();seek(quantize(cursorRef.current+(k==='arrowright'?1:-1)*frameTicks(p.fps),p.fps));}else if(k==='home'){e.preventDefault();seek(0);}else if(k==='end'){e.preventDefault();seek(p.region?p.region.end:endTime(p));}else if(k==='w'){e.preventDefault();seek(0);}else if(k==='enter'){e.preventDefault();if(e.altKey)setDialog('project');else if(playingRef.current)pause();else void beginPlayback();}};window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key);});
  // Las acciones que usan las filas de la línea de tiempo, en un objeto estable: las filas son `memo` y no deben
  // repintarse porque cambie la identidad de una función, pero cada gesto tiene que ejecutar la versión actual.
- const timelineActions=useRef<TimelineActions>({drag:()=>{},select:()=>{},open:()=>{},beginOpacity:()=>{},previewOpacity:()=>{},endOpacity:()=>{},commitOpacity:()=>{}});
- useEffect(()=>{timelineActions.current={drag:dragEvent,select:setSelected,open:dialog=>setDialog(dialog),beginOpacity,previewOpacity,endOpacity,commitOpacity};});
+ const timelineActionSet:TimelineActions={drag:dragEvent,select:setSelected,open:dialog=>setDialog(dialog),beginOpacity,previewOpacity,endOpacity,commitOpacity};
+ const timelineActions=useRef<TimelineActions>(timelineActionSet);
+ // El objeto se republica después de cada repintado para que los gestos usen siempre la versión actual: no es
+ // una dependencia del efecto (que no se suscribe a nada), así que no lleva lista de claves.
+ useEffect(()=>{timelineActions.current=timelineActionSet;});
  if(!p)return <div className="boot">Abriendo Corte 15→</div>;
  const missing=[support&&!support.decode&&'WebCodecs de decodificación (VideoDecoder/AudioDecoder)',support&&!support.audio&&'Web Audio (AudioContext/AudioBuffer)',support&&!support.encode&&'WebCodecs de codificación (VideoEncoder/AudioEncoder)'].filter(Boolean) as string[];
  const selectedEvent=p.events.find(e=>e.id===selected[0]),selectedTrack=p.tracks.find(t=>t.id===trackId),selectedMedia=p.media.find(m=>m.id===mediaSelected),length=timelineSpan,timelineWidth=fitTimeline?timelineViewport:Math.max(900,length*zoom,zoomWidthFloor),tickStep=timelineTickStep(zoom);
