@@ -11,7 +11,7 @@ const CLAVE = 'corte15-autosave-v1';
 type Guardado = {
   tracks?: { id: string; kind: string }[];
   media?: { id: string; name: string }[];
-  events?: { name: string; start: number; kind: string; trackId: string; transition?: string; transitionOut?: string; fadeIn: number; fadeOut: number }[];
+  events?: { id: string; name: string; start: number; kind: string; trackId: string; transition?: string; transitionOut?: string; fadeIn: number; fadeOut: number }[];
 };
 
 /** Proyecto autoguardado, o `null` si todavía no hay ninguno. */
@@ -427,3 +427,83 @@ test('arrastrar un evento fuera de las pistas (abajo o arriba) crea una pista nu
   const clipVideo = (conPistaArriba.events ?? []).find((evento) => evento.kind === 'video')!;
   expect(clipVideo.trackId, 'el clip de vídeo se muda a la pista nueva de arriba').toBe(pistas2[0].id);
 });
+
+// Regresión: dividir un tramo, borrar una mitad y mover la otra no debe resucitar la mitad borrada. El gesto de
+// mover guardaba como «estado de partida» el proyecto del repintado anterior, así que al soltar volvía a escribirlo
+// entero y reaparecía el clip borrado. Aquí se comprueba el proyecto autoguardado y el DOM tras cada paso.
+type MitadBorrada = 'primera' | 'segunda';
+
+/** Monta un clip de vídeo en la línea de tiempo y lo divide en dos con «S» sobre su centro. */
+async function montarYDividir(page: Page) {
+  await nuevaSesion(page);
+  await page.locator('input[type=file]').nth(0).setInputFiles([fixture('Video_A.mp4')]);
+  await expect(page.locator('.media-item')).toHaveCount(1, { timeout: 60000 });
+  await page.locator('.media-item').filter({ hasText: 'Video_A.mp4' }).dblclick();
+  await expect(page.locator('.timeline-event.video')).toHaveCount(1, { timeout: 20000 });
+  await page.waitForTimeout(900);
+
+  const clip = page.locator('.timeline-event.video').first();
+  const caja = (await clip.boundingBox())!;
+  await page.mouse.click(caja.x + caja.width / 2, caja.y + caja.height / 2);
+  await page.waitForTimeout(250);
+  await page.keyboard.press('s');
+  await expect(page.locator('.timeline-event.video'), 'la división deja dos tramos').toHaveCount(2, { timeout: 20000 });
+  // El vídeo insertado trae su audio enlazado: al dividir quedan dos tramos de vídeo y dos de audio, así que la
+  // comprobación va sobre los tramos de vídeo, que son los que se tocan en esta prueba.
+  const partido = await esperarProyecto(
+    page,
+    (valor) => (valor.events ?? []).filter((evento) => evento.kind === 'video').length === 2,
+    'el proyecto guarda los dos tramos de vídeo',
+  );
+  const tramos = (partido.events ?? [])
+    .filter((evento) => evento.kind === 'video')
+    .sort((uno, otro) => Number(uno.start) - Number(otro.start))
+    .map((evento) => evento.id);
+  return { izquierda: tramos[0], derecha: tramos[tramos.length - 1] };
+}
+
+for (const borrada of ['segunda', 'primera'] as MitadBorrada[]) {
+  test(`dividir, borrar la mitad ${borrada} y mover la otra no recupera el tramo borrado`, async ({ page }) => {
+    const { izquierda, derecha } = await montarYDividir(page);
+
+    // Se borra la mitad indicada y se comprueba que el proyecto queda con un único tramo de vídeo.
+    const indiceBorrado = borrada === 'segunda' ? 1 : 0;
+    const idBorrado = indiceBorrado === 1 ? derecha : izquierda;
+    const idVivo = indiceBorrado === 1 ? izquierda : derecha;
+    await page.locator('.timeline-event.video').nth(indiceBorrado).click();
+    await page.waitForTimeout(200);
+    await page.keyboard.press('Delete');
+    await expect(page.locator('.timeline-event.video'), 'queda un solo tramo en pantalla').toHaveCount(1, { timeout: 20000 });
+    await esperarProyecto(
+      page,
+      (valor) =>
+        (valor.events ?? []).filter((evento) => evento.kind === 'video').length === 1 &&
+        (valor.events ?? []).some((evento) => evento.id === idVivo) &&
+        !(valor.events ?? []).some((evento) => evento.id === idBorrado),
+      'el proyecto guarda solo el tramo que sobrevive',
+    );
+
+    // Se arrastra el tramo que sobrevive (en horizontal, dentro de su propia pista).
+    const vivo = page.locator('.timeline-event.video').first();
+    const caja = (await vivo.boundingBox())!;
+    await page.mouse.move(caja.x + caja.width / 2, caja.y + caja.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(caja.x + caja.width / 2 + 5, caja.y + caja.height / 2, { steps: 2 });
+    await page.mouse.move(caja.x + caja.width / 2 + 70, caja.y + caja.height / 2, { steps: 8 });
+    await page.mouse.up();
+    await page.waitForTimeout(1200);
+
+    // El tramo borrado no vuelve, ni en el proyecto guardado ni en la línea de tiempo.
+    const final = await esperarProyecto(
+      page,
+      (valor) => (valor.events ?? []).filter((evento) => evento.kind === 'video').length === 1,
+      'tras mover sigue habiendo un único tramo de vídeo',
+    );
+    expect(
+      (final.events ?? []).filter((evento) => evento.kind === 'video').map((evento) => evento.id),
+      'el tramo borrado no reaparece',
+    ).toEqual([idVivo]);
+    expect((final.events ?? []).some((evento) => evento.id === idBorrado), 'el identificador borrado sigue ausente').toBe(false);
+    await expect(page.locator('.timeline-event.video'), 'y en pantalla sigue habiendo un tramo').toHaveCount(1);
+  });
+}

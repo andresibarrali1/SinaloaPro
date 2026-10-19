@@ -284,6 +284,39 @@ De paso se corrigieron tres cosas que lo impedían:
   que siguen en verde.
 - **Captura**: `evidencias/arrastrar-evento-crea-pista.png`.
 
+## Borrar una mitad de un tramo dividido y mover la otra: el tramo borrado no vuelve
+
+El fallo que se reportó: dividir un tramo en dos, borrar una de las mitades y **mover** la otra hacía reaparecer la
+mitad borrada. La causa que se encontró leyendo los gestos es de clase: cada gesto guardaba como «estado de
+partida» el proyecto del **repintado** en el que se enganchó el puntero (`p`), no el que hay en ese instante en
+`pRef.current`; y varios gestos lo **volvían a escribir entero** al terminar o al cancelarse (`replace(...)`), con
+lo que cualquier edición hecha entre medias —un borrado, otra división— se perdía y reaparecía material ya
+eliminado. En la barra de opacidad era el caso extremo: cancelar el gesto restauraba el proyecto viejo completo.
+
+Lo corregido, en `components/editor/editor.tsx`:
+
+- Los cinco gestos que copian el proyecto al empezar (mover y recortar un evento, los dos extremos del tramo y del
+  bucle, y el alto de una pista) copian ahora `pRef.current` (`clone(pRef.current ?? p)`), que es el proyecto
+  vigente y no el del repintado.
+- `previewOpacity` escribe sobre el proyecto vigente y, si el evento ya no existe, no hace nada.
+- `endOpacity(cancel)`, al cancelar, ya **no** restaura el proyecto entero: devuelve solo la opacidad de **ese**
+  evento sobre el proyecto vigente, de modo que un borrado o una división hechos durante el gesto se conservan.
+
+- **Comprobado**: `npx tsc --noEmit` (0 errores), `npm test` (**362/362**), `npm run lint` (los mismos 21 problemas
+  de siempre: 4 errores y 17 avisos, ninguno nuevo), `npm run build` correcto y
+  `npx playwright test --project=chrome tests/arrastres.spec.ts` (**11 correctas**: las 9 anteriores más dos nuevas
+  de regresión, «dividir, borrar la mitad segunda y mover la otra…» y «…la primera…»).
+- **Lo que no se pudo comprobar**: el síntoma **no** se reprodujo con las pruebas automatizadas ni con guiones de
+  sondeo que repiten el caso (borrar la mitad segunda y mover la primera, borrar la primera y mover la segunda, sin
+  pausa entre el borrado y el arrastre, borrado con el menú contextual en vez de `Supr`, arrastre vertical a otra
+  pista y arrastre fuera de las pistas creando una pista): en todos el tramo borrado siguió borrado también con el
+  código anterior, así que las dos pruebas
+  nuevas son una **guarda** contra la clase de fallo (restaurar una copia vieja del proyecto), no una reproducción
+  del síntoma. Si vuelve a aparecer, hacen falta los pasos exactos o una grabación para clavarlo.
+- **Evidencia**: `evidencias/division-borrado-sin-reaparecer.png` (tras dividir en `00:00:01:15`, borrar la mitad
+  derecha y arrastrar la izquierda 80 px: el proyecto guardado queda en **2 eventos · 3 pistas**, un vídeo y su
+  audio enlazado, y en la línea de tiempo se ve un único tramo de vídeo).
+
 ## 3. Comprobaciones del encargo, una por una
 
 | Comprobación pedida | Estado | Cómo se comprobó |

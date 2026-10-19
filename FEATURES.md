@@ -88,6 +88,7 @@ Cada fila indica la evidencia. Las pruebas automatizadas están en `tests/`; su 
 | Dividir en la posición del cursor | ✅ | `model.test.ts` + E2E con la tecla `S` |
 | Selección individual y múltiple | ✅ | Clic y Ctrl/Cmd/Mayús + clic; **el clic también coloca la aguja en ese punto** (verificado en E2E) |
 | Copiar, cortar, pegar, duplicar, eliminar | ✅ | `clipboard` + menú Editar + E2E |
+| Un tramo borrado no vuelve al mover otro | ✅ | Los gestos (mover, recortar, extremos del tramo y del bucle, alto de pista) copian `pRef.current` y la barra de opacidad no restaura el proyecto entero al cancelar; E2E de regresión dividir → borrar una mitad → mover la otra (`tests/arrastres.spec.ts`) |
 | Agrupar y desagrupar | ✅ | `group()` usa el vínculo completo, así que `G` sobre un par de audio y video los agrupa a los dos; el menú contextual muestra la acción correcta |
 | Sombreado del grupo seleccionado | ✅ | Al seleccionar un evento, todos los de su grupo se resaltan (borde discontinuo y tinte); verificado en E2E y en `evidencias/grupo-sombreado.png` |
 | Ajuste magnético a bordes, cursor y marcadores | ✅ | `snapTime` con umbral en píxeles |
