@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import { LatestPreview } from '@/lib/editor/latest-preview';
 import { useCallback,useEffect,useLayoutEffect,useRef,useState, type DragEvent as ReactDragEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { FilePlus,FolderOpen,Save,Undo2,Redo2,Scissors,Copy,Clipboard,Trash2,Magnet,Repeat2,Play,Pause,Square,SkipBack,SkipForward,StepBack,StepForward,Film,Music,Type,Plus,Settings,Download,Link,ZoomIn,ZoomOut,HelpCircle,SlidersHorizontal,Folder,Search,Palette,Flag } from 'lucide-react';
@@ -259,7 +259,25 @@ useEffect(()=>{let next:Project;try{next=recover()||newProject();const layout=JS
    id=requestAnimationFrame(frame);};id=requestAnimationFrame(frame);return()=>cancelAnimationFrame(id);},[playing,p,loop,paintCursor,paintPreview]);
  async function beginPlayback(at=cursorRef.current){if(!pRef.current||busy||rendering)return;const current=pRef.current;if(endTime(current)<=0)return;if(current.media.some(m=>current.events.some(e=>e.mediaId===m.id)&&!library.current.items.has(m.id))){setStatus('Revincula los medios faltantes antes de reproducir.');return;}pause();const span=playbackSpan(current,loop);const end=span?span.end:endTime(current);if(at>=end)at=span?span.start:0;startPosition.current=at;try{await audio.current.start(seconds(at));playingRef.current=true;setPlaying(true);audio.current.schedule(current,library.current,seconds(end));}catch(e){report(e);}}
  function transport(){if(playingRef.current){pause();seek(startPosition.current);}else void beginPlayback();}
- async function importFiles(files:FileList|File[]){if(rendering||busy)return;setBusy(true);pause();const added:Media[]=[];const errors:string[]=[];let cacheBlocked=false;for(const file of Array.from(files)){setStatus(`Analizando ${file.name}→`);try{const m=await library.current.import(file);added.push(m);if(cacheMedia){const room=await storageHeadroom(file.size);if(room.enough)try{await storeFile(m.id,file);}catch{errors.push(`${file.name}: importado, pero el cache local está lleno. Tendrás que revincularlo.`);}else{cacheBlocked=true;errors.push(`${file.name}: importado, pero no hay espacio local suficiente para copiarlo (${Math.round(room.free/1048576)} MB libres). Se usará solo mientras esta pestaña siga abierta.`);}}}catch(e){errors.push(e instanceof Error?e.message:String(e));}}if(cacheBlocked)void storageHeadroom().then(h=>setStorageInfo(h.supported?`${Math.round(h.usage/1048576)} MB usados · ${Math.round(h.free/1048576)} MB libres de una cuota de ${Math.round(h.quota/1048576)} MB — espacio insuficiente para cachear los medios nuevos.`:`Este navegador no informa del espacio de almacenamiento disponible.`));if(added.length){edit(d=>d.media.push(...added));setMediaSelected(added[0].id);setTab('media');}setBusy(false);setStatus(errors.length?errors.join(' | '):`${added.length} medio(s) importado(s). Arrastra a una pista o haz doble clic para insertar.`);}
+ async function importFiles(files:FileList|File[],options?:{insertAt?:number;lane?:string|null}){if(rendering||busy)return [];setBusy(true);pause();const added:Media[]=[];const errors:string[]=[];let cacheBlocked=false;for(const file of Array.from(files)){setStatus(`Analizando ${file.name}→`);try{const m=await library.current.import(file);added.push(m);if(cacheMedia){const room=await storageHeadroom(file.size);if(room.enough)try{await storeFile(m.id,file);}catch{errors.push(`${file.name}: importado, pero el cache local está lleno. Tendrás que revincularlo.`);}else{cacheBlocked=true;errors.push(`${file.name}: importado, pero no hay espacio local suficiente para copiarlo (${Math.round(room.free/1048576)} MB libres). Se usará solo mientras esta pestaña siga abierta.`);}}}catch(e){errors.push(e instanceof Error?e.message:String(e));}}if(cacheBlocked)void storageHeadroom().then(h=>setStorageInfo(h.supported?`${Math.round(h.usage/1048576)} MB usados · ${Math.round(h.free/1048576)} MB libres de una cuota de ${Math.round(h.quota/1048576)} MB — espacio insuficiente para cachear los medios nuevos.`:`Este navegador no informa del espacio de almacenamiento disponible.`));if(added.length){edit(d=>d.media.push(...added));setMediaSelected(added[0].id);setTab('media');}
+ // Si el arrastre venía de la línea de tiempo, los medios entran ya colocados en el punto donde se soltaron,
+ // uno detrás de otro, en la pista que les toque (o en una nueva si el proyecto no tiene ninguna de su clase).
+ if(options?.insertAt!==undefined&&added.length){
+  const current=pRef.current;
+  if(current){
+   const frame=frameTicks(current.fps);
+   let cursor=quantize(options.insertAt,current.fps);
+   for(const m of added){
+    const plan=planMediaDrop({mediaKind:m.kind,tracks:current.tracks,preferred:options.lane??null});
+    insertMedia(m,plan.kind==='track'?plan.trackId:null,cursor);
+    const duration=m.kind==='image'?ticks(5):Math.max(frame,Math.floor(m.duration/frame)*frame);
+    cursor=quantize(cursor+duration,current.fps);
+   }
+  }
+ }
+ setBusy(false);
+ setStatus(errors.length?errors.join(' | '):options?.insertAt!==undefined?`${added.length} medio(s) importado(s) y colocado(s) en la línea de tiempo.`:`${added.length} medio(s) importado(s). Arrastra a una pista o haz doble clic para insertar.`);
+ return added;}
  // Los subtítulos de un archivo .srt entran en la línea de tiempo como eventos de texto, en sus tiempos, con
  // contorno negro para que se lean sobre cualquier imagen.
  function insertSubtitles(media:Media){
@@ -270,7 +288,7 @@ useEffect(()=>{let next:Project;try{next=recover()||newProject();const layout=JS
  }
  // ---------------------------------------------------------------- arrastrar y soltar sobre la línea de tiempo
  // Qué se está arrastrando: un medio del panel o una transición del catálogo.
- function dragging(e:ReactDragEvent){const types=e.dataTransfer.types;return types.includes(MEDIA_DRAG)?'media':types.includes(TRANSITION_DRAG)?'transition':null;}
+ function dragging(e:ReactDragEvent){const types=e.dataTransfer.types;if(types.includes(MEDIA_DRAG))return 'media';if(types.includes(TRANSITION_DRAG))return 'transition';if(types.includes('Files'))return 'files';return null;}
  // Instante de la línea de tiempo bajo el puntero, medido desde el contenido (el origen de los tiempos).
  function timeAtPointer(e:ReactDragEvent){const content=(e.currentTarget as HTMLElement).closest('.timeline-content') as HTMLElement|null;const rect=(content??(e.currentTarget as HTMLElement)).getBoundingClientRect();return quantize(ticks(Math.max(0,(e.clientX-rect.left)/zoom)),p?.fps??{num:30,den:1});}
  function dragOverTimeline(e:ReactDragEvent,laneId:string|null){if(!dragging(e))return;e.preventDefault();e.dataTransfer.dropEffect='copy';if(dropLane!==laneId)setDropLane(laneId);}
@@ -280,6 +298,12 @@ useEffect(()=>{let next:Project;try{next=recover()||newProject();const layout=JS
   const current=pRef.current;if(!current)return;
   const lane=laneId??(e.target as HTMLElement|null)?.closest?.('[data-track]')?.getAttribute('data-track')??null;
   const at=timeAtPointer(e);
+  if(que==='files'){
+   const files=Array.from(e.dataTransfer.files);
+   if(!files.length)return;
+   void importFiles(files,{insertAt:at,lane});
+   return;
+  }
   if(que==='media'){
    const id=e.dataTransfer.getData(MEDIA_DRAG);const m=current.media.find(item=>item.id===id);if(!m)return;
    const plan=planMediaDrop({mediaKind:m.kind,tracks:current.tracks,preferred:lane});

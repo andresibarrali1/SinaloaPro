@@ -3,12 +3,14 @@
 // que se ejecuta el mismo código que con el ratón.
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import path from 'node:path';
+import { readFileSync } from 'node:fs';
 
 const fixture = (name: string) => path.resolve('tests/fixtures', name);
 const CLAVE = 'corte15-autosave-v1';
 
 type Guardado = {
   tracks?: { id: string; kind: string }[];
+  media?: { id: string; name: string }[];
   events?: { name: string; start: number; kind: string; trackId: string; transition?: string; transitionOut?: string; fadeIn: number; fadeOut: number }[];
 };
 
@@ -194,4 +196,70 @@ test('soltar una transición en el borde derecho con otro clip pegado usa el cor
   expect(eventos[0].transition, 'el primero no lleva transición de entrada').toBeUndefined();
   expect(eventos[0].transitionOut, 'el primero tampoco lleva salida').toBeUndefined();
   expect(eventos[1].transition, 'la transición va en la entrada del segundo').toBe('dissolve-linear');
+});
+
+/** DataTransfer con un archivo real del disco: es lo que entrega el explorador de Windows al arrastrar. */
+async function dataTransferConArchivo(page: Page, relativa: string, tipo: string) {
+  const bytes = [...readFileSync(path.resolve(relativa))];
+  return page.evaluateHandle(
+    ({ bytes: contenido, nombre, tipo: mime }) => {
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(new File([new Uint8Array(contenido)], nombre, { type: mime }));
+      return dataTransfer;
+    },
+    { bytes, nombre: path.basename(relativa), tipo },
+  );
+}
+
+test('arrastrar un archivo del explorador a la línea de tiempo lo importa y lo coloca en ese punto', async ({ page }) => {
+  await nuevaSesion(page);
+
+  // Sin pista de audio, para comprobar de paso que también se crea la que falta.
+  await page.locator('input[type=file]').nth(0).setInputFiles([fixture('Audio.wav')]);
+  await expect(page.locator('.media-item')).toHaveCount(1, { timeout: 60000 });
+  await page.locator('.media-item').filter({ hasText: 'Audio.wav' }).dblclick();
+  await expect(page.locator('.timeline-event.audio').first()).toBeVisible();
+  const encabezado = page.locator('#track-headers .track-header').filter({ hasText: 'Audio' });
+  await encabezado.click({ button: 'right' });
+  await page.getByRole('menuitem', { name: /Eliminar pista/ }).click();
+  await esperarProyecto(page, (valor) => !(valor.tracks ?? []).some((pista) => pista.kind === 'audio'), 'sin pista de audio');
+  // Se vacía la línea de tiempo para que el archivo que se suelta sea el único medio.
+  await page.locator('.media-item').filter({ hasText: 'Audio.wav' }).click();
+  await page.keyboard.press('Delete');
+  await page.waitForTimeout(300);
+  const caja = (await page.locator('.timeline-content').boundingBox())!;
+  const destinoX = caja.x + 200;
+  const destinoY = caja.y + 60;
+
+  const dataTransfer = await dataTransferConArchivo(page, 'tests/fixtures/Audio.wav', 'audio/wav');
+  await page.locator('.timeline-content').dispatchEvent('dragover', { dataTransfer, clientX: destinoX, clientY: destinoY });
+  await page.locator('.timeline-content').dispatchEvent('drop', { dataTransfer, clientX: destinoX, clientY: destinoY });
+
+  await expect(page.locator('.media-item')).toHaveCount(1, { timeout: 60000 });
+  const proyecto = await esperarProyecto(
+    page,
+    (valor) => (valor.events ?? []).some((evento) => evento.kind === 'audio' && evento.start > 0),
+    'el archivo suelto se importa y se coloca en el punto donde se soltó',
+  );
+  const pistaAudio = (proyecto.tracks ?? []).find((pista) => pista.kind === 'audio');
+  expect(pistaAudio, 'la pista de audio se crea al soltar el archivo').toBeTruthy();
+  const evento = (proyecto.events ?? []).find((otro) => otro.kind === 'audio')!;
+  expect(evento.trackId).toBe(pistaAudio!.id);
+  expect(evento.start, 'el clip empieza donde se soltó, no en cero').toBeGreaterThan(0);
+  await expect(page.locator('.timeline-event.audio').first()).toBeVisible();
+});
+
+test('arrastrar un archivo al panel de medios solo lo importa, sin colocarlo', async ({ page }) => {
+  await nuevaSesion(page);
+  const destino = page.locator('.media-grid');
+  const caja = (await destino.boundingBox())!;
+  const dataTransfer = await dataTransferConArchivo(page, 'tests/fixtures/Video_A.mp4', 'video/mp4');
+  await destino.dispatchEvent('dragover', { dataTransfer, clientX: caja.x + 10, clientY: caja.y + 10 });
+  await destino.dispatchEvent('drop', { dataTransfer, clientX: caja.x + 10, clientY: caja.y + 10 });
+
+  await expect(page.locator('.media-item')).toHaveCount(1, { timeout: 60000 });
+  await page.waitForTimeout(1200);
+  const proyecto = await proyectoGuardado(page);
+  expect((proyecto?.media ?? []).length, 'el medio se importa').toBe(1);
+  expect((proyecto?.events ?? []).length, 'pero no se coloca ningún clip').toBe(0);
 });

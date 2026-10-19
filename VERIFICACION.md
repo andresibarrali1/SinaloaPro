@@ -226,6 +226,22 @@ Ronda de dos funciones nuevas, verificada con las pruebas del proyecto:
   rompió lo anterior, las pruebas de arrastre de la regla, de la aguja desde los carriles y de reordenar pistas
   (4 correctas) más la de transiciones desde la pestaña (`parity.spec.ts`, 1 correcta).
 
+## Archivos del explorador arrastrados al editor
+
+Soltar archivos del explorador de Windows **sobre la línea de tiempo** ahora hace las dos cosas de una vez:
+importa el archivo y lo coloca como clip en el punto donde se suelta (uno detrás de otro si se sueltan varios),
+en la pista que corresponda y creándola si el proyecto no tiene ninguna de su clase. Soltarlos en cualquier otra
+zona del editor sigue importándolos sin colocarlos, como antes. La importación es la misma de siempre
+(`importFiles`): decodifica, mide, guarda la copia local si cabe y lo añade al panel de medios; lo nuevo es la
+opción `{insertAt, lane}` y el reconocimiento del arrastre de archivos (`Files`) en `dragging()`.
+
+- **Comprobado**: `npx tsc --noEmit` (0 errores), `npm test`, `npm run lint` (sin avisos nuevos),
+  `npm run build`, y `npx playwright test --project=chrome tests/arrastres.spec.ts` (**6 correctas**): las dos
+  nuevas sueltan un `File` real leído del disco dentro de un `DataTransfer` —una sobre la línea de tiempo
+  (se importa, se crea la pista que falta y el clip empieza donde se soltó) y otra sobre el panel de medios
+  (se importa pero no se coloca nada)—.
+- **Captura**: `evidencias/arrastre-archivo-del-explorador.png`.
+
 ## 3. Comprobaciones del encargo, una por una
 
 | Comprobación pedida | Estado | Cómo se comprobó |
