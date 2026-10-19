@@ -263,3 +263,55 @@ test('arrastrar un archivo al panel de medios solo lo importa, sin colocarlo', a
   expect((proyecto?.media ?? []).length, 'el medio se importa').toBe(1);
   expect((proyecto?.events ?? []).length, 'pero no se coloca ningún clip').toBe(0);
 });
+test('soltar un archivo donde no hay pista (encabezados o proyecto vacío) crea la pista y coloca el clip', async ({ page }) => {
+  await nuevaSesion(page);
+
+  // 1) Sobre el encabezado de una pista: el clip va a esa pista y el medio se importa.
+  const cajaEncabezados = (await page.locator('#track-headers').boundingBox())!;
+  const dataTransfer1 = await dataTransferConArchivo(page, 'tests/fixtures/Video_A.mp4', 'video/mp4');
+  await page.locator('#track-headers').dispatchEvent('dragover', {
+    dataTransfer: dataTransfer1,
+    clientX: cajaEncabezados.x + 40,
+    clientY: cajaEncabezados.y + 40,
+  });
+  await page.locator('#track-headers').dispatchEvent('drop', {
+    dataTransfer: dataTransfer1,
+    clientX: cajaEncabezados.x + 40,
+    clientY: cajaEncabezados.y + 40,
+  });
+  await expect(page.locator('.media-item')).toHaveCount(1, { timeout: 60000 });
+  const trasEncabezado = await esperarProyecto(
+    page,
+    (valor) => (valor.events ?? []).length > 0,
+    'el archivo soltado sobre el encabezado se coloca en la línea de tiempo',
+  );
+  expect((trasEncabezado.tracks ?? []).length, 'no hizo falta crear pista: ya había una').toBe(3);
+
+  // 2) Proyecto sin ninguna pista: se suelta en el hueco del contenedor con scroll, fuera del contenido.
+  for (let intento = 0; intento < 4; intento++) {
+    if ((await page.locator('#track-headers .track-header').count()) === 0) break;
+    await page.locator('#track-headers .track-header').first().click({ button: 'right' });
+    await page.getByRole('menuitem', { name: /Eliminar pista/ }).click();
+    await page.waitForTimeout(400);
+  }
+  await esperarProyecto(page, (valor) => (valor.tracks ?? []).length === 0, 'el proyecto se queda sin pistas');
+
+  const cajaScroll = (await page.locator('.timeline-scroll').boundingBox())!;
+  const dataTransfer2 = await dataTransferConArchivo(page, 'tests/fixtures/Video_A.mp4', 'video/mp4');
+  const destino = { clientX: cajaScroll.x + 260, clientY: cajaScroll.y + 90 };
+  await page.locator('.timeline-scroll').dispatchEvent('dragover', { dataTransfer: dataTransfer2, ...destino });
+  await page.locator('.timeline-scroll').dispatchEvent('drop', { dataTransfer: dataTransfer2, ...destino });
+
+  const proyecto = await esperarProyecto(
+    page,
+    (valor) => (valor.tracks ?? []).length > 0 && (valor.events ?? []).length > 0,
+    'sin pistas, soltar el archivo crea las pistas y coloca el clip',
+  );
+  const pistas = proyecto.tracks ?? [];
+  expect(pistas.length, 'se crean las pistas que el material necesita').toBeGreaterThan(0);
+  expect(pistas.some((pista) => pista.kind === 'video'), 'hay una pista de vídeo').toBe(true);
+  const evento = (proyecto.events ?? []).find((otro) => otro.kind === 'video')!;
+  expect(evento).toBeTruthy();
+  const pistaDelClip = pistas.find((pista) => pista.id === evento.trackId)!;
+  expect(pistaDelClip.kind, 'el clip cae en una pista de vídeo').toBe('video');
+});

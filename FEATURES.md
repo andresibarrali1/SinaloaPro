@@ -80,7 +80,7 @@ Cada fila indica la evidencia. Las pruebas automatizadas están en `tests/`; su 
 |---|---|---|
 | Varias pistas de video y audio, añadir y reordenar | ✅ | `newProject`, diálogo de pista (subir/bajar) |
 | Arrastrar medios a pistas | ✅ | `onDrop` por pista; también en el hueco de la línea de tiempo |
-| Arrastrar archivos del explorador de Windows a la línea de tiempo (importa y coloca en el punto) | ✅ | `importFiles(files,{insertAt,lane})` + `dragging()` reconoce `Files`; `tests/arrastres.spec.ts` (dos pruebas con un `File` real) |
+| Arrastrar archivos del explorador de Windows a la línea de tiempo (importa y coloca en el punto) | ✅ | `importFiles(files,{insertAt,lane})`; vale en toda la sección —carriles, regla, encabezados y el hueco sin pistas— y crea la pista que falte; `tests/arrastres.spec.ts` (tres pruebas con un `File` real) |
 | Soltar un medio sin pista de su clase crea la pista | ✅ | `planMediaDrop` (`lib/editor/drop-targets.ts`) + `tests/drop-targets.test.ts` y `tests/arrastres.spec.ts` |
 | Arrastrar una transición al borde de un clip (entrada, corte o salida) | ✅ | `planTransitionDrop` (`lib/editor/transition-drop.ts`); la salida se dibuja con `transitionOut` en el compositor; `tests/arrastres.spec.ts` |
 | Mover eventos y cambiarlos de pista | ✅ | `dragEvent` con detección de pista destino |

@@ -229,6 +229,14 @@ Ronda de dos funciones nuevas, verificada con las pruebas del proyecto:
 ## Archivos del explorador arrastrados al editor
 
 Soltar archivos del explorador de Windows **sobre la línea de tiempo** ahora hace las dos cosas de una vez:
+
+
+El soltado vale en **toda la sección de la línea de tiempo**, no solo sobre su contenido: también sobre los
+**encabezados de pista** (el clip va a esa pista) y sobre el **hueco del contenedor con scroll** cuando el
+contenido no lo cubre, que es el caso de un proyecto **sin pistas**: ahí se crean las pistas que el material
+necesita. Las dos zonas que fallaban se cubren con una prueba más en `tests/arrastres.spec.ts`.
+
+
 importa el archivo y lo coloca como clip en el punto donde se suelta (uno detrás de otro si se sueltan varios),
 en la pista que corresponda y creándola si el proyecto no tiene ninguna de su clase. Soltarlos en cualquier otra
 zona del editor sigue importándolos sin colocarlos, como antes. La importación es la misma de siempre
