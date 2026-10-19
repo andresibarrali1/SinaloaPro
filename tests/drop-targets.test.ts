@@ -179,3 +179,44 @@ test('la frase de estado distingue corte, entrada y salida', () => {
   assert.match(salida, /como salida/);
   assert.match(salida, /0\.50 s/);
 });
+// Pruebas de la regla nueva: soltar fuera de toda pista crea una pista nueva aunque ya haya de su clase.
+// ---- soltar fuera de toda pista (regla o hueco de debajo) ----
+
+const proyectoCon = (kinds: ("video" | "audio")[]) => ({
+  ...newProject(),
+  tracks: kinds.map((kind) => newTrack(kind, kind === "video" ? "Video" : "Audio")),
+});
+
+test("soltar fuera de toda pista crea una pista nueva aunque ya haya de su clase", () => {
+  const proyecto = proyectoCon(["video", "audio"]);
+  const video = planMediaDrop({ mediaKind: "video", tracks: proyecto.tracks, fueraDePista: true });
+  const audio = planMediaDrop({ mediaKind: "audio", tracks: proyecto.tracks, fueraDePista: true });
+  assert.deepEqual(video, { kind: "track", trackId: null, createTrack: "video" });
+  assert.deepEqual(audio, { kind: "track", trackId: null, createTrack: "audio" });
+});
+
+test("soltar fuera de toda pista ignora la pista que se pase como preferida", () => {
+  const proyecto = proyectoCon(["video", "video"]);
+  const plan = planMediaDrop({ mediaKind: "video", tracks: proyecto.tracks, preferred: proyecto.tracks[1].id, fueraDePista: true });
+  assert.equal(plan.kind, "track");
+  if (plan.kind !== "track") return;
+  assert.equal(plan.trackId, null, "no se reutiliza la que ya existe");
+  assert.equal(plan.createTrack, "video");
+});
+
+test("sobre una pista no se crea nada: se usa la que hay", () => {
+  const proyecto = proyectoCon(["video", "audio"]);
+  const plan = planMediaDrop({ mediaKind: "audio", tracks: proyecto.tracks, preferred: proyecto.tracks[1].id });
+  assert.equal(plan.kind, "track");
+  if (plan.kind !== "track") return;
+  assert.equal(plan.trackId, proyecto.tracks[1].id);
+  assert.equal(plan.createTrack, null);
+});
+
+test("una imagen también pide pista de vídeo cuando se suelta fuera de las pistas", () => {
+  const proyecto = proyectoCon(["video", "audio"]);
+  const plan = planMediaDrop({ mediaKind: "image", tracks: proyecto.tracks, fueraDePista: true });
+  assert.equal(plan.kind, "track");
+  if (plan.kind !== "track") return;
+  assert.equal(plan.createTrack, "video");
+});

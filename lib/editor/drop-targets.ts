@@ -23,6 +23,7 @@ export function compatibleTrack(tracks: Track[], media: DropMediaKind, preferred
 /**
  * Decide en qué pista se inserta un material soltado.
  *
+ * * Si el puntero no está sobre ninguna pista (`fueraDePista`), se crea una pista nueva de su clase.
  * * Si se suelta sobre una pista de su clase, va ahí (`preferred`).
  * * Si no, va a la primera pista de su clase.
  * * Si no hay ninguna, se crea una (`createTrack`), que es lo que evita que un proyecto sin pistas de audio no
@@ -34,8 +35,13 @@ export function planMediaDrop(input: {
   mediaKind: DropMediaKind;
   tracks: Track[];
   preferred?: string | null;
+  /** El puntero no está sobre ninguna pista (regla o hueco por debajo): se crea una pista nueva. */
+  fueraDePista?: boolean;
 }): MediaDropPlan {
   if (input.mediaKind === 'subtitle') return { kind: 'track', trackId: null, createTrack: null };
+  // Soltar donde no hay pista crea una pista nueva de la clase del material, aunque ya existan otras: es lo que
+  // se espera al arrastrar a la regla o al hueco de debajo, y así no se mezcla con lo que ya había.
+  if (input.fueraDePista) return { kind: 'track', trackId: null, createTrack: laneKindForMedia(input.mediaKind) };
   const track = compatibleTrack(input.tracks, input.mediaKind, input.preferred ?? null);
   if (track) return { kind: 'track', trackId: track.id, createTrack: null };
   return { kind: 'track', trackId: null, createTrack: laneKindForMedia(input.mediaKind) };

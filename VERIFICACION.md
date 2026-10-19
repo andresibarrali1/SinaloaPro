@@ -229,6 +229,15 @@ Ronda de dos funciones nuevas, verificada con las pruebas del proyecto:
 ## Archivos del explorador arrastrados al editor
 
 Soltar archivos del explorador de Windows **sobre la línea de tiempo** ahora hace las dos cosas de una vez:
+**Regla de la pista nueva.** Si el puntero no está sobre ninguna pista —la regla o el hueco por debajo de todas
+las pistas—, se crea una **pista nueva de la clase del material, aunque ya existan otras de esa clase**: es lo
+que se espera al arrastrar ahí y evita mezclar el recurso con lo que ya había (si es de audio, pista de audio; si
+es de vídeo o una imagen, pista de vídeo). Si se suelta **sobre una pista**, se usa esa (o una compatible) y no se
+crea nada. Al soltar varios archivos de una vez, los del mismo tipo comparten una sola pista nueva. Probado en
+`tests/drop-targets.test.ts` (4 casos nuevos) y en `tests/arrastres.spec.ts` (hueco de abajo con audio y regla
+con vídeo: la cuenta de pistas sube de 3 a 5 y cada clip cae en la pista recién creada).
+
+
 
 
 El soltado vale en **toda la sección de la línea de tiempo**, no solo sobre su contenido: también sobre los

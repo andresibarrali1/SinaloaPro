@@ -267,17 +267,18 @@ test('soltar un archivo donde no hay pista (encabezados o proyecto vacío) crea 
   await nuevaSesion(page);
 
   // 1) Sobre el encabezado de una pista: el clip va a esa pista y el medio se importa.
-  const cajaEncabezados = (await page.locator('#track-headers').boundingBox())!;
+  const encabezadoVideo = page.locator('#track-headers .track-header.video').first();
+  const cajaEncabezado = (await encabezadoVideo.boundingBox())!;
   const dataTransfer1 = await dataTransferConArchivo(page, 'tests/fixtures/Video_A.mp4', 'video/mp4');
-  await page.locator('#track-headers').dispatchEvent('dragover', {
+  await encabezadoVideo.dispatchEvent('dragover', {
     dataTransfer: dataTransfer1,
-    clientX: cajaEncabezados.x + 40,
-    clientY: cajaEncabezados.y + 40,
+    clientX: cajaEncabezado.x + 40,
+    clientY: cajaEncabezado.y + 20,
   });
-  await page.locator('#track-headers').dispatchEvent('drop', {
+  await encabezadoVideo.dispatchEvent('drop', {
     dataTransfer: dataTransfer1,
-    clientX: cajaEncabezados.x + 40,
-    clientY: cajaEncabezados.y + 40,
+    clientX: cajaEncabezado.x + 40,
+    clientY: cajaEncabezado.y + 20,
   });
   await expect(page.locator('.media-item')).toHaveCount(1, { timeout: 60000 });
   const trasEncabezado = await esperarProyecto(
@@ -314,4 +315,50 @@ test('soltar un archivo donde no hay pista (encabezados o proyecto vacío) crea 
   expect(evento).toBeTruthy();
   const pistaDelClip = pistas.find((pista) => pista.id === evento.trackId)!;
   expect(pistaDelClip.kind, 'el clip cae en una pista de vídeo').toBe('video');
+});
+
+test('soltar fuera de las pistas (hueco de abajo o regla) crea una pista nueva del tipo del material', async ({ page }) => {
+  await nuevaSesion(page);
+
+  // Proyecto de partida: las tres pistas por defecto (dos de vídeo y una de audio).
+  const inicial = await esperarProyecto(page, (valor) => (valor.tracks ?? []).length === 3, 'el proyecto arranca con tres pistas');
+  expect(inicial.tracks ?? []).toHaveLength(3);
+
+  // 1) Un audio soltado en el hueco por debajo de todas las pistas: pista de audio nueva.
+  const contenido = (await page.locator('.timeline-content').boundingBox())!;
+  const destinoAudio = { clientX: contenido.x + 300, clientY: contenido.y + contenido.height - 6 };
+  const transferenciaAudio = await dataTransferConArchivo(page, 'tests/fixtures/Audio.wav', 'audio/wav');
+  await page.locator('.timeline-content').dispatchEvent('dragover', { dataTransfer: transferenciaAudio, ...destinoAudio });
+  await page.locator('.timeline-content').dispatchEvent('drop', { dataTransfer: transferenciaAudio, ...destinoAudio });
+
+  const conAudio = await esperarProyecto(
+    page,
+    (valor) => (valor.tracks ?? []).length === 4,
+    'soltar un audio fuera de las pistas crea una pista de audio',
+  );
+  const pistasAudio = (conAudio.tracks ?? []).filter((pista) => pista.kind === 'audio');
+  expect(pistasAudio.length, 'queda una pista de audio más que la que había').toBe(2);
+  const clipAudio = (conAudio.events ?? []).find((evento) => evento.kind === 'audio')!;
+  const pistaNueva = pistasAudio.find((pista) => pista.id === clipAudio.trackId);
+  expect(pistaNueva, 'el clip va a la pista recién creada').toBeTruthy();
+  expect(pistaNueva!.id, 'y no a la pista de audio que ya existía').not.toBe(inicial.tracks!.find((pista) => pista.kind === 'audio')!.id);
+
+  // 2) Un vídeo soltado sobre la regla: pista de vídeo nueva.
+  const regla = (await page.locator('.ruler').boundingBox())!;
+  const transferenciaVideo = await dataTransferConArchivo(page, 'tests/fixtures/Video_A.mp4', 'video/mp4');
+  const destinoVideo = { clientX: regla.x + 420, clientY: regla.y + 10 };
+  await page.locator('.ruler').dispatchEvent('dragover', { dataTransfer: transferenciaVideo, ...destinoVideo });
+  await page.locator('.ruler').dispatchEvent('drop', { dataTransfer: transferenciaVideo, ...destinoVideo });
+
+  const conVideo = await esperarProyecto(
+    page,
+    (valor) => (valor.tracks ?? []).length === 5,
+    'soltar un vídeo sobre la regla crea una pista de vídeo',
+  );
+  const pistasVideo = (conVideo.tracks ?? []).filter((pista) => pista.kind === 'video');
+  expect(pistasVideo.length, 'queda una pista de vídeo más').toBe(3);
+  const clipVideo = (conVideo.events ?? []).find((evento) => evento.kind === 'video')!;
+  const pistaDelClip = pistasVideo.find((pista) => pista.id === clipVideo.trackId)!;
+  expect(pistaDelClip, 'el clip cae en una pista de vídeo').toBeTruthy();
+  expect(pistaDelClip.id, 'y no en las dos pistas de vídeo que ya había').not.toBe(inicial.tracks![0].id);
 });

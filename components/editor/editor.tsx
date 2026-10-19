@@ -259,7 +259,7 @@ useEffect(()=>{let next:Project;try{next=recover()||newProject();const layout=JS
    id=requestAnimationFrame(frame);};id=requestAnimationFrame(frame);return()=>cancelAnimationFrame(id);},[playing,p,loop,paintCursor,paintPreview]);
  async function beginPlayback(at=cursorRef.current){if(!pRef.current||busy||rendering)return;const current=pRef.current;if(endTime(current)<=0)return;if(current.media.some(m=>current.events.some(e=>e.mediaId===m.id)&&!library.current.items.has(m.id))){setStatus('Revincula los medios faltantes antes de reproducir.');return;}pause();const span=playbackSpan(current,loop);const end=span?span.end:endTime(current);if(at>=end)at=span?span.start:0;startPosition.current=at;try{await audio.current.start(seconds(at));playingRef.current=true;setPlaying(true);audio.current.schedule(current,library.current,seconds(end));}catch(e){report(e);}}
  function transport(){if(playingRef.current){pause();seek(startPosition.current);}else void beginPlayback();}
- async function importFiles(files:FileList|File[],options?:{insertAt?:number;lane?:string|null}){if(rendering||busy)return [];setBusy(true);pause();const added:Media[]=[];const errors:string[]=[];let cacheBlocked=false;for(const file of Array.from(files)){setStatus(`Analizando ${file.name}→`);try{const m=await library.current.import(file);added.push(m);if(cacheMedia){const room=await storageHeadroom(file.size);if(room.enough)try{await storeFile(m.id,file);}catch{errors.push(`${file.name}: importado, pero el cache local está lleno. Tendrás que revincularlo.`);}else{cacheBlocked=true;errors.push(`${file.name}: importado, pero no hay espacio local suficiente para copiarlo (${Math.round(room.free/1048576)} MB libres). Se usará solo mientras esta pestaña siga abierta.`);}}}catch(e){errors.push(e instanceof Error?e.message:String(e));}}if(cacheBlocked)void storageHeadroom().then(h=>setStorageInfo(h.supported?`${Math.round(h.usage/1048576)} MB usados · ${Math.round(h.free/1048576)} MB libres de una cuota de ${Math.round(h.quota/1048576)} MB — espacio insuficiente para cachear los medios nuevos.`:`Este navegador no informa del espacio de almacenamiento disponible.`));if(added.length){edit(d=>d.media.push(...added));setMediaSelected(added[0].id);setTab('media');}
+ async function importFiles(files:FileList|File[],options?:{insertAt?:number;lane?:string|null;fueraDePista?:boolean}){if(rendering||busy)return [];setBusy(true);pause();const added:Media[]=[];const errors:string[]=[];let cacheBlocked=false;for(const file of Array.from(files)){setStatus(`Analizando ${file.name}→`);try{const m=await library.current.import(file);added.push(m);if(cacheMedia){const room=await storageHeadroom(file.size);if(room.enough)try{await storeFile(m.id,file);}catch{errors.push(`${file.name}: importado, pero el cache local está lleno. Tendrás que revincularlo.`);}else{cacheBlocked=true;errors.push(`${file.name}: importado, pero no hay espacio local suficiente para copiarlo (${Math.round(room.free/1048576)} MB libres). Se usará solo mientras esta pestaña siga abierta.`);}}}catch(e){errors.push(e instanceof Error?e.message:String(e));}}if(cacheBlocked)void storageHeadroom().then(h=>setStorageInfo(h.supported?`${Math.round(h.usage/1048576)} MB usados · ${Math.round(h.free/1048576)} MB libres de una cuota de ${Math.round(h.quota/1048576)} MB — espacio insuficiente para cachear los medios nuevos.`:`Este navegador no informa del espacio de almacenamiento disponible.`));if(added.length){edit(d=>d.media.push(...added));setMediaSelected(added[0].id);setTab('media');}
  // Si el arrastre venía de la línea de tiempo, los medios entran ya colocados en el punto donde se soltaron,
  // uno detrás de otro, en la pista que les toque (o en una nueva si el proyecto no tiene ninguna de su clase).
  if(options?.insertAt!==undefined&&added.length){
@@ -267,9 +267,15 @@ useEffect(()=>{let next:Project;try{next=recover()||newProject();const layout=JS
   if(current){
    const frame=frameTicks(current.fps);
    let cursor=quantize(options.insertAt,current.fps);
+   // Pista creada en este mismo soltado para cada familia: varios archivos del mismo tipo comparten una sola
+   // pista nueva en vez de crear una por archivo.
+   const creadas=new Map<string,string>();
    for(const m of added){
-    const plan=planMediaDrop({mediaKind:m.kind,tracks:current.tracks,preferred:options.lane??null});
-    insertMedia(m,plan.kind==='track'?plan.trackId:null,cursor);
+    const familia=m.kind==='audio'?'audio':'video';
+    const reutilizar=options.fueraDePista?creadas.get(familia)??null:options.lane??null;
+    const plan=planMediaDrop({mediaKind:m.kind,tracks:pRef.current?.tracks??current.tracks,preferred:reutilizar,fueraDePista:options.fueraDePista===true&&!reutilizar});
+    const usada=insertMedia(m,plan.kind==='track'?plan.trackId:null,cursor,{nuevaPista:plan.kind==='track'&&plan.createTrack!==null});
+    if(options.fueraDePista&&usada)creadas.set(familia,usada);
     const duration=m.kind==='image'?ticks(5):Math.max(frame,Math.floor(m.duration/frame)*frame);
     cursor=quantize(cursor+duration,current.fps);
    }
@@ -301,14 +307,14 @@ useEffect(()=>{let next:Project;try{next=recover()||newProject();const layout=JS
   if(que==='files'){
    const files=Array.from(e.dataTransfer.files);
    if(!files.length)return;
-   void importFiles(files,{insertAt:at,lane});
+   void importFiles(files,{insertAt:at,lane,fueraDePista:!lane});
    return;
   }
   if(que==='media'){
    const id=e.dataTransfer.getData(MEDIA_DRAG);const m=current.media.find(item=>item.id===id);if(!m)return;
-   const plan=planMediaDrop({mediaKind:m.kind,tracks:current.tracks,preferred:lane});
+   const plan=planMediaDrop({mediaKind:m.kind,tracks:current.tracks,preferred:lane,fueraDePista:!lane});
    if(plan.kind==='none'){setStatus(plan.reason);return;}
-   insertMedia(m,plan.trackId,at);
+   insertMedia(m,plan.kind==='track'?plan.trackId:null,at,{nuevaPista:plan.kind==='track'&&plan.createTrack!==null});
    setStatus(plan.createTrack?`Se creó una pista de ${plan.createTrack==='audio'?'audio':'vídeo'} para «${m.name}».`:describeMediaDrop(plan,current.tracks));
    return;
   }
@@ -326,7 +332,10 @@ useEffect(()=>{let next:Project;try{next=recover()||newProject();const layout=JS
   applyTransition(kind,plan);
   setStatus(describeTransitionDrop(plan,TRANSITION_LABEL[kind],clip,seconds));
  }
-function insertMedia(m:Media,target?:string|null,at=cursorRef.current){if(m.kind==='subtitle'){insertSubtitles(m);return;}const kind:'video'|'audio'|'image'=m.kind;edit(d=>{const plan=planMediaDrop({mediaKind:m.kind,tracks:d.tracks,preferred:target??null});const wanted=plan.kind==='track'?plan.trackId:null;let track=wanted?d.tracks.find(t=>t.id===wanted):undefined;if(!track){track=newTrack(kind==='audio'?'audio':'video');d.tracks.push(track);}const start=quantize(at,d.fps);const duration=kind==='image'?ticks(5):Math.max(frameTicks(d.fps),Math.floor(m.duration/frameTicks(d.fps))*frameTicks(d.fps));const e={...newEvent(track.id,kind,start,duration),name:m.name,mediaId:m.id};if(ripple!=='off')for(const old of d.events)if(old.start>=start&&(ripple==='all'||old.trackId===track.id))old.start+=duration;d.events.push(e);if(kind==='video'&&m.hasAudio){let a=d.tracks.find(t=>t.kind==='audio');if(!a){a=newTrack('audio');d.tracks.push(a);}const group=uid();e.group=group;d.events.push({...clone(e),id:uid(),trackId:a.id,kind:'audio',group});}autoCrossfade(d,[e.id]);setSelected([e.id]);});}
+// Inserta un medio en la línea de tiempo y devuelve la pista que se ha usado (la nueva, si hubo que crearla).
+ // `nuevaPista` fuerza que se cree una aunque ya haya pistas de su clase: es lo que se pide al soltar sobre la
+ // regla o sobre el hueco de debajo de las pistas.
+ function insertMedia(m:Media,target?:string|null,at=cursorRef.current,options?:{nuevaPista?:boolean}):string|null{if(m.kind==='subtitle'){insertSubtitles(m);return null;}const kind:'video'|'audio'|'image'=m.kind;let usada:string|null=null;edit(d=>{const plan=planMediaDrop({mediaKind:m.kind,tracks:d.tracks,preferred:target??null,fueraDePista:options?.nuevaPista===true});const wanted=plan.kind==='track'?plan.trackId:null;let track=wanted?d.tracks.find(t=>t.id===wanted):undefined;if(!track){track=newTrack(kind==='audio'?'audio':'video');d.tracks.push(track);}usada=track.id;const start=quantize(at,d.fps);const duration=kind==='image'?ticks(5):Math.max(frameTicks(d.fps),Math.floor(m.duration/frameTicks(d.fps))*frameTicks(d.fps));const e={...newEvent(track.id,kind,start,duration),name:m.name,mediaId:m.id};if(ripple!=='off')for(const old of d.events)if(old.start>=start&&(ripple==='all'||old.trackId===track.id))old.start+=duration;d.events.push(e);if(kind==='video'&&m.hasAudio){let a=d.tracks.find(t=>t.kind==='audio');if(!a){a=newTrack('audio');d.tracks.push(a);}const group=uid();e.group=group;d.events.push({...clone(e),id:uid(),trackId:a.id,kind:'audio',group});}autoCrossfade(d,[e.id]);setSelected([e.id]);});return usada;}
  function generator(kind:'text'|'color'){edit(d=>{let track=d.tracks.find(t=>t.kind==='video');if(!track){track=newTrack('video');d.tracks.unshift(track);}const e=newEvent(track.id,kind,quantize(cursorRef.current,d.fps));if(kind==='color'){e.name='Color sólido';e.color='#28688d';}d.events.push(e);setSelected([e.id]);});setDialog('event');}
  // Generadores de medios de VEGAS 15: el evento de color puede ser liso, degradado, tablero, barras o ruido.
  const GENERATOR_ITEMS:[string,string][]=[['solid','Color sólido'],['gradient','Degradado de color'],['checkerboard','Tablero cuadriculado'],['bars','Patrón de pruebas'],['noise','Textura de ruido']];
