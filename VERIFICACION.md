@@ -208,6 +208,24 @@ el segundo solo tiene audio.
 | `test-results/browser-exportación-a-1280-…/Sin título.mp4` (Chrome, Edge, 60,6 kB) y `Sin título.webm` (Firefox, 19,8 kB) | Exportación a 1280×720 real en los tres motores, con el formato que cada uno detecta |
 | `test-results/browser-renderiza-solo-el-tramo…/Sin título (tramo).mp4` y `.webm` | Renderizado limitado al tramo: el nombre del archivo y su duración (2 s) lo confirman |
 
+## Arrastres sobre la línea de tiempo (medios y transiciones)
+
+Ronda de dos funciones nuevas, verificada con las pruebas del proyecto:
+
+- **Soltar un medio sin pista de su clase crea la pista.** La decisión vive en `lib/editor/drop-targets.ts`
+  (`planMediaDrop`) y la usa `insertMedia`, así que la misma regla vale para el arrastre, el doble clic y el
+  menú. Cubierto por `tests/drop-targets.test.ts` (8 casos) y por `tests/arrastres.spec.ts`: se borra la pista
+  de audio, se suelta el audio en el hueco de la línea de tiempo y la pista reaparece con el clip dentro.
+- **Transiciones arrastradas al borde de un clip.** `lib/editor/transition-drop.ts` decide el destino: mitad
+  izquierda es la entrada del clip; mitad derecha con otro clip pegado es el corte, o sea la entrada del
+  siguiente; mitad derecha sin vecino es `transitionOut` del propio clip, que el compositor dibuja con el
+  progreso espejado sobre el fundido de salida.
+- **Comprobado**: `npx tsc --noEmit` (0 errores), `npm test` (358 pruebas), `npm run lint` (los mismos 4
+  errores y 16 avisos previos, ninguno nuevo de esta ronda), `npm run build` (correcto),
+  `npx playwright test --project=chrome tests/arrastres.spec.ts` (4 correctas) y, para comprobar que no se
+  rompió lo anterior, las pruebas de arrastre de la regla, de la aguja desde los carriles y de reordenar pistas
+  (4 correctas) más la de transiciones desde la pestaña (`parity.spec.ts`, 1 correcta).
+
 ## 3. Comprobaciones del encargo, una por una
 
 | Comprobación pedida | Estado | Cómo se comprobó |

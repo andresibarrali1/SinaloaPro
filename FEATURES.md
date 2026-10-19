@@ -79,7 +79,9 @@ Cada fila indica la evidencia. Las pruebas automatizadas están en `tests/`; su 
 | Función | Estado | Evidencia |
 |---|---|---|
 | Varias pistas de video y audio, añadir y reordenar | ✅ | `newProject`, diálogo de pista (subir/bajar) |
-| Arrastrar medios a pistas | ✅ | `onDrop` por pista |
+| Arrastrar medios a pistas | ✅ | `onDrop` por pista; también en el hueco de la línea de tiempo |
+| Soltar un medio sin pista de su clase crea la pista | ✅ | `planMediaDrop` (`lib/editor/drop-targets.ts`) + `tests/drop-targets.test.ts` y `tests/arrastres.spec.ts` |
+| Arrastrar una transición al borde de un clip (entrada, corte o salida) | ✅ | `planTransitionDrop` (`lib/editor/transition-drop.ts`); la salida se dibuja con `transitionOut` en el compositor; `tests/arrastres.spec.ts` |
 | Mover eventos y cambiarlos de pista | ✅ | `dragEvent` con detección de pista destino |
 | Recortar inicio y final (con límites de medio y fotograma mínimo) | ✅ | `model.test.ts` (dos pruebas de recorte) |
 | Dividir en la posición del cursor | ✅ | `model.test.ts` + E2E con la tecla `S` |

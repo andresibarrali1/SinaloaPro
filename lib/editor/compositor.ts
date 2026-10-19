@@ -22,7 +22,7 @@ export const compositeOperation = (mode?: CompositeMode): GlobalCompositeOperati
 
 // La exportación y la vista previa piden el lienzo de trabajo de la misma forma; en las pruebas unitarias ese
 // lienzo lo fabrica @napi-rs/canvas, así que la fábrica se puede inyectar.
-export type ComposeOptions = { createCanvas?: CanvasFactory; notes?: string[] };
+export type ComposeOptions = { createCanvas?: CanvasFactory; notes?: string[]; cancelled?: () => boolean };
 const browserCanvas: CanvasFactory | null = typeof document === 'undefined' ? null : (width, height) => {
   const canvas = document.createElement('canvas');
   canvas.width = width;
@@ -239,7 +239,7 @@ export async function compose(canvas:HTMLCanvasElement,p:Project,library:MediaLi
   const events=byTrack.get(track.id);if(!events)continue;
   if(events.length>1)events.sort((a,b)=>a.start-b.start);
   ctx.globalCompositeOperation=compositeOperation(track.composite); // modo de fusión de la pista
-  for(const e of events){const local=time-e.start; // A crossfade keeps the outgoing image fully opaque beneath the incoming layer.
+  for(const e of events){if(options.cancelled?.())return;const local=time-e.start; // A crossfade keeps the outgoing image fully opaque beneath the incoming layer.
    // «Extender para rellenar f.» del grupo «Origen» de la ventana de Panoramización y recorte: con la casilla
    // puesta, el material se escala hasta cubrir el fotograma del proyecto (sin deformar) y el recorte sigue
    // mandando. Es el mismo encaje que la acción «Encajar el contenido al fotograma».
@@ -247,9 +247,14 @@ export async function compose(canvas:HTMLCanvasElement,p:Project,library:MediaLi
    const at=e.maintainAspect!==false&&e.stretchFill&&mediaRecord&&mediaRecord.width>0&&mediaRecord.height>0
     ? fillFrame({project:{width:p.width,height:p.height},media:{width:mediaRecord.width,height:mediaRecord.height},pose:pose(e,time)})
     : pose(e,time);
-   // La transición de un evento es su entrada: ocupa su `fadeIn` y sustituye a la rampa lineal.
-   const transition=e.transition&&e.fadeIn>0?transitionProgress(local,e.fadeIn):null;
-   let opacity=transition!==null?Math.max(0,Math.min(1,e.fadeOut?(e.duration-local)/e.fadeOut:1)):envelope(e,time);
+   // La transición de un evento puede ser su **entrada** (ocupa su `fadeIn`) o su **salida** (ocupa su
+   // `fadeOut`). La de salida se dibuja con el progreso espejado, así el mismo catálogo de transiciones sirve
+   // para los dos bordes del clip y el corte se ve igual entrando por un lado que por el otro.
+   const entrance=e.transition&&e.fadeIn>0?transitionProgress(local,e.fadeIn):null;
+   const exit=e.transitionOut&&e.fadeOut>0?transitionProgress(e.duration-local,e.fadeOut):null;
+   const transitionKind=entrance!==null?e.transition:exit!==null?e.transitionOut:undefined;
+   const transition=entrance!==null?entrance:exit!==null?1-exit:null;
+   let opacity=entrance!==null?Math.max(0,Math.min(1,e.fadeOut?(e.duration-local)/e.fadeOut:1)):exit!==null?1:envelope(e,time);
    if(e.fadeOut&&events.some(other=>other.start>e.start&&other.fadeIn>0&&time<other.start+other.fadeIn))opacity=e.fadeIn?Math.min(1,(time-e.start)/e.fadeIn):1;
    const track3D=is3D(track.transform);
    const event3D=is3D(at);
@@ -274,6 +279,7 @@ export async function compose(canvas:HTMLCanvasElement,p:Project,library:MediaLi
     layerCtx.clearRect(0,0,w,h);layerCtx.filter=grade;
     if(warped3D){applyPose(layerCtx,track.transform,w,h);if(at.cropFrame)applyCropFrame(layerCtx,at.cropFrame,w,h);applyPose(layerCtx,at,w,h);}
     await drawContent(layerCtx,e,p,library,w,h,time,mask,at);
+    if(options.cancelled?.()){ctx.restore();return;}
     layerCtx.filter='none';
     // «Reducir parpadeo de entrelazado»: mezcla vertical de tres tomas (la capa copiada un píxel arriba y un
     // píxel abajo) sobre la capa del evento, sin tocar el resto del fotograma.
@@ -282,20 +288,21 @@ export async function compose(canvas:HTMLCanvasElement,p:Project,library:MediaLi
     // La máscara libre recorta la forma del evento; la transición, si la hay, lo revela después.
     if(masked&&e.maskPath)applyMaskPath(layer,e.maskPath,{width:w,height:h,scale:h/Math.max(1,p.height),createCanvas:createCanvas as NonNullable<typeof createCanvas>,note});
     ctx.filter='none';
-    if(transition!==null&&e.transition)ctx.globalAlpha*=transitionAlpha(e.transition,transition);
+    if(transition!==null&&transitionKind)ctx.globalAlpha*=transitionAlpha(transitionKind,transition);
     if(warped3D&&createCanvas){
      const projected=layerQuad(track.transform,at,{width:w,height:h});
      ctx.save();
-     if(transition!==null&&e.transition){applyTransitionTransform(ctx,e.transition,transition,w,h);maskTransition(layer,e.transition,transition,w,h);}
+     if(transition!==null&&transitionKind){applyTransitionTransform(ctx,transitionKind,transition,w,h);maskTransition(layer,transitionKind,transition,w,h);}
      composeQuad(ctx,layer,projected,{createCanvas:createCanvas as NonNullable<typeof createCanvas>});
      ctx.restore();
-    }else if(transition!==null&&e.transition){
-     maskTransition(layer,e.transition,transition,w,h);
-     ctx.save();applyTransitionTransform(ctx,e.transition,transition,w,h);ctx.drawImage(layer,0,0);ctx.restore();
+    }else if(transition!==null&&transitionKind){
+     maskTransition(layer,transitionKind,transition,w,h);
+     ctx.save();applyTransitionTransform(ctx,transitionKind,transition,w,h);ctx.drawImage(layer,0,0);ctx.restore();
     }else ctx.drawImage(layer,0,0);
    }else{
     ctx.filter=grade;
     await drawContent(ctx,e,p,library,w,h,time,mask,at);
+    if(options.cancelled?.()){ctx.restore();return;}
     ctx.filter='none';
    }
    ctx.restore();

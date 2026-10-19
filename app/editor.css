@@ -36,3 +36,6 @@
 .timeline-event.audio .event-body{top:19px;bottom:1px}
 .timeline-event.audio .event-title{height:18px}
 .waveform-unavailable{font-size:10px;color:#dfbbc4;padding:2px}
+
+/* Carril resaltado mientras se arrastra un medio o una transición sobre él. */
+.track-lane.drop-target{outline:2px dashed #8edf9c;outline-offset:-3px;background-color:rgba(142,223,156,.10)}

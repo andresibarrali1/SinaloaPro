@@ -10,6 +10,7 @@ import { memo, type PointerEvent as ReactPointerEvent, type ReactNode } from "re
 import { Crop, Link } from "lucide-react";
 import { AudioWaveform } from "./audio-waveform";
 import { EventOpacity } from "./event-opacity";
+import { TRANSITION_LABEL } from "@/lib/editor/transitions";
 import { seconds, type Event, type Media } from "@/lib/editor/project";
 
 export type TimelineDragMode = "move" | "left" | "right" | "fadeIn" | "fadeOut";
@@ -148,8 +149,16 @@ export const TimelineEventRow = memo(function TimelineEventRow({
       )}
       <div className="trim-handle left" onPointerDown={(ev) => actions.drag(ev, event, "left")} title="Recortar inicio" />
       <div className="trim-handle right" onPointerDown={(ev) => actions.drag(ev, event, "right")} title="Recortar final" />
-      <div className="fade-shade in" style={{ width: seconds(event.fadeIn) * zoom }} />
-      <div className="fade-shade out" style={{ width: seconds(event.fadeOut) * zoom }} />
+      <div
+        className="fade-shade in"
+        title={event.transition ? `Transición de entrada: ${TRANSITION_LABEL[event.transition]}` : undefined}
+        style={{ width: seconds(event.fadeIn) * zoom }}
+      />
+      <div
+        className="fade-shade out"
+        title={event.transitionOut ? `Transición de salida: ${TRANSITION_LABEL[event.transitionOut]}` : undefined}
+        style={{ width: seconds(event.fadeOut) * zoom }}
+      />
       <div
         className="fade-handle in"
         style={{ left: Math.max(4, seconds(event.fadeIn) * zoom) }}
