@@ -362,3 +362,68 @@ test('soltar fuera de las pistas (hueco de abajo o regla) crea una pista nueva d
   expect(pistaDelClip, 'el clip cae en una pista de vídeo').toBeTruthy();
   expect(pistaDelClip.id, 'y no en las dos pistas de vídeo que ya había').not.toBe(inicial.tracks![0].id);
 });
+
+test('arrastrar un evento fuera de las pistas (abajo o arriba) crea una pista nueva de su tipo', async ({ page }) => {
+  // Ventana alta: hace falta hueco por debajo de las pistas para poder soltar ahí.
+  await page.setViewportSize({ width: 1500, height: 1040 });
+  await nuevaSesion(page);
+  await page.locator('input[type=file]').nth(0).setInputFiles([fixture('Video_A.mp4'), fixture('Audio.wav')]);
+  await expect(page.locator('.media-item')).toHaveCount(2, { timeout: 60000 });
+  await page.locator('.media-item').filter({ hasText: 'Video_A.mp4' }).dblclick();
+  await page.waitForTimeout(900);
+  await page.locator('.media-item').filter({ hasText: 'Audio.wav' }).dblclick();
+  const inicial = await esperarProyecto(
+    page,
+    (valor) => (valor.events ?? []).some((evento) => evento.kind === 'audio') && (valor.events ?? []).some((evento) => evento.kind === 'video'),
+    'el montaje entra en el proyecto',
+  );
+  expect((inicial.tracks ?? []).length).toBe(3);
+
+  // 1) El audio se baja al hueco de debajo de todas las pistas: pista de audio nueva al final.
+  const audio = page.locator('.timeline-event.audio').first();
+  const cajaAudio = (await audio.boundingBox())!;
+  const contenido = (await page.locator('.timeline-content').boundingBox())!;
+  const carriles = page.locator('.track-lane');
+  const ultimoCarril = (await carriles.last().boundingBox())!;
+  expect(
+    contenido.y + contenido.height - (ultimoCarril.y + ultimoCarril.height),
+    'la ventana deja hueco por debajo de las pistas para poder soltar',
+  ).toBeGreaterThan(12);
+  await page.mouse.move(cajaAudio.x + cajaAudio.width / 2, cajaAudio.y + cajaAudio.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(cajaAudio.x + cajaAudio.width / 2, cajaAudio.y + cajaAudio.height / 2 + 5, { steps: 2 });
+  await page.mouse.move(cajaAudio.x + cajaAudio.width / 2, Math.min(contenido.y + contenido.height - 4, ultimoCarril.y + ultimoCarril.height + 30), { steps: 8 });
+  await page.mouse.up();
+
+  const conPistaAbajo = await esperarProyecto(
+    page,
+    (valor) => (valor.tracks ?? []).length === 4,
+    'bajar el audio fuera de las pistas crea una pista de audio',
+  );
+  const pistas = conPistaAbajo.tracks ?? [];
+  expect(pistas[pistas.length - 1].kind, 'la pista nueva va al final y es de audio').toBe('audio');
+  // Hay dos audios (el del vídeo enlazado y el de Audio.wav): se comprueba que alguno se haya mudado a la pista nueva.
+  const mudados = (conPistaAbajo.events ?? []).filter((evento) => evento.trackId === pistas[pistas.length - 1].id);
+  expect(mudados.length, 'el clip arrastrado se muda a la pista nueva').toBeGreaterThan(0);
+  expect(mudados.every((evento) => evento.kind === 'audio'), 'y lo que se muda es audio').toBe(true);
+
+  // 2) El vídeo se sube por encima de la primera pista (sobre la regla): pista de vídeo nueva arriba.
+  const video = page.locator('.timeline-event.video').first();
+  const cajaVideo = (await video.boundingBox())!;
+  const contenido2 = (await page.locator('.timeline-content').boundingBox())!;
+  await page.mouse.move(cajaVideo.x + cajaVideo.width / 2, cajaVideo.y + cajaVideo.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(cajaVideo.x + cajaVideo.width / 2, cajaVideo.y + cajaVideo.height / 2 - 5, { steps: 2 });
+  await page.mouse.move(cajaVideo.x + cajaVideo.width / 2, contenido2.y + 4, { steps: 8 });
+  await page.mouse.up();
+
+  const conPistaArriba = await esperarProyecto(
+    page,
+    (valor) => (valor.tracks ?? []).length === 5,
+    'subir el vídeo por encima de las pistas crea una pista de vídeo',
+  );
+  const pistas2 = conPistaArriba.tracks ?? [];
+  expect(pistas2[0].kind, 'la pista nueva va arriba y es de vídeo').toBe('video');
+  const clipVideo = (conPistaArriba.events ?? []).find((evento) => evento.kind === 'video')!;
+  expect(clipVideo.trackId, 'el clip de vídeo se muda a la pista nueva de arriba').toBe(pistas2[0].id);
+});

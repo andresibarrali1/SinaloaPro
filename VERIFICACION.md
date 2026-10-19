@@ -259,6 +259,31 @@ opción `{insertAt, lane}` y el reconocimiento del arrastre de archivos (`Files`
   (se importa pero no se coloca nada)—.
 - **Captura**: `evidencias/arrastre-archivo-del-explorador.png`.
 
+## Arrastrar un evento que ya está en la línea crea pistas nuevas
+
+Un evento **que ya está** en la línea de tiempo se puede llevar al límite de arriba (la regla) o al hueco de
+debajo de la última pista: al soltarlo ahí se crea una **pista nueva de su clase** en ese extremo —audio arriba o
+abajo según el material; vídeo, imagen o texto a una pista de vídeo— y el clip se muda a ella con su tiempo
+intacto. Un grupo enlazado (vídeo + su audio) crea una pista por cada clase. La pista creada mantiene su
+identificador durante todo el gesto, para que el carril no se recree en cada movimiento.
+
+De paso se corrigieron tres cosas que lo impedían:
+
+- El gesto descartaba los movimientos **verticales** (el umbral solo miraba la X), así que bajar un clip a otra
+  pista no hacía nada.
+- El **arrastre nativo** del navegador sobre las imágenes y el SVG de la onda cancelaba el gesto del editor; ahora
+  está apagado en las filas.
+- Sobre la línea de la aguja, el agarre de la aguja se comía el gesto del clip: ahora, sobre un clip, decide el
+  **primer movimiento** (horizontal: la aguja, como hasta ahora; vertical: el clip).
+- El objeto de acciones de las filas era nuevo en cada repintado y las filas memoizadas se quedaban con el viejo
+  (llamaban a funciones con el proyecto anterior); ahora es un objeto estable cuyas propiedades se actualizan.
+
+- **Comprobado**: `npx tsc --noEmit`, `npm test` (362), `npm run lint` (sin avisos nuevos), `npm run build`,
+  `npx playwright test --project=chrome tests/arrastres.spec.ts` (**9 correctas**, incluida la nueva de bajar el
+  audio y subir el vídeo) y las cinco pruebas de la aguja y del arrastre en la regla (`tests/browser.spec.ts`),
+  que siguen en verde.
+- **Captura**: `evidencias/arrastrar-evento-crea-pista.png`.
+
 ## 3. Comprobaciones del encargo, una por una
 
 | Comprobación pedida | Estado | Cómo se comprobó |

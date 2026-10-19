@@ -70,6 +70,9 @@ export const TimelineEventRow = memo(function TimelineEventRow({
   const width = Math.max(4, seconds(event.duration) * zoom);
   return (
     <div
+      // El navegador arrastra imágenes y SVG por su cuenta, y eso cancela el gesto del editor: aquí se apaga.
+      draggable={false}
+      onDragStart={(ev) => ev.preventDefault()}
       role="button"
       tabIndex={0}
       aria-label={label}
