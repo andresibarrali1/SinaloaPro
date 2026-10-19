@@ -285,7 +285,7 @@ useEffect(()=>{let next:Project;try{next=recover()||newProject();const layout=JS
    const plan=planMediaDrop({mediaKind:m.kind,tracks:current.tracks,preferred:lane});
    if(plan.kind==='none'){setStatus(plan.reason);return;}
    insertMedia(m,plan.trackId,at);
-   setStatus(plan.createTrack?describeMediaDrop(plan,current.tracks):`«${m.name}» insertado en la línea de tiempo.`);
+   setStatus(plan.createTrack?`Se creó una pista de ${plan.createTrack==='audio'?'audio':'vídeo'} para «${m.name}».`:describeMediaDrop(plan,current.tracks));
    return;
   }
   const kind=e.dataTransfer.getData(TRANSITION_DRAG) as TransitionKind;if(!kind)return;
