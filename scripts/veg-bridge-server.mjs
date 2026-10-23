@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Puente local entre Corte 15 (navegador) y VEGAS Pro 15.
+// Puente local entre Sinaloa Pro (navegador) y VEGAS Pro 15.
 //
 // Por qué existe: el formato .veg es propietario y el único lector/escritor completo es VEGAS, por su API
 // de scripting. El navegador no puede lanzar procesos, así que este servidor —que corre en tu equipo, solo
@@ -230,7 +230,7 @@ const server = createServer((request, response) => {
 
 server.listen(PORT, HOST, () => {
   const vegas = findVegas();
-  console.log('Corte 15 · puente de proyectos .veg');
+  console.log('Sinaloa Pro · puente de proyectos .veg');
   console.log(`  Escuchando en       http://${HOST}:${PORT}`);
   console.log(`  Script del puente   ${existsSync(SCRIPT) ? SCRIPT : `${SCRIPT}  (NO ENCONTRADO)`}`);
   console.log(`  VEGAS               ${vegas || 'no encontrado: define CORTE15_VEGAS'}`);

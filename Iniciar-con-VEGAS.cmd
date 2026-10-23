@@ -20,7 +20,7 @@ if not exist "bridge\VegBridge.cs" (
   exit /b 1
 )
 echo Iniciando el puente .veg en otra ventana (http://127.0.0.1:5174)...
-start "Corte 15 - puente VEGAS" cmd /k node scripts\veg-bridge-server.mjs
+start "Sinaloa Pro - puente VEGAS" cmd /k node scripts\veg-bridge-server.mjs
 echo.
 echo Abre http://127.0.0.1:5173/ en tu navegador.
 echo Conserva las dos ventanas abiertas. Ctrl+C detiene el editor.
