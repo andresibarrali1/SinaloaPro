@@ -11,6 +11,29 @@ chmod +x iniciar.command iniciar.sh
 
 Después abre iniciar.command con doble clic. Alternativa: `sh iniciar.command` desde Terminal.
 
+### Si macOS avisa de que el archivo «puede ser malicioso»
+
+Ese aviso lo pone Gatekeeper, no el proyecto: macOS marca con cuarentena todo lo que se descarga del navegador (por ejemplo el ZIP del repositorio) y, además, el ZIP no conserva el permiso de ejecución. No hace falta desactivar Gatekeeper ni instalar nada.
+
+La vía más corta, en Terminal y dentro de la carpeta de Sinaloa Pro:
+
+```sh
+sh iniciar.sh
+```
+
+Al intérprete no le afecta la cuarentena: el script arranca y abre el navegador igual.
+
+Si prefieres el doble clic en `iniciar.command`, quita la cuarentena y concede el permiso una sola vez:
+
+```sh
+xattr -dr com.apple.quarantine .
+chmod +x iniciar.command iniciar.sh
+```
+
+Y si el aviso ya salió, se acepta una vez desde **Ajustes del Sistema → Privacidad y seguridad**, con el botón _Abrir de todos modos_ que aparece tras el intento (en macOS 14 y anteriores también sirve clic derecho → _Abrir_).
+
+Un `git clone` no lleva cuarentena ni pierde los permisos: en ese caso `./iniciar.command` y `./iniciar.sh` funcionan directamente.
+
 ## Linux
 Desde la carpeta del editor:
 
