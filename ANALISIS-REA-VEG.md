@@ -159,9 +159,9 @@ pero es una **inferencia por conteo**, no una lectura del código.
 
 | Dato | `REA.veg` | `vegas-real.veg` |
 |---|---|---|
-| Ruta del proyecto | `C:\Users\jesus\OneDrive\Escritorio\REA.veg` | `…\adobe.veg` |
-| Carpeta de documentos / salida | `C:\Users\jesus\OneDrive\Documentos` | igual |
-| Carpeta de datos de VEGAS | `C:\Users\jesus\AppData\Local\VEGAS Pro\15.0\` | igual |
+| Ruta del proyecto | `C:\Users\<usuario>\OneDrive\Escritorio\REA.veg` | `…\adobe.veg` |
+| Carpeta de documentos / salida | `C:\Users\<usuario>\OneDrive\Documentos` | igual |
+| Carpeta de datos de VEGAS | `C:\Users\<usuario>\AppData\Local\VEGAS Pro\15.0\` | igual |
 | Medios referenciados | **ninguno** | **4** (`Apps.mp4`, `faaah.mp3`, `Sunlight_on_Still_Water.mp3`, `Apps.mp4_audio.wav`) |
 | Nombre repetido | `REA` ×8 | — |
 | Títulos / RTF | no | **2** (`Títulos & Texto de VEGAS`, `Terremoto` con `ADOBE GRATIS`/`Y OPEN SOURCE`) |
@@ -316,7 +316,7 @@ ningún `.veg_archive` entre los artefactos proporcionados.
    ese sesgo; el tamaño declarado en `0x10` (24 frente a 95 248) es la prueba de que no hay una sola convención.
 3. **Nada de esto observa ejecución**: no se abrió VEGAS. Lo que dice «al abrir, el motor hace X» es una
    inferencia marcada como tal.
-4. **Privacidad**: un `.veg` guarda rutas absolutas del usuario (`C:\Users\jesus\…`, `G:\YouTube\…`). Los archivos
+4. **Privacidad**: un `.veg` guarda rutas absolutas del usuario (`C:\Users\<usuario>\…`, `G:\YouTube\…`). Los archivos
    de evidencia de este análisis las conservan; si se comparten, conviene sustituirlas.
 5. **Fragilidad de la edición binaria**: sin suma de comprobación visible, un cambio de tamaño mal recalculado
    puede dejar un archivo que VEGAS rechace o, peor, que abra con el montaje mal colocado. `ANALISIS-VEG.md` §3

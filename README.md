@@ -1,7 +1,6 @@
-# Corte 15 — editor de video multipista en el navegador
+# Sinaloa Pro — editor de video multipista en el navegador
 
-**Nombre provisional. Proyecto independiente y experimental, inspirado en el espacio de trabajo clásico de
-VEGAS Pro 15. No es un producto oficial, no está afiliado a MAGIX ni a Sony, y no lee proyectos `.veg` ni
+**Sinaloa Pro: editor gratuito y de código abierto, inspirado en el espacio de trabajo clásico de VEGAS Pro 15. Hecho con cariño de parte de @andresibarrali. El formato de archivo conserva el nombre antiguo (`.corte15`) y el proyecto sigue siendo independiente y experimental. No es un producto oficial, no está afiliado a MAGIX ni a Sony, y no lee proyectos `.veg` ni
 carga plugins nativos.**
 
 El objetivo es reproducir la experiencia de escritorio de un editor no lineal (NLE) y **editar video de
@@ -11,6 +10,8 @@ sube a un servidor.
 
 - Matriz de funciones y estado real de cada una: [FEATURES.md](FEATURES.md)
 - Informe de verificación, evidencias y limitaciones: [VERIFICACION.md](VERIFICACION.md)
+- **Licencia: GNU GPL v3 o posterior** ([LICENSE](LICENSE)): sigue siendo libre, también en las versiones
+  modificadas. Ver §11.
 
 ---
 
@@ -371,7 +372,9 @@ salida), `CORTE15_BRIDGE_PORT`, `CORTE15_VEG_TIMEOUT` y `CORTE15_VEGAS_NOWINDOW=
 ## 5.3 Subtítulos automáticos (transcripción con Groq)
 
 El botón **Generar subtítulos** está en la barra del panel de medios, justo a la derecha del buscador. Al
-pulsarlo:
+pulsarlo se abre un diálogo que **pregunta cuántas palabras quieres en cada subtítulo** (1, 2, 3, 4, 5, 6 u 8, o
+*Una línea por frase* para que cada línea sea la intervención completa que devuelve el servicio). La elección se
+recuerda la próxima vez. Después:
 
 1. Mezcla el audio del proyecto **en tu equipo** y lo convierte a WAV PCM de 16 kHz mono.
 2. Lo envía a la API de Groq (`whisper-large-v3`, compatible con la de OpenAI). **El audio solo sale de tu
@@ -380,11 +383,14 @@ pulsarlo:
    en **Videos** y en **Todos los medios**, como pediste. Doble clic sobre él lo **inserta otra vez en la
    línea de tiempo** (así se recuperan los subtítulos si borraste los eventos); para bajarlo al disco, usa el
    botón *Descargar .srt* de la ficha del medio.
-4. Añade los textos a la **línea de tiempo**: crea una pista **«Subtítulos»** con un evento de texto por
-   intervención, colocado en su instante exacto con la tipografía y la posición de subtítulo.
+4. Añade los textos a la **línea de tiempo**: crea una pista **«Subtítulos»** con un evento de texto **por cada
+   línea**, colocado en su instante exacto con la tipografía y la posición de subtítulo.
 
-Los tiempos salen de los *segments* que devuelve la API, así que cada línea cae en su sitio sin ajustes
-manuales. El `.srt` se guarda **dentro** del archivo de proyecto (`.corte15`), así que viaja con él.
+Los tiempos de cada línea salen de los tiempos de sus palabras (los que devuelve la API o, si no los trae, los
+que se reparten dentro de la frase), así que una línea de *k* palabras **empieza cuando se dice la primera y acaba
+cuando termina la última**; lo que sobra al final va en una línea más corta. El `.srt` guarda exactamente esas
+líneas, así que lo que se ve en la línea de tiempo y lo que se lee en el archivo coinciden. Los recursos de Pexels
+siguen colocándose palabra a palabra con los tiempos finos de la transcripción, aunque el `.srt` vaya agrupado.
 
 **Verificado de extremo a extremo con voz real**: con la clave nueva, un WAV de voz en español genera
 
@@ -406,17 +412,25 @@ y los dos eventos aparecen en la línea de tiempo. Puedes repetir esa comprobaci
 
 El botón **Recursos Pexels** (junto al de subtítulos) abre un diálogo con **dos modos**:
 
-**a) Según la transcripción** (el que aparece por defecto). Es el modo que responde a lo que se dice:
+**a) Según la transcripción** (el que aparece por defecto). Es el modo que responde a lo que se dice, y trabaja
+**palabra a palabra**:
 
-1. Lee la transcripción frase a frase y saca de cada frase sus palabras significativas (se descartan
-   muletillas y palabras vacías).
-2. Busca esa palabra en Pexels, descarga un clip y lo coloca en una pista **«Pexels»** **exactamente en el
-   instante en que se dice**, recortado a la duración de la frase. Si se dice «dinero» en el segundo 5,3, el
-   recurso de dinero empieza en 5,3 s.
-3. Si la misma palabra se repite en varias frases, **reutiliza el mismo clip** en cada momento en lugar de
-   volver a descargarlo.
-4. Los clips también se añaden a Medios de proyecto (carpetas **Videos** y **Todos los medios**) con su
-   atribución. El límite por tanda son 12 descargas; las frases sin recurso se cuentan en el mensaje final.
+1. Parte la transcripción en **palabras**, cada una con su instante (`wordCuesOf`). Si el `.srt` ya viene palabra
+   a palabra (es lo que genera el editor al transcribir) se respetan sus tiempos exactos; si es un `.srt` de
+   otra fuente, con frases enteras, los tiempos se reparten dentro de la frase.
+2. **Cada palabra recibe su propio clip** en la pista **«Pexels»**, colocado **exactamente en el instante en que
+   se dice** y con la duración **hasta la palabra siguiente**, así que la pista queda continua y sin solapes. Si
+   se dice «dinero» en el segundo 6,4, el recurso de dinero empieza en 6,4 s y dura hasta la palabra siguiente.
+3. Las palabras con búsqueda propia (sustantivos, verbos, adjetivos, nombres) se buscan tal cual. Las que no la
+   tienen —muletillas, números, artículos— usan el **recurso principal de su frase**, para que ninguna palabra se
+   quede sin imagen y el recurso siga pegado a lo que se cuenta. El nombre del evento dice qué palabra lo pidió:
+   `dinero · dinero-9-9-1080p.mp4` o `del · dinero-9-9-1080p.mp4`.
+4. Si una palabra se repite, **reutiliza el mismo clip** en cada momento en lugar de volver a descargarlo.
+5. Los clips también se añaden a Medios de proyecto (carpetas **Videos** y **Todos los medios**) con su
+   atribución. El límite por tanda son hasta 24 clips distintos (4 por cada clip pedido en *Cantidad*), y el
+   mensaje final dice cuántas palabras tienen recurso y cuántas no: «Recursos por palabra: 9 de 9 palabra(s) con
+   su clip en la pista «Pexels» (100 %)… 4 clip(s) distinto(s) para 4 término(s)». Cuando un silencio es más
+   largo que el clip descargado, la pista deja ese hueco en blanco en lugar de estirar la imagen.
 
 Como la transcripción se guarda en el proyecto, este modo funciona también al reabrir un proyecto que ya tenga
 su `.srt`, sin necesidad de volver a transcribir.
@@ -1026,3 +1040,23 @@ en macOS, Linux ni Safari reales: las conclusiones sobre WebKit corresponden al 
 
 "Corte 15" es un nombre provisional para un ejercicio de ingeniería. VEGAS es una marca de sus titulares;
 este proyecto no usa su código, sus recursos gráficos ni sus formatos propietarios.
+
+## 11. Licencia
+
+Sinaloa Pro se distribuye bajo la **GNU General Public License, versión 3 o posterior**
+(`GPL-3.0-or-later`). El texto completo y vinculante está en [LICENSE](LICENSE).
+
+Copyright © 2026 @andresibarrali.
+
+En resumen:
+
+- **Puedes** usar el editor para lo que quieras —también comercialmente—, estudiarlo, modificarlo y
+  redistribuirlo, sin pedir permiso ni pagar nada.
+- **Debes** conservar el aviso de copyright y la licencia, indicar los cambios que hagas y, si distribuyes
+  una versión modificada, publicar su código fuente con esta misma licencia.
+- **No puedes** convertirlo en software propietario ni entregar binarios sin el código fuente.
+
+La licencia es copyleft: protege la libertad de quien recibe el programa, no la de quien quiera cerrarlo.
+Las dependencias de terceros conservan sus propias licencias (MIT en su mayoría); sus avisos están en sus
+respectivos paquetes y en `vendor/`.
+

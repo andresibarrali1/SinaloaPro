@@ -54,7 +54,7 @@ en el tamaño del archivo, que es lo que permite validar el recorrido en lugar d
 
 | Archivo | Ruta en tu equipo |
 |---|---|
-| `Apps.mp4` | `C:\Users\jesus\OneDrive\Escritorio\Apps.mp4` |
+| `Apps.mp4` | `C:\Users\<usuario>\OneDrive\Escritorio\Apps.mp4` |
 | `faaah.mp3` | `G:\YouTube\andresibarrali\Efectos de Sonido\faaah.mp3` |
 | `Sunlight_on_Still_Water.mp3` | `G:\YouTube\andresibarrali\Musica\Sunlight_on_Still_Water.mp3` |
 | `Apps.mp4_audio.wav` | `G:\YouTube\Audios\andresibarrali\IA\Apps.mp4_audio.wav` |

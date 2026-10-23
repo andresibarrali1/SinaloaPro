@@ -1,4 +1,6 @@
-# Verificación — Corte 15
+> **Sinaloa Pro** — editor de vídeo gratuito y de código abierto. Este documento conserva el nombre antiguo, «Corte 15», en las entradas históricas y en el nombre del formato de archivo (`.corte15`), que no cambia para que los proyectos guardados se sigan abriendo.
+
+# Verificación — Sinaloa Pro
 
 Informe de lo que se ejecutó, con qué, qué salió y qué **no** se pudo comprobar. Ninguna función se marca como
 verificada sin una ejecución que la respalde; la matriz de estado está en [FEATURES.md](FEATURES.md).
@@ -22,8 +24,8 @@ conclusiones sobre WebKit corresponden al binario de Playwright en Windows y **n
 | Comando | Resultado |
 |---|---|
 | `npx tsc --noEmit` | 0 errores |
-| `npm test` | **281/281 pruebas correctas** (motor, comandos, mezcla, tomas de audio, medidores, timecode SMPTE, composición, efectos, transiciones, claves, edición de precisión, máscaras, panoramización con el centro de giro, la selección de recorte que acerca, los preestablecidos de recorte, la suavidad de la interpolación, el encaje que cubre el fotograma y el estirado de *Mantener relación de aspecto*, la forma de onda del audio, títulos con las doce animaciones y el karaoke, las posiciones del texto con nombre, plantillas de proyecto, plantillas de texto, subtítulos, composición 3D, región de bucle, lote de renderizado, contenedores reales, ámbito de render, análisis de XML/EDL, `.veg`, puente con VEGAS, WAV, Pexels y los interruptores del evento) |
-| `npm run build` | Correcto: `dist/index.html` 0,52 kB · CSS 192,14 kB (gzip 31,35 kB) · JS 1 342,23 kB (gzip 379,96 kB) |
+| `npm test` | **415/415 pruebas correctas** (motor, comandos, mezcla, tomas de audio, medidores, timecode SMPTE, composición, efectos, transiciones, claves, edición de precisión, máscaras, panoramización con el centro de giro, la selección de recorte que acerca, los preestablecidos de recorte, la suavidad de la interpolación, el encaje que cubre el fotograma y el estirado de *Mantener relación de aspecto*, la forma de onda del audio, títulos con las doce animaciones y el karaoke, las posiciones del texto con nombre, plantillas de proyecto, plantillas de texto, subtítulos **agrupados en líneas de k palabras**, composición 3D, región de bucle, lote de renderizado, contenedores reales, ámbito de render, análisis de XML/EDL, `.veg`, puente con VEGAS, WAV, **Pexels por palabra** (partición en palabras con sus tiempos y plan de un clip por palabra) y los interruptores del evento) |
+| `npm run build` | Correcto: `dist/index.html` 1,18 kB · CSS 206,74 kB (gzip 34,88 kB) · JS 1 434,20 kB (gzip 409,01 kB) |
 | `npm run lint` | 0 errores, 13 avisos (no bloqueantes). Se añadieron `dist`, `test-results` y `playwright-report` a los directorios ignorados, porque el informe HTML de Playwright generaba cientos de avisos que no son código del proyecto |
 | `node outputs/probe-encoding.mjs` | 0 archivos con daño de codificación (U+FFFD, doble codificación o BOM) en el código y la documentación |
 | `npm run capture:ui` tras cada cambio de interfaz | Las capturas del espacio de trabajo más las de la ventana de recorte (incluida la disposición nueva), la galería de plantillas de texto, los botones de recorte del evento y el pie de la línea de tiempo, generadas sin fallos |
@@ -82,7 +84,7 @@ además por separado en su motor (Firefox y WebKit).
 | El botón «Generar subtítulos» está en la barra del panel de medios, junto al buscador | ✅ | ✅ | ✅ | ✅ |
 | Subtítulos generados: `.srt` en Medios de proyecto y eventos en la línea de tiempo | ✅ | ✅ | ✅ | ⏭️ omitida (sin decodificadores de audio) |
 | Recursos de Pexels descargados, colocados en la línea de tiempo y en Medios de proyecto | ✅ | ✅ | ✅ | ⏭️ omitida (sin decodificadores) |
-| Recursos colocados según la transcripción, en el momento en que se dicen | ✅ | ✅ | ✅ | ⏭️ omitida (sin decodificadores) |
+| Recursos colocados según la transcripción, una palabra cada uno | ✅ | ✅ | ✅ | ⏭️ omitida (sin decodificadores) |
 | El proyecto se recupera solo al recargar la página | ✅ | ✅ | ✅ | ✅ |
 | Un medio faltante se revincula con su archivo y deja de faltar | ✅ | ✅ | ✅ | ⏭️ omitida (sin decodificadores) |
 | El bucle de reproducción repite el tramo cuando no hay región de bucle | ✅ | ✅ | ✅ | ⏭️ omitida (sin Web Audio) |
@@ -195,6 +197,8 @@ el segundo solo tiene audio.
 | `evidencias/vista-previa-zoom.png` | La vista previa al 182 % después de girar la rueda: el fotograma se agranda, el monitor queda desplazable y el encuadre del evento sigue en el 100 % |
 | `evidencias/pancrop-vegas.png` | La ventana de Panoramización y recorte con lo de la ronda 17: las migas `[‹] Panoramización/Recorte [›]` con el candado, los números con el formato de VEGAS (`1,920.0`, `1,080.0`, `960.0`, `540.0`), el recuadro del contenido **estarcido** con su trama de puntos, el círculo del centro de giro y la fila de preestablecidos con los botones de guardar y borrar |
 | `evidencias/subtitulos.png` | Subtítulos generados: `.srt` en Medios de proyecto y eventos en la pista «Subtítulos» |
+| `evidencias/subtitulos-palabras.png` | El diálogo **Generar subtítulos** preguntando *Palabras por subtítulo*, con «2 palabras» elegido, la explicación del reparto y los botones *Transcribir y crear subtítulos* / *Cancelar* |
+| `evidencias/recursos-transcripcion.png` | Recursos de Pexels colocados **una palabra cada uno**: nueve eventos seguidos en la pista «Pexels» (uno por palabra de la transcripción, el del centro con sus asas) y el mensaje que resume la cobertura: «9 de 9 palabra(s) con su clip… 4 clip(s) distinto(s) para 4 término(s)» |
 | `evidencias/subtitulos-reales.png` | Transcripción real de Groq dentro del editor: el texto aparece compuesto en la vista previa y en la pista «Subtítulos» |
 | `tests/fixtures/voz-prueba.wav`, `tests/live.spec.ts` | Voz de prueba y prueba contra los servicios reales (`npm run test:live`) |
 | `ANALISIS-VEG.md` | Análisis completo del `.veg` del usuario, con la estructura de bloques y todo lo leído |
@@ -316,6 +320,719 @@ Lo corregido, en `components/editor/editor.tsx`:
 - **Evidencia**: `evidencias/division-borrado-sin-reaparecer.png` (tras dividir en `00:00:01:15`, borrar la mitad
   derecha y arrastrar la izquierda 80 px: el proyecto guardado queda en **2 eventos · 3 pistas**, un vídeo y su
   audio enlazado, y en la línea de tiempo se ve un único tramo de vídeo).
+
+## Onda de la línea de tiempo: se quita el barrido de PCM que trababa el editor
+
+Corrección pedida por el usuario, y con razón: el editor se trababa y quien lo resolvió fue otro asistente (Codex);
+en mi ronda anterior, para dejar en verde una prueba mía, **volví a poner** `pcm={pcm}` en la fila del evento
+(commit `ca542e3`), y con eso regresó el barrido de muestras decodificadas por fila y por repintado. No me lo había
+pedido nadie y deshacía un arreglo ajeno.
+
+Lo cambiado (en el árbol de trabajo, sin commitear):
+
+- `components/editor/editor.tsx`: la fila ya **no** recibe `pcm` (ni se calcula `library.current.items.get(...)?.pcm`
+  en el recorrido de eventos).
+- `components/editor/timeline-event-row.tsx`: se quita la propiedad `pcm` y la onda se dibuja solo con
+  `media.peaks` (1024 picos por canal), que es lo que se guarda en el proyecto.
+- `tests/browser.spec.ts`: la prueba de la forma de onda fija ahora `data-waveform-source="guardado"` en la línea de
+  tiempo, en vez de aceptar `pcm`.
+
+- **Comprobado**: `npx tsc --noEmit` (0 errores), `npm test` (**362/362**), `npm run build` correcto,
+  `npx playwright test --project=chrome tests/browser.spec.ts -g "la forma de onda del audio"` (**1 correcta**, con
+  la silueta real: picos arriba y abajo y pausas en la línea del cero) y `tests/arrastres.spec.ts` (**11
+  correctas**).
+- **Medido** (`node --experimental-strip-types` sobre el módulo real, con `tests/fixtures/Audio.wav` a 48 kHz
+  estirado a 60 s y 240 columnas por fila, 40 repintados seguidos; banco en `outputs/banco-onda.mjs`):
+  barrido de PCM **0,444 ms de media y 0,982 ms p95** por fila y repintado, frente a **0,039 ms y 0,099 ms** con los
+  picos guardados: unas **11 veces menos**. Con veinte filas de audio en pantalla es la diferencia entre ~9 ms y
+  ~0,8 ms de trabajo por repintado.
+- **Lo que no se pudo comprobar**: no he reproducido el «trabado» completo en un banco de interfaz propio ni puedo
+  atribuirme su arreglo; el número de arriba es el coste por fila y repintado del camino que se quita. El trabajo en
+  curso de Codex sobre lo mismo (`lib/editor/waveform-source.ts`, `trimmer.tsx`, `timeline-event-row.tsx`) queda en el
+  árbol sin tocar y **sin commitear**, para no volver a barrer cambios ajenos.
+
+## Barra de transporte y edición copiada de Vegas Pro 15, con sus atajos
+
+Se copió la barra de la captura del usuario: los botones de reproducción y grabación, las cuatro herramientas de
+edición, los interruptores y los marcadores. Los nombres de los botones salen de la tabla del manual de Vegas Pro 15
+en español («Barra de herramientas de transporte y edición», páginas 28-30, y «Herramienta de edición», página 17) y
+los atajos de la tabla «Métodos abreviados de teclado» (páginas 636-651) del mismo manual. El archivo
+`lib/editor/shortcuts.ts` se reescribió para que sus teclas sean **las del manual**, no las que tenía el editor.
+
+Una comprobación que cambió el resultado: la captura del usuario y las páginas del manual describen **una** barra
+(«transporte y edición»), pero la fila de iconos grises del centro de la captura no aparece en ninguna de las tablas
+del manual; por eso no se inventaron: se dejaron fuera y quedan anotadas abajo como pendientes de que el usuario
+diga qué son (en su Vegas están deshabilitados y el manual no los documenta).
+
+Qué hace cada botón (comprobado en el navegador, no solo pintado):
+
+- **Transporte**: reproducir en bucle (Q), reproducir (Espacio), pausa (Entrar), detener (Esc), ir al inicio y al
+  final (Inicio/Fin, Ctrl+Inicio/Ctrl+Fin), reproducir desde el inicio (Mayús+Espacio, y el cursor vuelve a donde
+  estaba al detener), fotograma anterior y siguiente (Alt+flecha en el manual; ver la nota de conflictos).
+- **Herramientas**: normal (Ctrl+D), envolventes, selección (rectángulo) y zoom (clic acerca, Alt+clic aleja,
+  arrastrar encuadra el tramo).
+- **Interruptores**: ajuste (F8), fundidos automáticos (Ctrl+Mayús+X), rizo (desplegable con los tres modos), bloquear
+  envolventes a los eventos, ignorar la agrupación (Ctrl+Mayús+U) y cuantizar a fotogramas (Alt+F8). Los fundidos
+  automáticos pasan a estar **encendidos por defecto**, como en Vegas: antes el editor creaba el cruce siempre.
+- **Marcadores**: insertar marcador (M) e insertar región (R).
+- **Grabar** (Ctrl+R en el manual): deshabilitado, con la explicación en su rótulo. Corte 15 no graba audio ni vídeo, y
+  capturar Ctrl+R se llevaría por delante la recarga de la página, así que no se captura.
+
+Lo que **no** se igualó, y por qué:
+
+- **Alt+←/→** (fotograma en el manual): el navegador se queda con esa combinación para su historial. Se midió con
+  Chrome: el evento llega a la página con `altKey`, pero la navegación ocurre igualmente. Se mantiene en el mapa (el
+  rótulo lo anuncia) y, para que el paso fino funcione de verdad en el navegador, **←/→** hacen lo que el manual llama
+  «un píxel», que con la cuantización a fotogramas encendida es **un fotograma**.
+- **Ctrl+T** (recortar a la selección): el navegador lo usa para abrir pestaña; el editor lo captura mientras tiene el
+  foco, como hace Vegas, y así queda documentado.
+- **Ctrl+R** (grabar): no se captura (ver arriba).
+- Las envolventes de pista existen (volumen y panorámica) y «bloquear envolventes a los eventos» desplaza los puntos
+  que caen dentro del evento movido; no se replicó el resto de la automatización de Vegas (grabar automatización, buses).
+
+- **Comprobado**: `npx tsc --noEmit` (0 errores), `npm test` (**377/377**, con `tests/timeline-tools.test.ts` y
+  `tests/shortcuts.test.ts` reescrito contra las tablas del manual), `npm run lint` (los mismos 21 problemas de
+  siempre: 4 errores y 17 avisos), `npm run build` correcto y
+  `npx playwright test --project=chrome tests/barra-vegas.spec.ts` (**5 correctas**: los 21 botones con su rótulo y su
+  atajo, los interruptores con F8 / Ctrl+Mayús+X / Alt+F8 / Ctrl+Mayús+U / Q, M y R guardados en el proyecto, las
+  teclas de herramienta y zoom, y el rectángulo de selección y el clic de zoom sobre la línea de tiempo).
+- **Evidencia**: `evidencias/barra-vegas-15.png` (la barra sola) y `evidencias/barra-vegas-15-en-editor.png` (la barra
+  encima de la línea de tiempo, con un montaje abierto). Los iconos del manual se descargaron para contrastarlos
+  (`outputs/vegas-icons/`) y están en `outputs/vegas-iconos-rejilla.png`.
+- **La suite de navegador completa** (`tests/browser.spec.ts`, Chrome): **41 correctas y 7 fallos**. Dos de esos fallos
+  vienen del trabajo que otro asistente tiene a medias en este mismo árbol: el guardado del proyecto ya no descarga el
+  archivo sino que escribe con la API de acceso al sistema de archivos (`lib/editor/project-file.ts`, 09:50 de hoy) y la
+  onda está a medio cambiar (`waveform-source.ts`), así que el flujo real espera una descarga que ya no llega y la
+  prueba de la forma de onda mira una fuente que se está moviendo. Los otros cinco son los flujos de Pan/Crop, vista
+  previa y atributos que ya fallaban en la línea base (15 fallos en la suite completa antes de esta ronda) y que esta
+  ronda no toca. **No commiteo nada**: los archivos compartidos (`editor.tsx`, `timeline-event-row.tsx`, la onda) tienen
+  cambios en curso de ese otro asistente y no quiero volver a barrerlos.
+- **Pendiente de que lo aclare el usuario**: los cinco iconos grises centrales de su captura (una X y cuatro recuadros
+  con trama) no están en ninguna tabla del manual y en su Vegas aparecen deshabilitados; si son «fundido de entrada,
+  fundido de salida, fundido cruzado y cortar», se añaden en la siguiente ronda.
+
+## Mayús+clic selecciona el rango, y pegar atributos alcanza a toda la selección
+
+Dos comportamientos que se pidieron y que el editor no tenía:
+
+1. **Mayús+clic = rango, dentro de la pista.** El clic sin modificadores fija el **ancla**; **Mayús+clic** en otro
+   evento selecciona lo que queda entre los dos (**el tramo que los une y los eventos que lo tocan, pero solo de la
+   pista del evento pulsado**; los de otras pistas entran únicamente si van agrupados con los elegidos), y
+   **Ctrl/Comando+clic** sigue sumando o quitando eventos de uno en uno, que es lo que dice el manual en «Edición y
+   selección de eventos» («Seleccionar rango: Mayús+hacer clic en eventos»; «Seleccionar múltiple: Ctrl+hacer clic»).
+   Los grupos enlazados (el audio que va con su vídeo) entran con el rango, salvo que esté encendido «ignorar la
+   agrupación»; el ancla se mueve cuando se hace clic sin Mayús, así que el siguiente rango se cuenta desde ahí.
+   Corregido tras la primera versión, que arrastraba los eventos de todas las pistas: un audio suelto dentro del tramo
+   ya no se selecciona, y sigue entrando su compañero de grupo cuando lo hay.
+2. **Pegar atributos a toda la selección.** «Pegar atributos de evento» del menú del clic derecho pega ahora en
+   **todos los eventos seleccionados** que admitan lo copiado —no solo en el que se pulsó—, en **un único paso de
+   deshacer**, y el estado dice cuántos lo recibieron y cuántos quedaron fuera. Mayús+V hace lo mismo. Se añadió
+   además «Copiar los efectos y el estilo» al mismo menú, porque el mensaje de estado lo nombraba y no existía.
+
+- **Comprobado**: `npx tsc --noEmit` (0 errores), `npm test` (**382/382**, con las cinco pruebas de
+  `tests/range-selection.test.ts`), `npm run lint` (los mismos 21 problemas de siempre), `npm run build` correcto y
+  `npx playwright test --project=chrome tests/seleccion-rango.spec.ts` (**2 correctas**: el rango con Mayús+clic y el
+  pegote en los tres eventos con un solo deshacer). `tests/arrastres.spec.ts` y `tests/barra-vegas.spec.ts` siguen
+  en verde después del cambio de los clics.
+- **Lo que cambia para quien ya lo usaba**: Mayús+clic ya no suma un evento suelto (eso es Ctrl/Comando+clic). Queda
+  dicho en la ayuda y en `FEATURES.md`.
+- **Evidencia**: `evidencias/seleccion-rango.png` (tres tramos seleccionados tras Mayús+clic de extremo a extremo).
+
+## Aplicación instalable en el escritorio (PWA)
+
+Se añadió lo necesario para que Corte 15 se instale como aplicación de escritorio y se abra en su propia ventana:
+
+- `public/manifest.webmanifest`: nombre «Corte 15 — Editor de vídeo», `display: standalone`, `start_url` y `scope`
+  en `/`, idioma español, y los iconos que Chrome pide para instalar (192 y 512, más un `maskable` de 512).
+- `public/icons/`: los iconos, dibujados con la identidad del favicon (`node scripts/generate-icons.mjs`).
+- `public/sw.js`: service worker **en red primero** (la caché solo entra si la red falla, así que no puede servir una
+  versión vieja del editor) y precarga del armazón para abrir sin conexión. Se registra en `client.tsx`.
+- `index.html`: enlaces al manifiesto y al icono de iOS, y `theme-color` con el color de la ventana.
+- Botón «Instalar Corte 15 en el escritorio» en la barra superior, que usa `beforeinstallprompt`. Si el navegador
+  todavía no ofrece la instalación, el botón dice dónde está; cuando ya está instalada, queda encendido con ese
+  rótulo. El aviso `appinstalled` lo actualiza sin recargar.
+
+- **Comprobado**:
+  - `npx tsc --noEmit` (0 errores), `npm test` (**382/382**), `npm run lint` (los mismos 21 problemas de siempre),
+    `npm run build` correcto (el build copia `manifest.webmanifest`, `sw.js` e `icons/` a `dist/`).
+  - `npx playwright test --project=chrome tests/instalable.spec.ts` (**3 correctas**): el manifiesto se sirve con los
+    campos y los iconos esperados (los tres iconos responden 200 con `image/png`), el service worker queda activo y
+    **controla la página tras recargar**, y el botón recorre sus tres estados (sin oferta explica la ruta manual, con
+    oferta abre el diálogo, y tras `appinstalled` queda en «ya está instalado»).
+  - **Instalabilidad medida con el propio Chrome** (CDP `Page.getInstallabilityErrors`) sobre `npm run build` +
+    `vite preview` en `http://127.0.0.1:4173/`: con un perfil real la lista sale **vacía** (el contexto normal de
+    Playwright sale como `in-incognito`, que es una restricción del contexto de prueba, no de la aplicación).
+    `Page.getAppManifest` lee `name: Corte 15 — Editor de vídeo`, `display: standalone`, `start_url: /` e iconos
+    `192x192 any`, `512x512 any` y `512x512 maskable`.
+  - **Ventana de aplicación** (Chrome con `--app=http://127.0.0.1:4173/`, sin barras): `matchMedia('(display-mode:
+    standalone)')` es **true**, el botón aparece como «Corte 15 ya está instalado» y **`Alt+flecha derecha` avanzó el
+    cursor de `00:00:01:15` a `00:00:01:16` sin navegar** (la URL siguió siendo la aplicación). En una pestaña normal
+    el mismo atajo también edita y no navega, pero el navegador sigue teniendo pestañas y barra de direcciones: eso es
+    lo que desaparece al instalarla.
+- **Evidencia**: `evidencias/instalada-ventana-propia.png` (la aplicación en una ventana propia, sin barras del
+  navegador) y `evidencias/instalar-boton.png` (el botón «Instalar» en la barra superior).
+- **Lo que no se pudo comprobar aquí**: el diálogo nativo de instalación de Chrome no se puede manejar desde las
+  pruebas. Instalar de verdad (crear el acceso del escritorio y abrirlo desde ahí) queda en manos del usuario; lo que
+  sí está medido es que el navegador considera la aplicación instalable y que una ventana de aplicación se comporta
+  como la instalada. Si se instala desde el servidor de desarrollo (`npm run dev`), la ventana instalada depende de
+  ese servidor; para una instalación estable: `npm run build` y `npm start` (`http://127.0.0.1:4173/`).
+
+## `Iniciar.cmd`: arranca el servidor y abre la aplicación (la instalada, si está)
+
+Windows no deja que un icono de aplicación web ejecute un script local (el navegador no puede lanzar procesos), así
+que el camino que funciona es un acceso directo normal con el icono de la aplicación que ejecuta el lanzador. Se
+unificó todo en **un solo archivo**, `Iniciar.cmd` (se eliminó el `iniciar.bat` que había hecho de puente):
+
+- `Iniciar.cmd`: la carpeta del proyecto es la del propio archivo (`%~dp0`), sin rutas absolutas. Comprueba con una
+  petición HTTP si el servidor responde; si no, compila si falta `dist/` y lo arranca
+  (`node scripts\start-production.mjs`, salida en `%LOCALAPPDATA%\Corte15\servidor.log`), espera a que responda y
+  abre la aplicación. **Si la aplicación está instalada, abre la instalada** (el acceso de Chrome/Edge con el nombre de
+  la app, el mismo que se ancla a la barra de tareas); si no, abre una ventana de aplicación con el mismo aspecto y
+  recuerda cómo instalarla. Se descarta a propósito el acceso del propio lanzador (apunta a `powershell.exe`).
+  Opciones: `/sin-ventana`, `/navegador`, `/depurar`; variables `CORTE15_PUERTO`, `CORTE15_PERFIL`, `CORTE15_APP`.
+- `abrir-corte15.ps1`: lanzador estable del acceso directo anclado (vive en `%LOCALAPPDATA%\Corte15`). Busca
+  `Iniciar.cmd` y solo acepta carpetas que sean de Corte 15 (por `crear-acceso-directo.bat`, `abrir-corte15.ps1`,
+  `components\editor\editor.tsx` o el nombre del paquete).
+- `crear-acceso-directo.bat`: copia el lanzador estable y el icono a esa carpeta, apunta la ubicación y crea «Corte 15»
+  en el escritorio.
+
+- **Comprobado**:
+  - `Iniciar.cmd /depurar`: imprime la carpeta, el puerto, la comprobación y qué abriría.
+  - **Aplicación instalada simulada** con `CORTE15_APP` apuntando a un acceso directo cuyo destino es
+    `chrome.exe`: `/depurar` lo detecta («Aplicacion instalada: …») y dice que abriría **esa**. Sin esa variable, con
+    el acceso del lanzador en el escritorio (destino `powershell.exe`), **no** lo confunde: propone la ventana de
+    aplicación.
+  - **Servidor ya en marcha**: «El servidor ya estaba en marcha: solo se abre la aplicacion» y no arranca nada.
+  - **Servidor parado en un puerto libre** (`CORTE15_PUERTO=4190`): lo arranca, espera y termina; `http://127.0.0.1:4190/`
+    responde **HTTP 200**.
+  - **La cadena completa del icono**: `%LOCALAPPDATA%\Corte15\abrir-corte15.ps1` (lo que ejecuta el acceso) encontró
+    `…\Corte15\Iniciar.cmd`, arrancó el servidor y abrió la ventana de aplicación
+    (`chrome.exe --app=http://127.0.0.1:5173/ --window-size=1600,1000`); la ventana de prueba se cerró después.
+  - **Tras «mover» el proyecto**: con `ubicacion.txt` estropeado a propósito, `abrir-corte15.ps1 -Buscar` devolvió
+    `…\Corte15\Iniciar.cmd` (y no el lanzador de otro proyecto que hay al lado) y corrigió la ubicación.
+  - `npx tsc --noEmit` 0 errores, `npm test` **382/382**, `npm run build` correcto, `npm run lint` 21 problemas
+    (línea base).
+- **Lo que no se pudo comprobar aquí**: anclar el icono a la barra de tareas lo hace el usuario (Windows no ofrece API
+  para eso); y la instalación real de la PWA tampoco se puede automatizar, así que el camino «abre la instalada» se
+  verificó con un acceso directo de Chrome que hace de aplicación instalada.
+- **Evidencia**: `evidencias/instalada-ventana-propia.png` (la ventana que abre el lanzador) y
+  `public/icons/corte15.ico` (el icono del acceso directo).
+
+
+## Pan/Crop aparecía fuera de sitio: el diálogo flotante llevaba una traslación
+
+El síntoma que reportó el usuario: «la panoramización y recorte aparece en un lugar que no puedo ver bien». La ventana
+se coloca centrada desde el componente (`event-pan-crop.tsx`: `x = (innerWidth − 940) / 2`, `y = (innerHeight −
+580) / 2`), así que el desplazamiento venía de fuera: el diálogo flotante del editor (Radix + utilidades de Tailwind
+`translate-x-[-50%] translate-y-[-50%]`) conservaba su `translate(-50%, -50%)`. Como `.ec-window` es
+`position: fixed`, esa traslación del diálogo lo movía media pantalla.
+
+La regla `.editor-dialog.floating-dialog` ya intentaba anularla con `translate: none !important`, pero **el
+minimizador de la compilación (Lightning CSS) fusiona `transform: none; translate: none; scale: none` en un solo
+`transform: translate(0) scale(1)` y borra la declaración `translate`**. Se comprobó en el CSS servido: la regla
+compilada no tenía `translate` y la utilidad de Tailwind seguía ganando. En el servidor de desarrollo (sin minificar)
+no se veía; en la aplicación compilada, sí.
+
+Lo corregido: en `app/globals.css` la regla del diálogo flotante anula ahora las **variables** que usa la utilidad de
+Tailwind (`--tw-translate-x: 0px !important` y `--tw-translate-y: 0px !important`) además de `translate: 0px 0px`,
+que sobrevive a la minificación. No se tocó el componente de la ventana.
+
+- **Medido** (Chrome, compilación servida en `http://127.0.0.1:5173/`):
+  - Antes: con la ventana en la barra de estilo `left: 280px; top: 180px`, el rectángulo real era
+    `x = −470, y = −290` en una pantalla de 1500×940: justo el desplazamiento de `−750 px` y `−470 px` (media
+    pantalla). Se veía arriba a la izquierda y cortada, como en la captura del usuario.
+  - Después: `x = 280, y = 180` con 940×580 sobre 1500×940 → centrada y entera. Con la pantalla del usuario
+    (1914×1000): `x = 487, y = 210`. Con una ventana pequeña (1200×700): `x = 130, y = 60`, también dentro.
+  - Arrastrar la barra de título sigue moviendo la ventana (de 487,210 a 427,240) y el doble clic la maximiza
+    (0,0 · 1914×1000).
+- **Comprobado**: `npx playwright test --project=chrome tests/pancrop-centrado.spec.ts` (**2 correctas**: centrada y
+  entera a 1500×940 y a 1200×700, y sin traslación en el diálogo); `tests/dialogo-flotante.test.ts` (lee el CSS de
+  `dist/` y exige que la regla anule `--tw-translate-*`, para que la minificación no vuelva a colarse); `npm test`
+  **383/383**; `npx tsc --noEmit` 0 errores; `npm run lint` 21 problemas (línea base); `npm run build` correcto.
+- **Evidencia**: `evidencias/pancrop-centrado.png` (la ventana de Panoramización y recorte en el centro, con el
+  editor detrás).
+- **Lo que no se pudo comprobar**: otras ventanas flotantes comparten el mismo diálogo y la misma corrección, pero solo
+  se midió Pan/Crop; Movimiento de pista no llegó a abrirse con el guion de prueba (no se inspeccionó su menú).
+
+## La tecla `D` toca las herramientas de la barra, no la envolvente del pie
+
+Se pidió que `D` (siguiente herramienta de edición) solo afecte a los botones de herramienta de la barra de
+transporte y edición (normal, envolventes, selección, zoom) y **no** al selector «Envolvente: Ninguna / Volumen /
+Panorámica» del pie. Antes, al entrar en la herramienta de envolventes se encendía también `envelopeMode = volume`, así
+que la tecla movía los dos controles.
+
+Lo corregido en `components/editor/editor.tsx`:
+
+- `chooseTool` ya no toca `envelopeMode`; solo cambia la herramienta y, si es la de envolventes y no hay ninguna a
+  la vista, lo dice en el estado («Para editar puntos, muestra antes la envolvente (Volumen o Panorámica) en el pie»).
+- La clase que hace que los clics vayan a la envolvente (`tool-envelope`) se aplica **solo** cuando la herramienta de
+  envolventes está elegida **y** hay una envolvente visible; sin envolvente, los eventos del carril siguen siendo
+  interactivos, como antes.
+
+- **Medido** en el navegador (compilación servida en `http://127.0.0.1:5173/`):
+  - Al empezar: herramienta normal, envolvente «Ninguna». Tras `D`: herramienta de envolventes y envolvente
+    **«Ninguna»** (antes pasaba a «Volumen»). Tras `D` otra vez: selección, y la envolvente sigue «Ninguna».
+  - Con «Volumen» elegido en el pie y la herramienta de envolventes: aparece `tool-envelope` y un clic en el carril
+    de audio **añade un punto** (el proyecto guarda 1 punto en la curva de esa pista).
+  - Al volver a «Ninguna» en el pie, la herramienta sigue siendo la de envolventes y la clase desaparece.
+- **Comprobado**: `npx playwright test --project=chrome tests/barra-vegas.spec.ts` (**5 correctas**, con las
+  aserciones nuevas de que `D` no mueve el selector del pie y de que el botón del pie no cambia la herramienta); `npm
+  test` **383/383**; `npx tsc --noEmit` 0 errores; `npm run build` correcto; `npm run lint` 21 problemas (línea base).
+
+## El editor arranca limpio; la copia automática solo se ofrece si el proyecto quedó sin guardar
+
+Antes, al abrir el editor se restauraba siempre la última copia automática, aunque el proyecto se hubiera guardado. Se
+pidió lo contrario: arranque limpio, salvo que la sesión anterior se cerrara sin guardar (cierre inesperado, apagón),
+que es cuando hay que recuperarla.
+
+Cómo queda:
+
+- En `lib/editor/storage.ts` hay una marca nueva, `corte15-pendiente-v1`: `marcarPendiente(true/false)`,
+  `hayCambiosSinGuardar()` (si la marca no existe se responde que sí, para no perder trabajo de versiones anteriores)
+  y `olvidarProyecto()`, que borra la copia y la marca.
+- En `components/editor/editor.tsx`: todo cambio pasa por `replace`, que marca «pendiente» (salvo el proyecto del
+  propio arranque). Guardar (Ctrl+S, con archivo o descarga) y abrir un `.corte15` marcan «guardado»; crear un
+  proyecto nuevo también. Al arrancar: si hay copia **y** está pendiente, se recupera y se avisa; si hay copia
+  **guardada**, se descarta (`olvidarProyecto`) y se abre un proyecto nuevo, también con aviso.
+
+- **Medido** en el navegador, con la compilación servida en `http://127.0.0.1:5173/`:
+  - Nada guardado → editor limpio, 0 eventos.
+  - Editar (marca pasa a `1`) y recargar (equivale a un cierre inesperado) → **se recupera** el montaje y el estado
+    dice «Se recuperó el proyecto que no llegaste a guardar…».
+  - Guardar (descarga de `Sin título.corte15`, marca pasa a `0`) y recargar → **arranque limpio** (0 eventos), la
+    copia automática se borra y el estado dice «Proyecto nuevo: la sesión anterior ya estaba guardada».
+  - Abrir el archivo guardado no cuenta como trabajo pendiente (marca `0`); dividir después del abrir vuelve a dejar
+    el proyecto pendiente (`1`) y esa sesión sí se recupera al recargar.
+- **Comprobado**: `npx playwright test --project=chrome tests/arranque-limpio.spec.ts` (**4 correctas**: arranque sin
+  copia, recuperación tras cierre sin guardar, no reabrir al estar guardado, y recuperar si se edita después de
+  abrir); `tests/arranque-almacen.test.ts` (5 pruebas de la marca y del almacén con un `localStorage` de mentira);
+  `npm test` **388/388**; `npx tsc --noEmit` 0 errores; `npm run lint` 21 problemas (línea base); `npm run build`
+  correcto.
+- **Lo que no se pudo comprobar**: un apagón de verdad; se simula recargando la página justo después de editar, que es
+  el mismo estado del almacén. La copia automática se escribe 450 ms después del último cambio, así que un cierre en
+  ese margen puede perder el último retoque (es el comportamiento que ya tenía el autoguardado).
+
+## Sinaloa Pro: nombre nuevo y ventana de bienvenida
+
+El editor pasa a llamarse **Sinaloa Pro** («editor de vídeo gratuito y de código abierto», hecho con cariño de parte de
+**@andresibarrali**) y, al abrirse o al crear un proyecto nuevo, sale una ventana de bienvenida que se quita sola a los
+7 segundos o al pulsar la X.
+
+Lo cambiado:
+
+- **Marca**: barra de título (`… — Sinaloa Pro`, chapa «S»), `index.html`, `app/layout.tsx`, manifiesto de la PWA
+  (`name`/`short_name`), la ayuda («Sinaloa Pro · Funciones y atajos»), los mensajes de instalación, los atajos propios
+  («propio de Sinaloa Pro»), el informe de capítulos, los avisos de importación e intercambio y el puente `.veg`. Los
+  iconos se regeneraron con la «S» (`node scripts/generate-icons.mjs`), incluido el `.ico` del acceso directo, que pasa a
+  `sinaloa-pro.ico`.
+- **Lanzadores**: `Iniciar.cmd`, `crear-acceso-directo.bat` y `abrir-sinaloa.ps1` (antes `abrir-corte15.ps1`) usan
+  `%LOCALAPPDATA%\SinaloaPro`, crean el acceso «Sinaloa Pro» y buscan la aplicación instalada por `Sinaloa*.lnk`.
+- **Ventana de bienvenida** (`components/editor/welcome-splash.tsx`): tarjeta centrada con el nombre, la licencia, la
+  firma, tres consejos y una barra que marca los 4 segundos. Se cierra sola (`BIENVENIDA_MS = 4000`), con la X o con
+  Escape; el fondo es `pointer-events: none`, así que no bloquea el editor. Se muestra al arrancar y al crear un
+  proyecto nuevo, y **no** se muestra con `?bienvenida=no` (que es lo que usan las pruebas para no tapar la interfaz).
+- **El formato no cambia**: el archivo sigue siendo `.corte15`, la marca del proyecto en el almacén
+  (`corte15-autosave-v1`) y el identificador `format: 'corte15'`. Así los proyectos guardados se abren igual.
+
+- **Comprobado**: `npx playwright test --project=chrome tests/bienvenida.spec.ts` (**5 correctas**: aparece con el
+  nombre, la licencia y la firma; se va sola; la X la cierra; Escape la cierra; vuelve al crear un proyecto nuevo; y
+  `?bienvenida=no` no la muestra). `tests/barra-vegas.spec.ts`, `seleccion-rango`, `arrastres`, `pancrop-centrado`,
+  `instalable` y `arranque-limpio` siguen en verde (**27 correctas** juntas). `npm test` **388/388**;
+  `npx tsc --noEmit` 0 errores; `npm run lint` 21 problemas (línea base); `npm run build` correcto.
+- **Medido en el navegador** (compilación servida): la bienvenida aparece al cargar, el texto es «Sinaloa Pro · Editor
+  de vídeo gratuito y de código abierto · Hecho con cariño de parte de @andresibarrali», desaparece a los ~4 s (seguía
+  a los 0 s y ya no estaba a los 4,6 s), la X la quita al instante y con el editor detrás se puede seguir trabajando.
+- **Evidencia**: `evidencias/bienvenida-sinaloa-pro.png` y `public/icons/icon-512.png` (la «S»).
+
+## Insertar texto con el clic derecho en la pista (y abrir el editor de textos)
+
+Como en VEGAS, el menú del botón derecho de una pista ofrece crear un texto ahí mismo. Se añadió:
+
+- `insertTextOnTrack(trackId)` en `components/editor/editor.tsx`: crea un evento de texto (`kind: 'text'`) en la
+  **aguja**, en la pista pulsada, con la duración por defecto del generador de texto (5 s); lo deja seleccionado y abre
+  el **editor de textos** (`setDialog('titles')`) para escribir el texto recién creado.
+- La orden «Insertar texto en esta pista…» está en `trackMenuItems`, así que sale tanto en el menú del **carril** como
+  en el de la **cabecera**. En las pistas de audio aparece deshabilitada con la aclaración «Solo en pistas de vídeo,
+  imágenes, textos o subtítulos».
+- De paso se quitó una entrada repetida del menú del carril («Propiedades de la pista…» salía dos veces).
+
+- **Comprobado** en el navegador (compilación servida): clic derecho en un carril de vídeo → «Insertar texto en esta
+  pista…» → se abre «Títulos y texto» con el texto «Escribe tu título»; el proyecto guarda un evento `text` de 5 s en
+  esa pista, empezando en la aguja (timecode 00:00:04:18 → evento a 4,93 s). Al escribir «Bienvenidos a Sinaloa Pro»
+  en el editor, el evento lo guarda. Con el botón derecho en la **cabecera** de «Títulos» el texto se crea en esa
+  pista. En la pista de audio la orden aparece deshabilitada y no crea nada.
+- **Pruebas**: `npx playwright test --project=chrome tests/insertar-texto.spec.ts` (**3 correctas**); `npm test`
+  **388/388**; `npx tsc --noEmit` 0 errores; `npm run lint` 21 problemas (línea base); `npm run build` correcto;
+  `tests/barra-vegas.spec.ts`, `seleccion-rango`, `arrastres`, `pancrop-centrado`, `instalable`, `arranque-limpio` y
+  `bienvenida` siguen en verde.
+- **Evidencia**: `evidencias/insertar-texto-menu.png` (la orden en el menú del carril) y
+  `evidencias/insertar-texto-editor.png` (el editor abierto con el texto nuevo).
+- **Lo que no se comprobó**: crear el texto sobre una pista de subtítulos «de verdad» (en este proyecto las pistas de
+  subtítulos son pistas de vídeo con ese nombre, y se comportan igual que las demás).
+
+## Bienvenida de 7 segundos y soltar archivos en la aplicación instalada
+
+Dos cambios pedidos:
+
+1. **La bienvenida dura 7 segundos** (antes 4): `BIENVENIDA_MS = 7000` en `welcome-splash.tsx`, la barra del tiempo
+   pasa a `animation: welcome-timer 7s` y el texto lo dice. Se sigue cerrando antes con la X o con Escape.
+2. **Soltar archivos del explorador no hacía nada en la aplicación instalada.** Se encontraron dos causas de código:
+
+   - **El candado de importación podía quedarse echado.** `importFiles` hacía `setBusy(true)` y solo lo soltaba al
+     final del recorrido: si algo lanzaba una excepción a mitad (una importación que falla, el cache local lleno, un
+     archivo que el navegador no sabe leer), `busy` se quedaba en `true` y **a partir de ahí todos los soltados e
+     importaciones no hacían nada, sin ningún aviso** (`if(rendering||busy)return []`). Ahora el cuerpo va en
+     `try/catch/finally`: el candado se suelta siempre, el error se cuenta en el estado y, si ya hay una importación en
+     curso, el aviso lo dice en vez de callarse. `restoreMedia` también suelta el candado con `finally`.
+   - **El soltado solo se atendía dentro del editor.** Lo resuelve el componente nuevo
+     `components/editor/drop-files-anywhere.tsx`. La ventana instalada puede tener delante un **diálogo** (que se
+     dibuja en un portal fuera de `<main>`) o la **bienvenida**: el archivo caía ahí y no pasaba nada. Ahora la
+     **ventana entera** atiende el arrastre: se cancela el comportamiento del navegador (abrir el archivo y sacarte de
+     la app), se muestra el aviso «Suelta los archivos para importarlos» y, si el destino no lo atendió (se comprueba
+     `defaultPrevented`), se importa en el editor. El aviso se apaga también cuando un destino corta la propagación
+     (oyente en captura) para que no se quede pegado.
+   - La tarjeta de la bienvenida ya no intercepta clics ni soltados (solo su X), y la caché del service worker pasa a
+     `sinaloa-v2`, de modo que la aplicación instalada se queda con esta versión.
+
+- **Medido** con Chrome (compilación servida y ventana de aplicación `--app`, que Chrome marca como
+  `display-mode: standalone`):
+  - La bienvenida tardó **7,0 s** en irse sola (medido con reloj).
+  - En la ventana de aplicación, arrastrar un archivo muestra el aviso (**1** superpuesto) y al soltarlo en el carril:
+    **1 medio importado y 2 clips colocados**, aviso retirado (0) y estado «1 medio(s) importado(s) y colocado(s)».
+  - Soltar sobre el **diálogo de ayuda** importa (antes no hacía nada); soltar sobre la **bienvenida** también; soltar
+    sobre la **vista previa** (fuera de la línea de tiempo) también.
+- **Comprobado**: `npx playwright test --project=chrome tests/soltar-archivos-ventana.spec.ts tests/bienvenida.spec.ts`
+  (**9 correctas**); `arrastres`, `barra-vegas`, `seleccion-rango`, `instalable`, `arranque-limpio`,
+  `insertar-texto` y `pancrop-centrado` (**30 correctas**); `npm test` **388/388**; `npx tsc --noEmit` 0 errores;
+  `npm run lint` 22 problemas (los 4 errores de la línea base y un aviso más por el trabajo en curso del otro
+  asistente); `npm run build` correcto.
+- **Evidencia**: `evidencias/soltar-archivos-ventana.png` (ventana de aplicación con el archivo soltado ya colocado) y
+  `evidencias/bienvenida-sinaloa-pro.png`.
+- **Lo que no se pudo comprobar**: un arrastre real desde el Explorador de Windows (las pruebas simulan el
+  `DataTransfer` con un `File` de verdad, que es el mismo camino de código); y el caso de una instalación con una
+  versión vieja cacheada: la caché nueva (`sinaloa-v2`) se descarga al abrir la app con el servidor en marcha.
+
+## Abrir en el navegador (con la opción de instalar) y, si está instalada, como aplicación
+
+Se pidió que la aplicación se abra **en el navegador, en localhost**, con la opción de instalar a la vista (el diálogo
+«¿Usar este sitio a menudo? Instalar la aplicación…» con «Instalar» y «Ahora no»), y que si está instalada se abra como
+una aplicación normal, y si se desinstala vuelva al navegador.
+
+- **Lanzador** (`Iniciar.cmd`): por defecto arranca el servidor y abre **el navegador en
+  `http://127.0.0.1:5173/`**, que es donde Chrome ofrece instalar (icono de la barra de direcciones). Si detecta la
+  aplicación **instalada** (acceso de Chrome/Edge con el nombre de la app), abre **esa**. Opciones: `/navegador` (lo
+  mismo que por defecto), `/app` (ventana sin barras), `/sin-ventana` (solo el servidor). Antes abría siempre la
+  ventana sin barras, y por eso no aparecía la opción de instalar.
+- **Editor**: el botón «Instalar Sinaloa Pro en el escritorio» se **destaca** (pulso azul, `data-instalable="true"`)
+  en cuanto el navegador ofrece la instalación, y al pulsarlo se abre el diálogo del navegador (el de la captura). El
+  manifiesto ya cumple los requisitos y los iconos existen.
+- **Instalarla o no**: al instalarla, el icono de la app abre una ventana propia (`display-mode: standalone`); si se
+  desinstala, el siguiente arranque de `Iniciar.cmd` vuelve a abrir el navegador en localhost.
+
+- **Medido**:
+  - `Iniciar.cmd /depurar` → «despues se abriria el navegador en http://127.0.0.1:5173/, con la opcion de instalar».
+  - `Iniciar.cmd /navegador` con un perfil de prueba: Chrome abrió **una pestaña** (`chrome.exe
+    http://127.0.0.1:5173/ --user-data-dir=…`, sin `--app`).
+  - Con un acceso de Chrome como aplicación instalada (`CORTE15_APP`): «Aplicacion instalada: …\Sinaloa Pro.lnk» y el
+    plan dice que abriría esa aplicación.
+  - En el navegador: el botón de instalar existe y **no** está destacado; al recibir `beforeinstallprompt` pasa a
+    `data-instalable="true"` y, al pulsarlo, se abre el diálogo del navegador (la prueba simula la elección «Ahora no»).
+- **Comprobado**: `npx playwright test --project=chrome tests/instalable.spec.ts` (**3 correctas**, con el destacado del
+  botón); `npm test` **388/388**; `npx tsc --noEmit` 0 errores; `npm run build` correcto; `npm run lint` 22 problemas
+  (los 4 errores de la línea base y el aviso añadido por el trabajo en curso del otro asistente).
+- **Evidencia**: `evidencias/boton-instalar.png` (el botón de instalar destacado en la barra).
+- **Lo que no se pudo comprobar**: el diálogo nativo de Chrome no se puede manejar desde las pruebas; se simula la
+  oferta (`beforeinstallprompt`) y la elección. Instalar de verdad y comprobar que se abre como aplicación es una
+  acción del usuario.
+
+## Aviso al cerrar: solo pregunta si hay cambios sin guardar
+
+Se pidió que al cerrar la aplicación instalada o la pestaña del navegador aparezca el aviso de que no se ha guardado el
+proyecto, pero que si ya se guardó se cierre sin preguntar nada.
+
+- El aviso se monta con `beforeunload` en `components/editor/editor.tsx`: si hay cambios sin guardar se cancela el
+  cierre para que el navegador pida confirmación; si no los hay, no se hace nada y la pestaña o la ventana se cierran
+  directamente. **El texto del diálogo lo pone el navegador** (Chrome y Edge muestran su propio mensaje genérico y no
+  permiten personalizarlo desde la página: es una medida de seguridad), así que el «No has guardado tu proyecto» no
+  puede escribirse literalmente; para que el estado se vea, la barra de título añade « · sin guardar».
+- La marca de guardado (`lib/editor/storage.ts`) pasa a tener **tres estados**: `pendiente` (hay cambios),
+  `guardado` y `sin-marca` (proyectos de antes de esta regla). El aviso al cerrar solo cuenta `pendiente`; al
+  arrancar se sigue ofreciendo la copia automática también sin marca, para no perder trabajo. Se escribe «pendiente» en
+  cada cambio del proyecto y «guardado» al guardar (botón, Ctrl+S, con archivo o descarga) y al abrir un `.corte15`.
+- La barra de título dice « · sin guardar» mientras el estado es pendiente y lo quita al guardar.
+
+- **Medido** en Chrome (compilación servida):
+  - Proyecto recién abierto, sin tocar: al recargar **no** sale ningún diálogo; al cerrar la pestaña tampoco.
+  - Tras montar un clip (marca `1`): al recargar aparece el diálogo de tipo `beforeunload` y al cerrar la ventana
+    (`page.close({runBeforeUnload:true})`) también.
+  - Después de guardar (descarga, marca `0`): al recargar **no** aparece; la página se recarga sin preguntar.
+  - La barra de título: «Sin título.corte15 — Sinaloa Pro» → tras editar «… · sin guardar» → tras guardar vuelve a
+    quedar limpia.
+- **Comprobado**: `npx playwright test --project=chrome tests/aviso-cerrar.spec.ts` (**3 correctas**: sin cambios no
+  pregunta, con cambios sí, guardado no pregunta); `arranque-limpio`, `bienvenida`, `instalable`,
+  `soltar-archivos-ventana` y `arrastres` (**27 correctas** juntas); `npm test` **388/388** (con las pruebas
+  actualizadas de la marca de tres estados); `npx tsc --noEmit` 0 errores; `npm run lint` 22 problemas (los 4 errores
+  de la línea base y el aviso del trabajo en curso del otro asistente); `npm run build` correcto.
+- **Evidencia**: `evidencias/sin-guardar.png` (barra de título tras guardar; el « · sin guardar» se ve en la captura
+  previa a guardar del flujo).
+- **Lo que no se pudo comprobar**: el texto exacto del diálogo del navegador (no se puede personalizar) ni un cierre
+  real de la ventana instalada desde las pruebas: se comprueba con el mismo evento y con `page.close({runBeforeUnload})».
+
+## Versión nativa en Rust: primera entrega
+
+Se creó la subcarpeta `rust/`: un programa de escritorio escrito íntegramente en Rust que replica el editor web (mismo
+formato, mismos atajos, misma interfaz). No es un envoltorio: no hay navegador ni HTML.
+
+- **Herramientas**: Rust 1.99.1 (MSVC) instalado con rustup en `%USERPROFILE%\.cargo`; `eframe`/`egui` 0.30 para la
+  ventana; `ffprobe`/`ffmpeg` del sistema (los mismos que usa la versión web) para los medios.
+- **Módulos**: `model.rs` (el `.corte15`, tics, cuantización, timecode, historial), `shortcuts.rs` (la tabla de 59
+  atajos), `media.rs` (sondeo con `ffprobe`), `theme.rs` (colores de `app/editor.css`), `app.rs` (acciones e interfaz) y
+  `main.rs` (la ventana).
+- **Comprobado**:
+  - `cargo test`: **19 pruebas correctas** (14 de los módulos + 5 del proyecto real). Una de ellas abre
+    `tests/fixtures/proyecto-real.corte15` (copia de un `.corte15` generado por la suite del editor web), lo reescribe y
+    comprueba **campo por campo** que no se pierde ni cambia ningún dato, y que los ids de los eventos son los mismos.
+  - `cargo clippy --all-targets`: **sin avisos**.
+  - `cargo build --release`: binario de **5,3 MB** en 44 s; `rust\ejecutar.cmd` lo compila si falta y lo abre.
+  - La ventana (1502×932) se abrió con `--abrir` sobre ese proyecto real y se capturó: se ven el medio importado
+    («Video_A.mp4 · 00:00:03.00»), el evento de vídeo azul `#5572a9` en «Títulos», el evento de audio rosa `#843e4e` con
+    su onda en «Audio», las tres pistas, la regla y la barra de estado «2 eventos · 3 pistas · 00:00:03.00 · guardado».
+- **Evidencia**: `evidencias/rust-interfaz.png`.
+- **Ronda 2 (vista previa real)**: el port ya **decodifica fotogramas** con `ffmpeg` (`src/preview.rs`): la vista previa
+  pide el fotograma del cursor en un hilo aparte, lo sube como textura y lo pinta encajado; las miniaturas de la lista y
+  los **picos de las formas de onda** salen del mismo motor. Los archivos de los medios se copian a
+  `%LOCALAPPDATA%\SinaloaPro\medios` (lo que en la web hace IndexedDB) y se resuelven por ruta guardada, por id en la
+  caché o por nombre junto al proyecto (`src/medios.rs`). La vista previa compone el **texto encima del vídeo**.
+  - Comprobado: `cargo test` **27/27** (22 de los módulos + 5 del proyecto real), `cargo clippy --all-targets` sin
+    avisos, `cargo build --release` correcto. La captura `evidencias/rust-interfaz.png` muestra el fotograma azul de
+    `video-corto.mp4`, su miniatura, la onda real de `voz.wav`, el texto «Sinaloa Pro en Rust» compuesto encima y el
+    cursor en 00:00:01.06.
+  - Lo que sigue faltando: reproducción continua (30 fps) con audio, recorte por bordes, rizo, envolventes, diálogos de
+    títulos y Panoramización y recorte, efectos, transiciones, exportación y el aviso de «sin guardar».
+- **Ronda 3 (recorte, rizo, M/S y exportación)**: la línea de tiempo ya **recorta por los bordes** (arrastrando el borde
+  del evento, con ajuste a fotogramas y los eventos enlazados a la vez), el **rizo** se elige en la barra
+  (Desactivado/Pista/Todas) y afecta a recortar, borrar y desplazar, los botones **M/S** de cada pista se pulsan, y la
+  app **exporta con ffmpeg** («Renderizar como…»: 1080p/720p/480p, progreso, o `--exportar` sin ventana).
+  - Comprobado: `cargo test` **37/37** (32 de los módulos + 5 del proyecto real), incluida una **exportación real** que
+    ffprobe verifica (h264 + aac, 3,000 s) y pruebas de los límites del recorte y del rizo; `cargo clippy` sin avisos.
+  - Exportación de verdad del proyecto de demostración: `sinaloa-pro-rust --abrir demo.corte15 --exportar salida.mp4`
+    → **1920×1080, h264 + aac, 3,000 s, 71 KB**, y el fotograma de 1,2 s (`evidencias/rust-export-fotograma.png`) sale
+    con el vídeo azul y el texto «Sinaloa Pro en Rust» compuesto.
+  - Límite honesto: la exportación compone **una** pista de vídeo (avisa si hay varias con imagen a la vez).
+- **Ronda 4 (diálogos, autoguardado y aviso de cierre)**: se añadieron los diálogos que faltaban para editar de verdad —
+  **Títulos y texto** (vista previa, 6 plantillas, 8 fuentes, tamaño, color, alineación, negrita/cursiva y 8 animaciones),
+  **Propiedades del evento** (nombre, inicio, duración, opacidad, escala, brillo, contraste, saturación, tono, silenciado y
+  bloqueado) y **Sin guardar** (Guardar y salir / Salir sin guardar / Cancelar) —, además del **autoguardado** con
+  recuperación al arrancar.
+  - Comprobado: `cargo test` **37/37**, `cargo clippy --all-targets` sin avisos, `cargo build --release` correcto.
+  - Capturas nuevas: `rust-propiedades.png` (diálogo de propiedades con los valores del evento de texto),
+    `rust-aviso-cerrar.png` (el aviso aparece y la ventana **no** se cierra: el proceso siguió vivo) y
+    `rust-recuperacion.png` (sesión anterior recuperada, con la barra de título en «· sin guardar» y el fotograma real ya
+    resuelto porque la marca guarda la ruta del proyecto).
+  - Límite honesto: la vista previa del diálogo de títulos es estática; las animaciones se guardan en el `.corte15` y se
+    aplican al exportar, pero no se ven animadas dentro del diálogo.
+- **Ronda 5 (Panoramización y recorte, marcadores y tramos)**: el diálogo de **Panoramización y recorte** mueve, escala,
+  rota, cambia la opacidad y recorta por los cuatro lados, con vista previa en vivo y **la misma transformación en la
+  exportación** (ffmpeg `scale`/`rotate`/`colorchannelmixer`/`overlay`). Los **marcadores** (M, doble clic para borrar,
+  Mayús+←/→ para saltar) y el **tramo** (I/O, R, Mayús+U) se dibujan en el riel y como banda sobre las pistas.
+  - Comprobado: `cargo test` **38/38** (33 de los módulos + 5 del proyecto real), con prueba nueva de que la
+    transformación entra en los argumentos de ffmpeg; `cargo clippy --all-targets` sin avisos; `cargo build --release`.
+  - Capturas: `rust-pancrop.png` (diálogo con el vídeo rotado −8°, escala 0,62 y opacidad 0,85) y
+    `rust-marcadores.png` (tres marcadores con nombre y banda de tramo).
+- **Ronda 6 (audio, portapapeles, grupos, soltar archivos)**: al dar Play el port **mezcla el audio con ffmpeg y lo
+  reproduce con ffplay** (sin enlazar bibliotecas de audio), el bucle (Q) repite el tramo o el proyecto y el cursor se
+  para al final; además hay **copiar/cortar/pegar** con eventos enlazados, **pegar atributos** en un solo paso de
+  historial, **agrupar/desagrupar** (campo `group` del `.corte15`) e **importar soltando archivos** sobre la ventana.
+  - Comprobado: `cargo test` **42/42** (37 de los módulos + 5 del proyecto real), incluida una prueba que **mezcla un WAV
+    de verdad** con ffmpeg; `cargo clippy --all-targets` sin avisos; `cargo build --release` correcto; la exportación
+    sigue dando h264+aac de 3,000 s tras los cambios.
+  - Captura `rust-reproduccion.png`: el cursor llegó al final (00:00:03.00) con el estado «Reproduciendo con audio.».
+  - Límite honesto: el audio tarda un momento en prepararse (se mezcla a un WAV) y el vídeo no corre a 30 fps constantes.
+- **Ronda 7 (edición fina y subtítulos)**: **deslizar contenido** (Alt+J/K), **desplazar sin huecos** (Alt+Mayús+J/K),
+  **recortar hasta el cursor** (Alt+R/Alt+E), **seleccionar hasta el final** (E) y **mover pistas** (Ctrl+↑/↓) ya
+  funcionan, y se pueden **importar subtítulos `.srt`** (se crea un evento de texto por subtítulo, con su tiempo).
+  - Comprobado: `cargo test` **50/50** (45 de los módulos + 5 del proyecto real), con pruebas nuevas para `slip`, `slide`,
+    `recortar_a_cursor`, `seleccionar_hasta_el_final` y el lector de SubRip (incluye un `.srt` con etiquetas `<i>` y sin
+    horas). `cargo clippy --all-targets` sin avisos; `cargo build --release` correcto.
+  - Captura `rust-subtitulos.png`: los tres subtítulos en la pista «Títulos» y «Hola, bienvenidos a Sinaloa Pro» compuesto
+    sobre el vídeo, con el estado «3 subtítulo(s) importados.».
+- **Ronda 8 (fundidos, color, pistas y arrastre de medios)**: los **fundidos de entrada y salida** se ven en la vista previa
+  y se aplican al exportar (`fade`/`afade`), el **color** del evento (brillo/contraste/saturación/tono) se exporta con
+  `eq`/`hue` (el brillo también se ve en la vista previa), se pueden **añadir y eliminar pistas** y arrastrar un medio de
+  la lista a una pista (implementado; ver límite abajo).
+  - Comprobado: `cargo test` **52/52** (47 de los módulos + 5 del proyecto real), con prueba nueva de que los fundidos, el
+    color, el tono, el volumen y los fundidos de audio entran en los argumentos de ffmpeg; `cargo clippy --all-targets` sin
+    avisos; `cargo build --release` correcto.
+  - Captura `rust-fundidos.png`: el mismo fotograma a 00:00:00.07 sale **oscurecido** por el fundido de entrada de 1 s
+    (antes se pintaba a plena opacidad: se corrigió el color premultiplicado de la textura).
+  - Límite honesto: el **arrastre de un medio a la pista** quedó implementado pero **no se pudo verificar con el ratón
+    sintético** en esta ronda (las coordenadas del clic no dieron en la tarjeta); está en la matriz como 🟡.
+- **Ronda 9 (fundido automático y capturas fiables)**: `model::auto_crossfade` calcula el solape entre dos eventos de la
+  misma pista y ajusta los fundidos, con pruebas (`el_fundido_automatico_marca_el_solape`, `sin_solape_no_hay_fundido_automatico`);
+  se aplica al soltar un evento y al insertar un medio, y hay orden en el menú. También se reescribió el script de captura
+  para que elija la **ventana visible más grande** del proceso (antes a veces cogía una ventana auxiliar de 16×16 y la
+  evidencia salía en blanco).
+  - Comprobado: `cargo test` **54/54** (49 de los módulos + 5 del proyecto real); `cargo clippy --all-targets` sin avisos;
+    `cargo build --release` correcto; captura nueva con el script arreglado (1502×932).
+  - Límite honesto: el **arrastre de un medio a la pista** sigue sin poder verificarse con el ratón sintético (las
+    coordenadas llegan a la ventana pero el gesto no se registra en egui); queda como 🟡 y se probará a mano.
+    La **vista previa aún no mezcla** los dos fotogramas de un solape, así que el fundido automático se aprecia al exportar.
+- **Ronda 10 (compositor de capas y cruce visible)**: la vista previa ahora compone **todas las capas** del cursor de abajo
+  arriba (cada pista de vídeo en orden y los textos encima), cada una con su fundido, opacidad, transformación y recorte,
+  y pide hasta cuatro fotogramas a la vez. Con eso el **fundido automático se ve**: `model::capas_en` devuelve las capas
+  con su alfa (`fade_factor × opacidad`).
+  - Comprobado: `cargo test` **56/56** (51 de los módulos + 5 del proyecto real), con pruebas nuevas
+    (`las_capas_se_ordenan_de_abajo_arriba_y_suman_el_solape`, `dos_eventos_solapados_son_dos_capas_con_sus_fundidos`);
+    `cargo clippy --all-targets` sin avisos; `cargo build --release` correcto.
+  - Captura `rust-cruce.png`: dos eventos de color solapados (rojo fundiendo a la salida, azul a la entrada) pintan el
+    fotograma **morado** a 00:00:02.15; antes se veía solo el de encima.
+  - Límite honesto: en la **exportación** el cruce se hace superponiendo los dos segmentos con sus `fade`, no con mezcla
+    aditiva (la vista previa sí mezcla); la exportación sigue componiendo **una** pista de vídeo.
+- **Ronda 11 (exportación con todas las pistas y cruce real)**: `src/exportar.rs` compone **todas las pistas de vídeo** de
+  abajo arriba (vídeo, imágenes y **colores sólidos** generados con `lavfi`), coloca cada capa en su instante
+  (`setpts=PTS+inicio/TB`) y hace los fundidos **con canal alfa** (`fade=...:alpha=1`), así que un cruce **mezcla** los dos
+  fotogramas también en el MP4.
+  - Comprobado: `cargo test` **58/58** (53 de los módulos + 5 del proyecto real), con pruebas nuevas
+    (`los_fundidos_usan_alfa_para_que_el_cruce_mezcle`, `exporta_las_pistas_de_video_de_abajo_arriba`);
+    `cargo clippy --all-targets` sin avisos; `cargo build --release` correcto.
+  - Exportación real de `demo-cruce.corte15` (rojo con fundido de salida + azul con fundido de entrada, solapados de 2 a
+    3 s): el fotograma de **2,5 s sale morado** y el de 3,5 s azul (`evidencias/rust-export-cruce.png`); antes salía azul
+    plano porque `overlay` consumía la segunda capa con su fundido ya agotado.
+  - Límite honesto: siguen sin existir efectos y transiciones de la biblioteca; el cruce es alfa sobre `overlay`.
+- **Ronda 12 (envolventes de volumen)**: la pista de audio tiene **curva de volumen** editable en el carril (línea amarilla
+  con sus puntos: clic añade o mueve, Alt+clic quita), se guarda en `volumeCurve` del `.corte15`, se aplica al **audio
+  exportado** (`volume=volume='…':eval=frame`) y a la reproducción con ffplay.
+  - Comprobado: `cargo test` **62/62** (57 de los módulos + 5 del proyecto real), con pruebas nuevas de la interpolación
+    (`la_envolvente_interpola_entre_puntos`), del orden y acotado de puntos, de la expresión de ffmpeg y de que la curva
+    entra en los argumentos de exportación; `cargo clippy --all-targets` sin avisos; `cargo build --release` correcto;
+    exportación del proyecto con envolvente → h264 + aac, 3,000 s.
+  - Captura `rust-envolvente.png`: la curva (0,10 → 1,00 → 0,40) dibujada sobre el carril «Audio».
+  - Incidencia: al mover el bloque de dibujo de la envolvente se corrompió `app.rs` (quedó duplicado); se detectó por el
+    error de compilación y se **reconstruyó** desde la copia duplicada, verificando después con `cargo test` y la captura.
+- **Ronda 13 (cierre de verificación)**: pasada completa de comprobaciones y documentación de estado.
+  - `cargo test` **62/62** (57 de los módulos + 5 del proyecto real), `cargo clippy --all-targets` **sin avisos**,
+    `cargo build --release` correcto (**6,1 MB**), **6.192 líneas** en 12 módulos.
+  - `rust/README.md` reescrito: requisitos, lanzador, argumentos, mapa de módulos, fixtures, tabla de comprobaciones
+    medidas y resumen del estado. `rust/PARIDAD.md` abre con el recuento **55 ✅ · 6 🟡 · 4 ⬜**.
+  - Lo que queda pendiente, sin adornos: efectos de vídeo y transiciones de la biblioteca, envolventes de panorámica,
+    reproducción a 30 fps constantes, verificación manual del arrastre de medios y la barra de herramientas de vídeo del
+    editor web. **La paridad no está completa.**
+- **Lo que falta** (matriz en `rust/PARIDAD.md`): decodificar la vista previa con ffmpeg, miniaturas y ondas reales,
+  recorte por bordes, rizo, envolventes, diálogos de títulos y Panoramización y recorte, efectos, transiciones, audio y
+  exportación. También el aviso de «sin guardar» al cerrar y el autoguardado, que en la versión web se apoyan en
+  `localStorage`/`beforeunload` y aquí se harán con archivos y un cierre controlado.
+- **No se afirma** que la paridad esté completa: la versión Rust es, por ahora, el armazón funcional con el modelo, los
+  atajos y la línea de tiempo. El trabajo sigue en la carpeta `rust/`, sin tocar la versión web.
+
+- **Corrección: S (cortar) volvía a fallar con un clip seleccionado.** Al hacer que el transporte se atendiera siempre,
+  quedó una guarda que cedía el paso a «botones y deslizadores» para el **resto** de atajos; como los clips de la línea de
+  tiempo son botones, con un clip seleccionado el foco estaba en él y `S` no hacía nada. Se quitó esa guarda (el
+  espacio del transporte ya se atiende antes y las flechas de un deslizador siguen siendo suyas porque el foco en
+  campos/deslizadores se filtra arriba). Comprobado con `tests/cortar-con-s.spec.ts` **3/3**: corta con el foco en el
+  clip, corta con el foco en el panel de medios y **no** corta si el cursor quedó fuera de los clips. Sin regresiones:
+  `tests/shortcut-espacio.spec.ts` 5/5 y `tests/reproduccion-sin-pausa.spec.ts` 2/2.
+- **Espacio siempre responde**: el atajo dependía del foco. Si el foco estaba en un botón (la biblioteca de medios, la
+  propia barra de transporte) o en un clip con `role="button"`, el manejador cedía el paso y el navegador se quedaba con
+  el espacio para activar ese elemento: el atajo «a veces» no hacía nada. Ahora el **transporte se atiende primero**
+  (`transport`, `playPause`, `stop`, `playAll`) con `preventDefault` para que el elemento enfocado no reciba la
+  activación; el resto de atajos siguen cediendo el paso a botones y deslizadores, y escribiendo en un campo el espacio
+  escribe. Comprobado con `tests/shortcut-espacio.spec.ts` **5/5**: foco en medio, en clip, en botón de la barra (una
+  sola alternancia, sin doble activación), en deslizador y en el buscador (el espacio llega al texto y no reproduce).
+  `npm test` **395/395**, `tsc` y `npm run build` correctos.
+- **Editar sin que se pare la previsualización**: `edit()` ya no llama a `pause()`, así que cortar (S), mover, recortar, borrar y
+  pegar se hacen mientras se reproduce. Además:
+  - el **bucle de reproducción** lee el proyecto por referencia (`pRef.current`) y no depende del estado `p`, así que una
+    edición no lo reinicia (antes se recreaba en cada cambio, con su tirón de monitor y audio);
+  - **cortar y marcar siguen usando el cursor de edición**, como estaban: no se tocó esa parte (la aguja de
+    reproducción no hace cortes);
+  - el audio sigue programando los bloques siguientes con el proyecto ya editado.
+  - Comprobado: `npm test` **395/395**, `tsc --noEmit` y `npm run build` correctos, y E2E `tests/reproduccion-sin-pausa.spec.ts`
+    **2/2** (cortar y mover con la reproducción en marcha: la barra sigue en «Reproduciendo» y el reloj del timecode avanza).
+    Se añadió `--autoplay-policy=no-user-gesture-required` a la configuración de Playwright: sin eso el reloj de Web Audio
+    no arranca en el navegador de pruebas y la reproducción parece congelada.
+  - Límite honesto: al cortar un clip que se está reproduciendo el monitor puede mostrar un fotograma del montaje anterior
+    durante un instante (la composición es asíncrona); no se detiene, pero tampoco es instantáneo.
+
+- **Audio largo (fin del tope de 256 MB)**: el editor decodifica el audio entero porque el mezclador necesita leer
+  cualquier instante. El tope fijo de 256 MB hacía fallar la importación de vídeos/audios largos («El audio descomprimido
+  excede el límite local de 256 MB»). Ahora:
+  - presupuesto **por archivo** (192 MB) y **total** (1 GB), mucho más holgado;
+  - si un archivo no cabe, se **reduce la frecuencia de muestreo** promediando muestras (factor potencia de 2, hasta 1/16)
+    en vez de rechazarlo: un archivo de 12 minutos entra a la mitad de frecuencia; uno de una hora, a 1/8;
+  - la onda y los picos se calculan sobre el audio ya reducido, y el mezclador usa esa misma frecuencia.
+  - Comprobado: `npm test` **393/393** (5 pruebas nuevas de `pcm-budget`), `npm run build` correcto, `tsc --noEmit` sin
+    errores, y E2E `tests/audio-largo.spec.ts` **2/2** con un AAC real de **12 minutos** (00:12:00): se importa, se monta
+    en la línea de tiempo y guarda picos estéreo. `lint` sigue **sin errores** (solo los avisos que ya había).
+  - Evidencia: `evidencias/audio-largo.png`.
+  - Límite honesto: los archivos muy largos pierden agudos al reducirse la frecuencia (documentado en el código); si un
+    proyecto junta más de 1 GB de audio decodificado, se pide dividirlo.
+
+## Un recurso de Pexels por palabra de la transcripción
+
+Se pidió que haya **un recurso de Pexels por palabra** de la transcripción y los subtítulos, no uno por frase.
+
+- **Qué hace ahora** (modo *Según la transcripción* de **Recursos Pexels**):
+  - `wordCuesOf` parte la transcripción en palabras con su instante. Si el `.srt` ya viene palabra a palabra (lo que
+    genera el editor al transcribir) respeta sus tiempos; si es un `.srt` de otra fuente, con frases enteras, reparte
+    el tiempo de la frase entre sus palabras.
+  - `planWordResources` coloca **un evento por palabra** en la pista «Pexels», en el instante en que se dice, con la
+    duración **hasta la palabra siguiente**: dentro de una frase los clips se tocan (sin huecos ni solapes) y entre
+    frases separadas por un silencio largo queda el hueco que dura el silencio, sin estirar la imagen.
+  - Cada palabra con búsqueda propia (sustantivos, verbos, adjetivos) usa **su** término; las muletillas, números y
+    palabras sin clip descargado se apoyan en el **recurso principal de su frase**, así que ninguna palabra se queda
+    sin imagen. Las palabras repetidas reutilizan el clip ya descargado.
+  - El nombre de cada evento dice qué palabra lo pidió: `dinero · dinero-9-9-1920p.mp4` o `del · dinero-9-9-1920p.mp4`.
+  - Límite por tanda: hasta 24 clips distintos (4 por cada clip pedido en *Cantidad*) y el mensaje final informa de la
+    cobertura («Recursos por palabra: 9 de 9 palabra(s) con su clip… 4 clip(s) distinto(s) para 4 término(s)»).
+- **Comprobado**:
+  - `npm test` **414/414**, con dos pruebas nuevas: la partición en palabras (tiempos dentro de la frase, orden, un
+    `.srt` que ya viene por palabras conserva sus tiempos y se agrupa en frases por el silencio y la puntuación, y
+    muletillas y números no se buscan) y el plan de colocación (una entrada por palabra, duración hasta la
+    siguiente, clip propio frente al de la frase, sin bajar de un fotograma y sin pasarse de lo que dura el clip).
+  - E2E `browser.spec.ts` «los recursos de Pexels se colocan según lo que dice la transcripción, en su momento», en
+    Chrome, Edge y Firefox (**3/3**): 9 palabras → **9 eventos** en la pista «Pexels», en orden; «hola» empieza con su
+    frase (0,2 s), «dinero» cae **dentro** de la suya (5,3–6,7 s) y la muletilla «esto» comparte el clip de «hola».
+  - Los seis flujos de subtítulos y Pexels (botón de subtítulos, subtítulos generados, Pexels por texto, Pexels por
+    palabra, exportar marcadores y `.srt` importado) pasan en Chrome, Edge y Firefox: **18/18**.
+  - `npx tsc --noEmit` sin errores; `lint` de los archivos tocados, 0 errores.
+- **Evidencia**: `evidencias/recursos-transcripcion.png` (nueve clips seguidos, uno por palabra, y el resumen de
+  cobertura en la barra de estado).
+- **Límite honesto**: la cobertura depende del presupuesto de descargas. Con una transcripción larga, las palabras
+  que no tienen clip propio ni el de su frase se quedan sin recurso, y el mensaje dice cuántas son. Tampoco hay
+  búsqueda semántica: se busca la palabra tal cual, así que un sinónimo no se encuentra.
+
+## Cuántas palabras por subtítulo
+
+Se pidió que, al generar los subtítulos, el editor **pregunte cuántas palabras** quieres en cada subtítulo/texto.
+
+- **Qué hace ahora**: el botón **Generar subtítulos** ya no transcribe de golpe; abre el diálogo **Generar
+  subtítulos** con la pregunta *Palabras por subtítulo* (1, 2, 3, 4, 5, 6, 8 u *Una línea por frase*). La elección
+  se recuerda en el navegador (por defecto, 4) y se aplica al archivo `.srt` y a los eventos de la pista
+  «Subtítulos», que se crean **por línea**:
+  - `groupWordCues` (en `lib/editor/speech.ts`) agrupa las palabras de la transcripción de *k* en *k*: cada línea
+    empieza cuando se dice su primera palabra y acaba cuando termina la última, así que los tiempos son los de la
+    transcripción y no un reparto a ojo; lo que sobra al final queda en una línea más corta. Con 0 se deja **una
+    línea por frase** (cada intervención del servicio).
+  - El mensaje de la barra de estado lo dice: *«Subtítulos listos: 4 línea(s) de 2 palabras por subtítulo a partir
+    de 8 palabra(s)…»*.
+  - Los recursos de Pexels siguen colocándose **palabra a palabra** con los tiempos finos de la transcripción
+    (`transcriptWords`), aunque el `.srt` vaya agrupado.
+- **Comprobado**:
+  - `npm test` **415/415**, con una prueba nueva del agrupado: una palabra por línea, dos por línea (la línea va de
+    la primera a la última palabra), el resto en una línea corta, una línea por frase con 0 y el reparto previo de
+    una frase de entrada en palabras.
+  - E2E `browser.spec.ts` «los subtítulos se generan…», en Chrome, Edge y Firefox: se abre el diálogo, se elige
+    **2 palabras**, se confirma, la barra dice «2 palabras por subtítulo», la pista tiene las cuatro líneas
+    («Hola, esto», «es una», «prueba de», «subtítulos automáticos»), el `.srt` guardado tiene **cuatro líneas** con
+    ese texto, el doble clic en el `.srt` las vuelve a insertar, `Ctrl+Z` lo deshace, al reabrir el diálogo sigue en 2
+    palabras y, eligiendo **Una línea por frase**, el segundo `.srt` queda en **dos líneas** con la frase completa.
+  - Los seis flujos de subtítulos y Pexels, en los tres motores: **18/18**. `tsc` sin errores; `lint` de los
+    archivos tocados, 0 errores.
+- **Evidencia**: `evidencias/subtitulos-palabras.png`.
+- **Límite honesto**: el reparto es por número de palabras, no por puntuación: una línea puede partir una frase por
+  la mitad («…prueba de» / «subtítulos automáticos»). Tampoco se ajusta al ancho del fotograma, así que una palabra
+  muy larga puede ocupar más de lo que convendría en una línea de 8; para eso está el editor de textos de cada
+  evento.
 
 ## 3. Comprobaciones del encargo, una por una
 

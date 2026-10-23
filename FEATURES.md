@@ -1,6 +1,8 @@
+> **Sinaloa Pro** — editor de vídeo gratuito y de código abierto. Este documento conserva el nombre antiguo, «Corte 15», en las entradas históricas y en el nombre del formato de archivo (`.corte15`), que no cambia para que los proyectos guardados se sigan abriendo.
+
 > Actualización 2026-10-13: el Pan/Crop de evento se sustituyó. Estado, pruebas y diferencias pendientes: [PANCROP-2026-10-13](outputs/PANCROP-2026-10-13.md). Las descripciones antiguas del recorte por márgenes corresponden al motor heredado.
 
-# Corte 15 — matriz de funciones
+# Sinaloa Pro — matriz de funciones
 
 Documento de estado real, no de intenciones. Referencia declarada: espacio de trabajo clásico de VEGAS Pro 15.
 Leyenda:
@@ -42,6 +44,8 @@ Cada fila indica la evidencia. Las pruebas automatizadas están en `tests/`; su 
 | Función | Estado | Evidencia |
 |---|---|---|
 | Tema gris oscuro, controles compactos, radio 0, tipografía pequeña | ✅ | `app/editor.css`, captura del editor en `test-results/.../editor.png` |
+| Marca: Sinaloa Pro | ✅ | El editor se llama **Sinaloa Pro**, «editor de vídeo gratuito y de código abierto», hecho con cariño de parte de **@andresibarrali**. El nombre aparece en la barra de título, el manifiesto y la ventana instalada, la ayuda, los mensajes y los lanzadores. El formato de archivo sigue siendo `.corte15` para que los proyectos guardados se abran igual |
+| Ventana de bienvenida | ✅ | Sale al abrir el editor y al crear un proyecto nuevo; se quita sola a los **7 segundos** o al pulsar la **X** de la esquina (también con Escape). El fondo deja pasar los clics, así que se puede trabajar mientras está. Con `?bienvenida=no` no aparece |
 | Barra de título, menús (Archivo…Ayuda) y barra de herramientas | ✅ | Captura + pruebas E2E que operan esos botones |
 | Paneles de Medios de proyecto, Explorador, Transiciones, Efectos de video, Generadores | ✅ | `editor.tsx` (pestañas) + E2E sobre *Generadores de medios* |
 | Monitor de previsualización con selector de calidad, timecode y transporte | ✅ | `editor.tsx`; E2E usa *Reproducir*, *Pausa*, *Ir al inicio*. El timecode sale en el formato elegido en el proyecto (SMPTE con o sin descarte, o segundos) y hay un campo **Ir a timecode** que lo entiende al escribirlo: `lib/editor/timecode.ts`, 7 pruebas unitarias |
@@ -53,6 +57,8 @@ Cada fila indica la evidencia. Las pruebas automatizadas están en `tests/`; su 
 | Cabeceras de pista: nombre, silenciar, solo, nivel, altura | ✅ | `editor.tsx`; mezcla verificada en `model.test.ts` |
 | Seleccionar una pista y eliminarla con clic derecho o `Supr` | ✅ | La cabecera se sombrea al seleccionarla; el clic derecho abre su menú (propiedades, silenciar, solo, subir, bajar, eliminar) y `Supr` la elimina con sus eventos; tres pruebas E2E cubren selección + `Supr` + deshacer, el menú contextual y que con eventos seleccionados `Supr` no toque la pista |
 | Paneles redimensionables y distribución persistente | ✅ | Arrastre de divisores; `upper`/`left` se guardan en `localStorage` |
+| Soltar archivos en toda la ventana (también en la instalada) | ✅ | El soltado se atiende en la ventana entera: si el archivo cae sobre un diálogo, un menú o la bienvenida (que se dibujan fuera del editor), **se importa igual**. Mientras se arrastra se muestra «Suelta los archivos para importarlos» y el navegador no puede abrir el archivo ni sacarte de la aplicación. El candado de importación se suelta siempre (`try/finally`), así que un error ya no deja el editor sordo a los soltados. E2E en `tests/soltar-archivos-ventana.spec.ts` |
+| Insertar texto desde el clic derecho de la pista | ✅ | Con el botón derecho sobre un carril o una cabecera de pista de vídeo (también las de imágenes, textos y subtítulos) se crea un texto en la aguja y **se abre solo el editor de textos** para escribirlo. En las pistas de audio la orden sale deshabilitada. E2E en `tests/insertar-texto.spec.ts` |
 | Menús contextuales | 🟡 | Existen sobre eventos (propiedades, dividir, copiar, cortar, duplicar, agrupar, eliminar). No hay menú contextual en regla, pistas ni cabeceras |
 | Ventanas de propiedades | 🟡 | Un diálogo por contexto (evento, pista, proyecto, exportación) en lugar de ventanas flotantes acoplables |
 | Acoplar/desacoplar paneles y diseños guardados (Alt+D+0-9) | ⬜ | — |
@@ -70,6 +76,7 @@ Cada fila indica la evidencia. Las pruebas automatizadas están en `tests/`; su 
 | Mensajes útiles ante archivo dañado o incompatible | ✅ | E2E: el estado muestra `corrupto.mp4: Contenedor desconocido…` |
 | Miniaturas reales del primer fotograma | ✅ | `CanvasSink` + recorte a 160×90 |
 | Formas de onda reales (240 picos) | ✅ | `AudioBufferSink`; dibujadas en el evento de audio |
+| **Audio largo sin tope de 256 MB** | ✅ | El audio se decodifica entero para que el mezclador lea cualquier instante. Antes, al pasar de 256 MB (≈11 min estéreo 48 kHz) la importación fallaba; ahora el presupuesto es por archivo (192 MB) y total (1 GB) y, si un archivo no cabe, se **reduce la frecuencia de muestreo** lo justo (potencia de 2, hasta 1/16) en lugar de rechazarlo. `lib/editor/pcm-budget.ts`; pruebas `tests/pcm-budget.test.ts` (5) y E2E `tests/audio-largo.spec.ts` con un archivo de **12 minutos** (2/2) |
 | Vinculación de audio y video importados | ✅ | Eventos agrupados al insertar un video con audio |
 | Revinculación de medios ausentes | 🟡 | Implementada con comprobación de tipo y duración; sin prueba automatizada |
 | Límite de memoria de audio descomprimido (256 MB) con aviso | ✅ | `media.ts` |
@@ -86,8 +93,13 @@ Cada fila indica la evidencia. Las pruebas automatizadas están en `tests/`; su 
 | Mover eventos y cambiarlos de pista | ✅ | `dragEvent` con detección de pista destino |
 | Recortar inicio y final (con límites de medio y fotograma mínimo) | ✅ | `model.test.ts` (dos pruebas de recorte) |
 | Dividir en la posición del cursor | ✅ | `model.test.ts` + E2E con la tecla `S` |
-| Selección individual y múltiple | ✅ | Clic y Ctrl/Cmd/Mayús + clic; **el clic también coloca la aguja en ese punto** (verificado en E2E) |
+| Selección individual y múltiple | ✅ | Clic y Ctrl/Cmd+clic suman o quitan de uno en uno; **Mayús+clic selecciona el rango entre el ancla y el evento pulsado, solo de la pista pulsada** (los eventos de otras pistas entran únicamente si van agrupados con los elegidos); el clic también coloca la aguja en ese punto. Verificado en E2E |
+| Aviso al cerrar con cambios sin guardar | ✅ | Al cerrar la pestaña, la ventana de la aplicación instalada o al recargar, el navegador pide confirmación **solo** si el proyecto tiene cambios sin guardar (`corte15-pendiente-v1` en «pendiente»). Si se guardó (Ctrl+S, con archivo o descarga) o se abrió un `.corte15`, no pregunta nada. El texto del diálogo lo pone el navegador: las páginas no pueden personalizarlo |
+| Estado «sin guardar» a la vista | ✅ | La barra de título añade « · sin guardar» mientras haya cambios sin guardar, y lo quita al guardar (o al abrir/crear un proyecto) |
+| Arranque limpio del editor | ✅ | Cada vez que se abre, el editor empieza con un proyecto nuevo: la copia automática **no** se restaura si la sesión anterior se guardó. Solo se ofrece cuando quedó trabajo sin guardar (cierre inesperado, apagón) |
+| Copia automática solo para trabajo sin guardar | ✅ | Una marca en el almacén local (`corte15-pendiente-v1`) distingue el proyecto con cambios del ya guardado: se pone a «pendiente» con cada edición y a «guardado» al guardar (Ctrl+S o descargar), y al abrir un `.corte15` |
 | Copiar, cortar, pegar, duplicar, eliminar | ✅ | `clipboard` + menú Editar + E2E |
+| Copiar y pegar atributos de evento | ✅ | «Copiar los efectos y el estilo» y «Pegar atributos de evento» en el menú del clic derecho y con Mayús+C / Mayús+V. Con varios eventos seleccionados, el pegote alcanza a **todos** los seleccionados que admitan lo copiado, en un solo paso de deshacer (E2E en `tests/seleccion-rango.spec.ts`) |
 | Un tramo borrado no vuelve al mover otro | ✅ | Los gestos (mover, recortar, extremos del tramo y del bucle, alto de pista) copian `pRef.current` y la barra de opacidad no restaura el proyecto entero al cancelar; E2E de regresión dividir → borrar una mitad → mover la otra (`tests/arrastres.spec.ts`) |
 | Agrupar y desagrupar | ✅ | `group()` usa el vínculo completo, así que `G` sobre un par de audio y video los agrupa a los dos; el menú contextual muestra la acción correcta |
 | Sombreado del grupo seleccionado | ✅ | Al seleccionar un evento, todos los de su grupo se resaltan (borde discontinuo y tinte); verificado en E2E y en `evidencias/grupo-sombreado.png` |
@@ -123,6 +135,8 @@ Cada fila indica la evidencia. Las pruebas automatizadas están en `tests/`; su 
 | Mezcla de audio de pistas activas, panorama y limitador | ✅ | `model.test.ts` (muestra a muestra, silencio, solo, pan, picos) |
 | Sincronía audio/video a nivel de muestra | ✅ | `model.test.ts` (inicio exacto en la muestra 24 000) |
 | Reproducción, pausa, detener, avance por fotograma | ✅ | E2E; reloj de Web Audio como referencia |
+| **Espacio funciona siempre** | ✅ | El manejador de teclado atiende `transport`/`playPause`/`stop`/`playAll` **antes** de ceder el paso a botones y deslizadores, y hace `preventDefault` para que el espacio no active el elemento con el foco (antes, con el foco en un medio de la biblioteca o en un botón de la barra, el espacio se lo comía el navegador y el atajo «a veces» no hacía nada). Escribiendo en un campo, el espacio sigue siendo un espacio. Los demás atajos de edición (cortar, borrar, mover…) no dependen del foco: siguen funcionando con un clip o un medio seleccionado (E2E `tests/cortar-con-s.spec.ts`, 3/3). E2E `tests/shortcut-espacio.spec.ts` (5/5: medio, clip, botón, deslizador y campo de texto) |
+| **Editar sin detener la reproducción** | ✅ | Cortar (S), mover, recortar, borrar y pegar ya no llaman a `pause()`: el monitor y el audio siguen. El bucle lee el proyecto por referencia (`pRef`) y el audio reprograma los bloques siguientes, así que una edición no reinicia la reproducción. Cortar y marcar siguen usando el **cursor de edición** (donde lo dejes tú), no la aguja de reproducción. E2E `tests/reproduccion-sin-pausa.spec.ts` (2/2): el reloj avanza después de cortar y de mover |
 | Actualización del monitor al mover el cursor | ✅ | `compose()` en cada cambio de cursor |
 | Resolución de previsualización ajustable (total, 1/2, 1/4) | ✅ | Selector de calidad en el monitor |
 | Gestión de carga, búfer y errores | 🟡 | Estado de ocupado, mensajes de error y liberación de recursos; sin búfer explícito ni precarga planificada |
@@ -222,6 +236,7 @@ Cada fila indica la evidencia. Las pruebas automatizadas están en `tests/`; su 
 | Función | Estado | Evidencia |
 |---|---|---|
 | Botón «Generar subtítulos» en la barra de Medios de proyecto, junto al buscador | ✅ | E2E que comprueba su posición geométrica respecto al campo de búsqueda y captura en `evidencias/subtitulos.png` |
+| El diálogo pregunta cuántas palabras lleva cada subtítulo | ✅ | Al pulsar el botón se abre **Generar subtítulos** con *Palabras por subtítulo* (1, 2, 3, 4, 5, 6, 8 u *Una línea por frase*), que se recuerda para la próxima vez y explica el reparto antes de empezar (`groupWordCues` en `lib/editor/speech.ts`: cada línea va de la primera a la última palabra, lo que sobra queda en una línea más corta, y con 0 se deja una línea por frase). Prueba unitaria del agrupado y E2E: se eligen 2 palabras, salen cuatro líneas en la pista y cuatro en el `.srt`, y al reabrir el diálogo sigue en 2 |
 | Transcripción del audio del proyecto con Groq (`whisper-large-v3`) | ✅ | **Verificada en vivo**: la clave responde 200, un WAV de voz en español se transcribe con sus dos frases y sus tiempos, y los eventos aparecen en la línea de tiempo (`npm run test:live`). Además, la suite normal la prueba con la API simulada |
 | Remuestreo del audio a 16 kHz mono | ✅ | Decimación con filtro de media; probado con una rampa y con un tono de 440 Hz (el tono no cambia) tras detectar y corregir un error de proporción que destrozaba el audio |
 | Audio preparado en local: mezcla del proyecto a WAV PCM 16 kHz mono | ✅ | 3 pruebas unitarias (remuestreo, cabecera WAV y conversión de muestras) |
@@ -232,7 +247,7 @@ Cada fila indica la evidencia. Las pruebas automatizadas están en `tests/`; su 
 | Fallo corregido: el desplazamiento del texto se aplicaba dos veces | ✅ | El `x`/`y` del evento entraba en la matriz del contexto **y** en el plan tipográfico, así que un subtítulo con `y = 0,34` —lo que usa la transcripción— se pintaba fuera del fotograma y no se veía; hay una prueba de composición que lo impide || Subtítulos añadidos a la línea de tiempo | ✅ | E2E: se crea la pista «Subtítulos» con un evento de texto por intervención, en su instante |
 | Persistencia del `.srt` dentro del proyecto | ✅ | El texto se guarda en el propio `.corte15` (campo validado en el esquema) |
 | Búsqueda de recursos en Pexels | ✅ | Clave verificada en vivo (HTTP 200) y contrato de vídeos contrastado con la API real |
-| Recursos colocados **según la transcripción**, en el momento en que se dicen | ✅ | Cada frase busca su palabra significativa y el clip se coloca en su instante, recortado a la duración de la frase; las palabras repetidas reutilizan el clip. Prueba unitaria del plan de colocación y E2E que comprueba que «dinero» cae en 5,3 s y «hola» en 0,2 s |
+| Recursos colocados **según la transcripción**, **una palabra cada uno** | ✅ | `wordCuesOf` parte la transcripción en palabras con su instante (respeta los tiempos de un `.srt` que ya venga palabra a palabra y reparte los de un `.srt` por frases) y `planWordResources` coloca **un clip por palabra** en su instante, con la duración hasta la palabra siguiente (sin solapes y sin huecos entre palabras de la misma frase). Las palabras con búsqueda propia la usan; las muletillas, números y palabras sin clip descargado se apoyan en el recurso principal de su frase, así que ninguna palabra se queda sin imagen. Las repetidas reutilizan el clip. 3 pruebas unitarias (una por frase y dos por palabra) y E2E: 9 palabras → 9 eventos en la pista «Pexels» en orden, «dinero» dentro de su frase (5,3–6,7 s), «hola» al principio y la muletilla compartiendo el clip de su frase |
 | Reutilizar los recursos de un `.srt` ya guardado en el proyecto | ✅ | Si no hay transcripción en la sesión, se leen las frases del archivo de subtítulos del propio proyecto |
 | Descarga e importación de los clips | ✅ | E2E con la API simulada: descarga, importa con miniatura y añade a Medios de proyecto |
 | Colocación automática por texto desde el cursor | ✅ | E2E: pista «Pexels» con los clips uno tras otro desde el cursor |
@@ -280,28 +295,75 @@ Cada fila indica la evidencia. Las pruebas automatizadas están en `tests/`; su 
 
 ## 10. Atajos de teclado
 
-| Atajo | Acción | Estado |
+| Atajo | Acción (nombre del manual, páginas 636-651) | Estado |
 |---|---|---|
-| `S` | Dividir en el cursor | ✅ Verificado en E2E || `Espacio` | Reproducir / detener y volver al inicio de reproducción | ✅ |
-| `Enter` / `Alt+Enter` | Reproducir-pausa / propiedades del proyecto | ✅ (Alt+Enter documentado en la ayuda oficial de VEGAS) |
-| `←` / `→` | Un fotograma (cuantizado a fotogramas) | ✅ |
-| `Alt` + `←`/`→` | Deslizar el contenido del evento (*slip*) | ✅ Verificado en E2E |
-| `Ctrl/Cmd` + `Alt` + `←`/`→` | Desplazar el evento (*slide*) con los vecinos ajustando su borde | ✅ Verificado en E2E |
-| `Alt` + `Mayús` + `←`/`→` | Recortar hasta el cursor con rizo (adelanta lo que venía después) | ✅ Verificado en E2E |
-| Rueda del ratón | Zoom horizontal anclado en la aguja (el cursor no se mueve de su sitio) | ✅ Verificado en E2E (Chrome) |
-| `Mayús` + rueda / `Alt` + rueda | Desplazamiento horizontal / vertical | ✅ |
-| Clic en un evento | Selecciona el evento y mueve la aguja a ese punto | ✅ Verificado en E2E |
-| Arrastrar en la regla | Por la franja de arriba define el tramo de renderizado; por la franja de abajo (donde se dibuja la cabeza de la aguja) y justo sobre la aguja, mueve el cursor. Desde la ronda 24, arrastrar la **línea de la aguja sobre cualquier carril** también la mueve, sin tocar el evento de debajo | ✅ Verificado en E2E (las dos zonas de la regla y los carriles) |
-| `Inicio` / `W` / `Fin` / `Ctrl+Fin` | Principio / final de región / final de proyecto | ✅ |
-| `M` | Marcador (clic derecho lo elimina) | ✅ |
+| `Espacio` | Reproducir / detener | ✅ |
+| `Mayús+Espacio` | Reproducir desde el inicio | ✅ E2E |
+| `Entrar` | Reproducir / pausa | ✅ |
+| `Esc` | Detener la reproducción | ✅ |
+| `Q` | Reproducción en bucle | ✅ E2E |
+| `Ctrl+Inicio` / `Ctrl+Fin` | Principio / final del proyecto | ✅ |
+| `Inicio` / `Fin` | Inicio / final de la selección (o lo visible) | ✅ |
+| `←` / `→` | Un píxel; con la cuantización a fotogramas activa, un fotograma | ✅ E2E |
+| `↑` / `↓` y `Ctrl+↑`/`Ctrl+↓` | Zoom horizontal pequeño / grande | ✅ E2E |
+| `F8` | Habilitar/deshabilitar el ajuste | ✅ E2E |
+| `Ctrl+Mayús+X` | Fundidos automáticos | ✅ E2E |
+| `Ctrl+Mayús+U` | Ignorar la agrupación de eventos | ✅ E2E |
+| `Alt+F8` | Cuantizar a fotogramas | ✅ E2E |
+| `Ctrl+D`, `D`, `Mayús+D` | Herramienta normal, siguiente y anterior | ✅ E2E |
+| `S` | Dividir en el cursor | ✅ |
+| `Supr` (`Retroceso` como alias) | Eliminar la selección | ✅ |
+| `Ctrl+T` | Recortar el evento a la selección | ✅ |
+| `Ctrl+X`, `C`, `V`, `A` | Cortar, copiar, pegar y seleccionar todo | ✅ |
+| `Ctrl+Mayús+A` | Anular la selección | ✅ |
 | `G` / `U` | Agrupar / desagrupar | ✅ |
-| `Supr` / `Retroceso` | Elimina los eventos seleccionados o, si no hay ninguno, la pista seleccionada | ✅ Verificado en E2E |
-| `Ctrl/Cmd+Z`, `Ctrl/Cmd+Y` | Deshacer / rehacer | ✅ Verificado en E2E |
-| `Ctrl/Cmd+C`, `X`, `V`, `A` | Copiar, cortar, pegar, seleccionar todo | ✅ |
-| `Ctrl/Cmd+S`, `O` | Guardar / abrir proyecto | ✅ |
-| Atajos desactivados al escribir en campos de texto | ✅ | El manejador ignora eventos dentro de `input`, `textarea`, `[contenteditable]` y diálogos |
-| `Ctrl/Cmd` según sistema | ✅ | Se aceptan ambos modificadores |
-| Conflictos inevitables con el navegador | ✅ | `Ctrl+L`, `F12`, `Ctrl+T`, `Ctrl+W` están reservados: no se capturan y se documenta en la ayuda del editor |
+| `M` / `R` | Insertar marcador / región | ✅ E2E |
+| `Ctrl+←` / `Ctrl+→` | Marcador anterior / siguiente | ✅ |
+| `Ctrl+Z`, `Ctrl+Mayús+Z` (`Ctrl+Y`) | Deshacer / rehacer | ✅ |
+| `Alt+Entrar` | Propiedades del proyecto | ✅ |
+| `Ctrl+S`, `Ctrl+O` | Guardar / abrir proyecto | ✅ |
+| `Mayús+C` / `Mayús+V`, `Mayús+J`/`Mayús+K`, `Alt+J`/`Alt+K`, `Alt+[`/`Alt+]` | Copiar y pegar atributos, deslizar, desplazar y tramo de renderizado: **propios de Corte 15** (Vegas no les da tecla) | ✅ Se anuncian como propios en la ayuda |
+| Atajos desactivados al escribir en campos de texto | El manejador ignora `input`, `textarea`, `[contenteditable]` y los diálogos | ✅ |
+| `Ctrl/Cmd` según sistema | Se aceptan los dos modificadores | ✅ |
+| Conflictos inevitables con el navegador (medidos) | `Alt+←`/`Alt+→` (el manual para el fotograma) se lo queda el historial del navegador: los recibe el editor, pero Chrome navega; por eso las flechas solas hacen el paso fino. `Ctrl+T` (recortar) abre pestaña nueva en el navegador: el editor la captura mientras tiene el foco. `Ctrl+R` (grabar) **no** se captura: recargar la página es del usuario. `Ctrl+L`, `F12`, `Ctrl+W` tampoco se capturan | ✅ Documentado en la ayuda del editor |
+
+### 10.1 Barra de transporte y edición (réplica de la de Vegas Pro 15)
+
+| Elemento | Estado | Detalle |
+|---|---|---|
+| Grupo de reproducción: Grabar, Reproducir en bucle, Reproducir desde el inicio, Reproducir, Pausa, Detener, Ir al inicio, Ir al final, Fotograma anterior, Fotograma siguiente | 🟡 | Los nueve botones que el editor puede cumplir funcionan y reflejan el estado (🟡 por **Grabar**): la grabación de audio o vídeo no existe todavía y el botón queda deshabilitado con su explicación en el rótulo |
+| Herramientas de edición: normal (con su menú), envolventes, selección y zoom | ✅ | Normal es la de siempre; la de envolventes enciende la envolvente de volumen para que el clic añada puntos sin mover eventos; la de selección dibuja un rectángulo que selecciona los eventos que toca; la de zoom acerca con un clic, aleja con Alt+clic y encuadra el tramo que se arrastra |
+| Herramientas de la barra y envolvente del pie son controles distintos | ✅ | Elegir herramienta (botones o la tecla `D`, `Mayús+D`, `Ctrl+D`) **solo** cambia la herramienta de la barra; el selector «Envolvente: Ninguna / Volumen / Panorámica» del pie no se mueve. La herramienta de envolventes actúa sobre la envolvente que esté a la vista, y si no hay ninguna no bloquea los eventos del carril |
+| Interruptores: ajuste magnético, fundidos automáticos, rizo, bloqueo de envolventes, ignorar la agrupación, cuantizar a fotogramas | ✅ | Los seis cambian el comportamiento del editor, no solo su color: los fundidos automáticos crean el cruce al solapar, ignorar la agrupación suelta el vínculo en los gestos, cuantizar cambia el redondeo y el bloqueo de envolventes arrastra los puntos de la pista con el evento |
+| Marcadores: insertar marcador e insertar región | ✅ | M y R del manual; la región copia el bucle si lo hay y si no abre cinco segundos en el cursor |
+| Rótulos con el atajo | ✅ | Cada botón enseña el atajo real en su rótulo, tomado del mismo mapa de teclas que usa el editor, así que no pueden contradecirse |
+
+| Ventana de Pan/Crop centrada | ✅ | La ventana de Panoramización y recorte (y las demás ventanas flotantes del editor) se abre en el centro del hueco visible y entera dentro de la pantalla; se puede arrastrar y, con doble clic en su barra de título, maximizar. El estilo del diálogo flotante anula las variables `--tw-translate-*` de Tailwind porque el minimizador de la compilación se comía el `translate: none` y la ventana salía media pantalla desplazada |
+
+### 10.2 Aplicación instalable en el escritorio
+
+| Elemento | Estado | Detalle |
+|---|---|---|
+| Manifiesto de aplicación | ✅ | `public/manifest.webmanifest`: nombre, nombre corto, `display: standalone` (ventana propia, sin barras del navegador), `start_url` y `scope` en la raíz, idioma español e iconos de 192 y 512 más uno `maskable` |
+| Iconos | ✅ | `public/icons/` (192, 512, maskable 512 y el de iOS a 180), con la misma identidad que el favicon; se regeneran con `node scripts/generate-icons.mjs` |
+| Service worker | ✅ | `public/sw.js`, registrado desde `client.tsx`. Va **en red primero** (nunca sirve una versión vieja del editor) y usa la caché solo como red de seguridad sin conexión |
+| Se abre en el navegador o como aplicación, según esté instalada | ✅ | `Iniciar.cmd` arranca el servidor y abre **el navegador en `http://127.0.0.1:5173/`** (ahí está la opción de instalar) cuando la aplicación **no** está instalada; si está instalada, abre **la aplicación**. Con `/app` se fuerza la ventana sin barras y con `/navegador` la pestaña. El botón de instalar del editor se destaca cuando el navegador ofrece la instalación |
+| Botón «Instalar» en la barra | ✅ | Usa el aviso `beforeinstallprompt` del navegador; si aún no hay oferta, explica dónde está la instalación en lugar de no hacer nada. Cuando la app se abre ya instalada, el botón lo dice y queda encendido |
+| Atajos sin el navegador de por medio | ✅ | En la ventana instalada no hay barra de direcciones, pestañas ni historial: `Alt+←/→` mueve fotogramas en lugar de navegar, y `Ctrl+T`/`Ctrl+W` dejan de abrir o cerrar pestañas. Medido con una ventana `--app` (que el propio Chrome marca como `display-mode: standalone`) |
+
+Para instalarla: `npm run build` y `npm start` (sirve `dist/` en `http://127.0.0.1:4173/`), abrir esa dirección en Chrome o Edge y pulsar el icono de instalar de la barra de direcciones o el botón «Instalar Corte 15 en el escritorio» del editor. También se puede instalar desde el servidor de desarrollo (`npm run dev`, `http://127.0.0.1:5173/`), pero entonces la ventana instalada depende de que ese servidor esté arrancado.
+
+### 10.3 Abrirla con `Iniciar.cmd` (arranca el servidor y abre la aplicación)
+
+| Elemento | Estado | Detalle |
+|---|---|---|
+| `Iniciar.cmd` | ✅ | **El único lanzador**. Toma la carpeta del proyecto de `%~dp0` (sin rutas absolutas, se puede mover el proyecto), comprueba si el servidor responde y, si no, compila si hace falta y lo arranca (`node scripts\start-production.mjs`, salida en `%LOCALAPPDATA%\Corte15\servidor.log`); después abre la aplicación |
+| Abre la aplicación **instalada** | ✅ | Si la PWA está instalada (acceso de Chrome o Edge con el nombre de la app), abre **esa**, la misma que está en la barra de tareas. Si todavía no está instalada, abre una ventana de aplicación con el mismo aspecto y recuerda cómo instalarla. No se confunde con el acceso del propio lanzador, que apunta a `powershell.exe` |
+| Opciones | ✅ | `/sin-ventana` (solo arranca el servidor), `/navegador` (pestaña normal), `/depurar` (muestra el plan sin arrancar nada). Variables: `CORTE15_PUERTO`, `CORTE15_PERFIL` (perfil de Chrome) y `CORTE15_APP` (acceso directo concreto de la aplicación instalada) |
+| `abrir-corte15.ps1` | ✅ | Lanzador **estable** del acceso directo que se ancla: vive en `%LOCALAPPDATA%\Corte15`, busca `Iniciar.cmd` (primero donde se anotó y, si el proyecto se movió, en Escritorio, Descargas, Documentos, OneDrive y hasta cuatro niveles) y solo acepta carpetas que sean de Corte 15. Admite un `iniciar.bat` antiguo como respaldo |
+| `crear-acceso-directo.bat` | ✅ | Copia el lanzador estable y el icono a `%LOCALAPPDATA%\Corte15`, apunta la ubicación y crea «Corte 15» en el escritorio, listo para anclar a la barra de tareas |
+
+**Cómo se usa**: una sola vez, `crear-acceso-directo.bat` y se ancla el icono «Corte 15» a la barra de tareas. Al pulsarlo se arranca el servidor si hacía falta y se abre la aplicación (la instalada, si la hay). Si el proyecto cambia de carpeta, basta con abrir `Iniciar.cmd` desde la nueva ubicación (o repetir `crear-acceso-directo.bat`).
 
 ## 11. Verificación y entrega
 
@@ -486,3 +548,21 @@ consumo de memoria, que no se instrumenta.
 Cuando faltan APIs, el editor lo indica en una banda de aviso al arrancar y deshabilita la exportación con una
 explicación, en lugar de ofrecer un botón que falla.
 
+## 11. Versión nativa en Rust (`rust/`)
+
+La misma aplicación, escrita íntegramente en Rust como programa de escritorio: sin navegador, sin HTML y sin JavaScript.
+Vive en la subcarpeta `rust/` y habla el mismo formato que la versión web.
+
+| Función | Estado | Detalle |
+|---|---|---|
+| Ventana nativa y armazón completo | ✅ | Barra de título con «Sinaloa Pro», menús Archivo…Ayuda, barra de iconos, panel de medios con carpetas, vista previa, medidor maestro, línea de tiempo y barra de estado, con los colores de `app/editor.css` |
+| Proyecto `.corte15`: abrir y guardar | ✅ | Mismo JSON, mismos tics (705.600.000/s). Una prueba abre un proyecto real y comprueba campo por campo que al reescribirlo no se pierde nada |
+| Los 59 atajos de Vegas Pro 15 + los propios | ✅ | Misma tabla, mismos alias (Retroceso→borrar, Ctrl+Y→rehacer) y mismas etiquetas que la versión web |
+| Medios | 🟡 | Importación con `ffprobe` (duración, tamaño, audio, `.srt`); faltan miniaturas, formas de onda reales y revincular |
+| Línea de tiempo | 🟡 | Regla, cursor, pistas, eventos con sus colores, selección y arrastre con ajuste, dividir, borrar y zoom; faltan recorte por bordes, rizo, envolventes y marquesina |
+| Vista previa | 🟡 | Pinta el evento bajo el cursor; todavía no decodifica fotogramas con ffmpeg |
+| Texto, efectos, transiciones, audio y exportación | ⬜ | Pendientes (menú Insertar ya crea texto y color sólido como eventos) |
+| Pruebas | ✅ | 19 pruebas de Rust (`cargo test`): modelo, atajos, medios y el proyecto real |
+
+La matriz completa, con lo que falta y cómo se comprueba cada cosa, está en [`rust/PARIDAD.md`](rust/PARIDAD.md).
+Se abre con `rust\ejecutar.cmd` (compila la primera vez) o `rust\ejecutar.cmd "proyecto.corte15"`.
