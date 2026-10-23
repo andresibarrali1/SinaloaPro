@@ -1,6 +1,10 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import {
+  MaskPen,
+  MaskDelete,
+  MaskRectangle,
+  MaskEllipse,
   Settings,
   MousePointer2,
   ZoomIn,
@@ -25,6 +29,10 @@ import {
 import { setKeyInterpolation } from "@/lib/editor/keyframe-actions";
 import type { PanCropWindowProps } from "./pan-crop";
 import {
+  cropFrameSpace,
+  cropMargins,
+  setCropMargin,
+  matchCropAspect,
   type CropFrame,
   defaultCropFrame,
   resizeCropFrame,
@@ -50,6 +58,7 @@ import {
   toLocal,
 } from "@/lib/editor/pancrop";
 import {
+  shapeMask,
   normalizeMaskPath,
   addMaskPoint,
   moveMaskPoint,
@@ -151,6 +160,7 @@ function Button({
       title={label}
       aria-label={label}
       aria-pressed={active}
+      style={active ? { background: "#246fa8", borderColor: "#79bfff", boxShadow: "inset 1px 1px 0 #15476c, inset -1px -1px 0 #438fc7" } : undefined}
       className={active ? "active" : ""}
       disabled={disabled}
       onClick={onClick}
@@ -161,11 +171,27 @@ function Button({
 }
 
 export function EventPanCrop(p: PanCropWindowProps) {
-  const w = p.project.width,
-    h = p.project.height;
-  const [tool, setTool] = useState<"select" | "zoom" | "pan" | "mask">(
-    "select",
-  );
+  const source =
+    p.source && p.source.width > 0 && p.source.height > 0
+      ? p.source
+      : { width: p.project.width, height: p.project.height };
+  const w = source.width,
+    h = source.height;
+  const toStored = (frame: CropFrame) =>
+    cropFrameSpace(frame, source, p.project, false, p.maintainAspect === false);
+  const fromStored = (frame: CropFrame) =>
+    cropFrameSpace(frame, source, p.project, true, p.maintainAspect === false);
+  const [showProperties, setShowProperties] = useState(true);
+  const [tool, setTool] = useState<"select" | "zoom" | "pan">("select");
+  const [maskMode, setMaskMode] = useState(false);
+  const [maskTool, setMaskTool] = useState<
+    "select" | "add" | "delete" | "rectangle" | "ellipse"
+  >("select");
+  const [selectedPoint, setSelectedPoint] = useState<number | null>(null);
+  const shapeGesture = useRef<{
+    start: { x: number; y: number };
+    next: ReturnType<typeof normalizeMaskPath>;
+  } | null>(null);
   const [lock, setLock] = useState(true),
     [center, setCenter] = useState(true),
     [snap, setSnap] = useState(false),
@@ -227,7 +253,9 @@ export function EventPanCrop(p: PanCropWindowProps) {
   const atPose = activeEvent
     ? eventPose(activeEvent, p.eventStart + local)
     : p.pose;
-  const initial = atPose.cropFrame ?? defaultCropFrame();
+  const initial = atPose.cropFrame
+    ? fromStored(atPose.cropFrame)
+    : fromStored(defaultCropFrame());
   const [draft, setDraft] = useState<CropFrame | null>(null),
     c = draft ?? initial;
   const current = keyAt(p.keys, local),
@@ -256,12 +284,16 @@ export function EventPanCrop(p: PanCropWindowProps) {
       pivotX: Math.max(-100, Math.min(100, next.pivotX)),
       pivotY: Math.max(-100, Math.min(100, next.pivotY)),
     };
-    const pose = { ...atPose, cropFrame: next };
+    const pose = { ...atPose, cropFrame: toStored(next) };
     // Editing away from zero creates the initial anchor and a key at the cursor in one history command.
     if (p.keys.length || local >= tick) {
       let list = p.keys;
       if (!list.length)
-        list = upsertKey([], 0, { ...atPose, cropFrame: initial, time: 0 });
+        list = upsertKey([], 0, {
+          ...atPose,
+          cropFrame: toStored(initial),
+          time: 0,
+        });
       p.onKeys(upsertKey(list, local, { ...pose, time: local }));
     } else p.onPose(pose);
     setDraft(null);
@@ -293,6 +325,8 @@ export function EventPanCrop(p: PanCropWindowProps) {
     const neutral = { ...atPose, cropFrame: undefined };
     const isolated = {
       ...p.project,
+      width: w,
+      height: h,
       tracks: [
         {
           ...track,
@@ -305,7 +339,7 @@ export function EventPanCrop(p: PanCropWindowProps) {
       events: [
         {
           ...event,
-          maskPath: tool === "mask" ? undefined : event.maskPath,
+          maskPath: maskMode ? undefined : event.maskPath,
           transform: neutral,
           keys: [],
           fadeIn: 0,
@@ -338,10 +372,11 @@ export function EventPanCrop(p: PanCropWindowProps) {
     return () => {
       cancelled = true;
     };
-  }, [p.project, p.library, p.eventId, local, w, h, tool]);
+  }, [p.project, p.library, p.eventId, local, w, h, maskMode]);
   const [error, setError] = useState("");
   const maskPath = normalizeMaskPath(p.maskPath);
   const maskGesture = useRef<number | null>(null);
+  const maskNext = useRef<typeof maskPath | null>(null);
   const maskPoint = (e: React.PointerEvent) => {
     const rect = svg.current!.getBoundingClientRect();
     const point = toLocal(
@@ -352,7 +387,10 @@ export function EventPanCrop(p: PanCropWindowProps) {
       { width: w, height: h },
       atPose,
     );
-    return { x: point.x / w, y: point.y / h };
+    return {
+      x: (snap ? Math.round(point.x / grid) * grid : point.x) / w,
+      y: (snap ? Math.round(point.y / grid) * grid : point.y) / h,
+    };
   };
   const editMask = (next: typeof maskPath) => {
     p.onBeginMask();
@@ -390,11 +428,24 @@ export function EventPanCrop(p: PanCropWindowProps) {
     setMenu(null);
   };
   const move = (e: React.PointerEvent) => {
-    if (maskGesture.current !== null) {
-      p.onMaskPath(
-        moveMaskPoint(maskPath, maskGesture.current, maskPoint(e)),
-        false,
+    if (shapeGesture.current) {
+      const g = shapeGesture.current;
+      g.next = shapeMask(
+        g.next,
+        g.start,
+        maskPoint(e),
+        maskTool === "ellipse" ? "ellipse" : "rectangle",
       );
+      p.onMaskPath(g.next, false);
+      return;
+    }
+    if (maskGesture.current !== null) {
+      maskNext.current = moveMaskPoint(
+        maskPath,
+        maskGesture.current,
+        maskPoint(e),
+      );
+      p.onMaskPath(maskNext.current, false);
       return;
     }
     const g = gesture.current;
@@ -440,16 +491,22 @@ export function EventPanCrop(p: PanCropWindowProps) {
         snap ? Math.round(dy / grid) * grid : dy,
         w,
         h,
-        lock !== e.shiftKey,
-        center,
+        lock !== (e.ctrlKey || e.metaKey),
+        center !== e.altKey,
       );
     g.next = next;
     setDraft(next);
   };
   const end = (e: React.PointerEvent) => {
+    if (shapeGesture.current) {
+      p.onMaskPath(shapeGesture.current.next, true);
+      shapeGesture.current = null;
+    }
+
     if (maskGesture.current !== null) {
       maskGesture.current = null;
-      p.onMaskPath(maskPath, true);
+      p.onMaskPath(maskNext.current ?? maskPath, true);
+      maskNext.current = null;
     }
     const g = gesture.current;
     gesture.current = null;
@@ -484,9 +541,15 @@ export function EventPanCrop(p: PanCropWindowProps) {
   const addKey = () => {
     const list =
       !p.keys.length && local >= tick
-        ? upsertKey([], 0, { ...atPose, cropFrame: initial, time: 0 })
+        ? upsertKey([], 0, { ...atPose, cropFrame: toStored(initial), time: 0 })
         : p.keys;
-    p.onKeys(upsertKey(list, local, { ...atPose, cropFrame: c, time: local }));
+    p.onKeys(
+      upsertKey(list, local, {
+        ...atPose,
+        cropFrame: toStored(c),
+        time: local,
+      }),
+    );
   };
   const jump = (direction: number) => {
     const key =
@@ -520,7 +583,7 @@ export function EventPanCrop(p: PanCropWindowProps) {
       write({ ...c, height: (c.width * w) / (4 / 3) / h });
     setPreset(value);
   };
-  const source = p.source ?? { width: w, height: h };
+
   return (
     <div
       className="ec-window"
@@ -594,7 +657,10 @@ export function EventPanCrop(p: PanCropWindowProps) {
             if (name?.trim()) {
               p.onPresets?.([
                 ...(p.presets ?? []).filter((i) => i.name !== name.trim()),
-                { name: name.trim(), pose: { ...atPose, cropFrame: c } },
+                {
+                  name: name.trim(),
+                  pose: { ...atPose, cropFrame: toStored(c) },
+                },
               ]);
               setPreset(name.trim());
             }
@@ -613,24 +679,71 @@ export function EventPanCrop(p: PanCropWindowProps) {
           <X size={17} />
         </Button>
       </div>
-      <main className="ec-main">
+      <main
+        className={`ec-main ${showProperties ? "" : "ec-properties-hidden"}`}
+      >
         <nav className="ec-tools" aria-label="Herramientas de Pan/Crop">
           <Button
-            label="Restablecer vista del área de trabajo"
-            onClick={() => {
-              setZoom(1);
-              setOffset({ x: 0, y: 0 });
-            }}
+            label="Mostrar propiedades"
+            active={showProperties}
+            onClick={() => setShowProperties((v) => !v)}
           >
             <Settings size={16} />
           </Button>
           <Button
             label="Herramienta de edición normal"
-            active={tool === "select"}
-            onClick={() => setTool("select")}
+            active={tool === "select" && (!maskMode || maskTool === "select")}
+            onClick={() => {
+              setTool("select");
+              setMaskTool("select");
+            }}
           >
             <MousePointer2 size={16} />
           </Button>
+          {maskMode && (
+            <>
+              <Button
+                label="Crear puntos de máscara"
+                active={tool === "select" && maskTool === "add"}
+                onClick={() => {
+                  setTool("select");
+                  setMaskTool("add");
+                }}
+              >
+                <MaskPen />
+              </Button>
+              <Button
+                label="Eliminar puntos de máscara"
+                active={tool === "select" && maskTool === "delete"}
+                onClick={() => {
+                  setTool("select");
+                  setMaskTool("delete");
+                }}
+              >
+                <MaskDelete />
+              </Button>
+              <Button
+                label="Máscara rectangular: arrastrar para dibujar"
+                active={tool === "select" && maskTool === "rectangle"}
+                onClick={() => {
+                  setTool("select");
+                  setMaskTool("rectangle");
+                }}
+              >
+                <MaskRectangle />
+              </Button>
+              <Button
+                label="Máscara elíptica: arrastrar para dibujar"
+                active={tool === "select" && maskTool === "ellipse"}
+                onClick={() => {
+                  setTool("select");
+                  setMaskTool("ellipse");
+                }}
+              >
+                <MaskEllipse />
+              </Button>
+            </>
+          )}
           <Button
             label="Herramienta de zoom"
             active={tool === "zoom"}
@@ -645,29 +758,34 @@ export function EventPanCrop(p: PanCropWindowProps) {
           >
             <Magnet size={16} />
           </Button>
-          <Button
-            label="Bloquear relación de aspecto"
-            active={lock}
-            onClick={() => setLock(!lock)}
-          >
-            <Aspect size={16} />
-          </Button>
-          <Button
-            label="Cambiar tamaño respecto al centro"
-            active={center}
-            onClick={() => setCenter(!center)}
-          >
-            <Focus size={16} />
-          </Button>
-          <Button
-            label={`Movimiento: ${axis === "xy" ? "libre" : axis === "x" ? "solo X" : "solo Y"}`}
-            onClick={() =>
-              setAxis(axis === "xy" ? "x" : axis === "x" ? "y" : "xy")
-            }
-          >
-            <Move size={16} />
-            {axis !== "xy" && <sup>{axis}</sup>}
-          </Button>
+          {!maskMode && (
+            <>
+              <Button
+                label="Bloquear relación de aspecto"
+                active={lock}
+                onClick={() => setLock(!lock)}
+              >
+                <Aspect size={16} />
+              </Button>
+              <Button
+                label="Cambiar tamaño respecto al centro"
+                active={center}
+                onClick={() => setCenter(!center)}
+              >
+                <Focus size={16} />
+              </Button>
+              <Button
+                label={`Movimiento: ${axis === "xy" ? "libre" : axis === "x" ? "solo X" : "solo Y"}`}
+                active={axis !== "xy"}
+                onClick={() =>
+                  setAxis(axis === "xy" ? "x" : axis === "x" ? "y" : "xy")
+                }
+              >
+                <Move size={16} />
+                {axis !== "xy" && <sup>{axis}</sup>}
+              </Button>
+            </>
+          )}
           <Button
             label="Desplazar área de trabajo"
             active={tool === "pan"}
@@ -676,118 +794,278 @@ export function EventPanCrop(p: PanCropWindowProps) {
             <Move size={14} />
           </Button>
         </nav>
-        <aside className="ec-params">
-          <Group title="Posición" open>
-            <Field
-              label="Anchura"
-              value={c.width * w}
-              min={w * 0.001}
-              max={w * 100}
-              change={(v) =>
-                patch({
-                  width: v / w,
-                  ...(lock ? { height: (c.height * (v / w)) / c.width } : {}),
-                })
-              }
-            />
-            <Field
-              label="Altura"
-              value={c.height * h}
-              min={h * 0.001}
-              max={h * 100}
-              change={(v) =>
-                patch({
-                  height: v / h,
-                  ...(lock ? { width: (c.width * (v / h)) / c.height } : {}),
-                })
-              }
-            />
-            <Field
-              label="Centro X"
-              value={c.x * w}
-              change={(v) => patch({ x: v / w })}
-            />
-            <Field
-              label="Centro Y"
-              value={c.y * h}
-              change={(v) => patch({ y: v / h })}
-            />
-          </Group>
-          <Group title="Rotación" open>
-            <Field
-              label="Ángulo"
-              value={c.angle}
-              min={-36000}
-              max={36000}
-              change={(v) => write(rotateCropFrame(c, v, w, h))}
-            />
-            <Field
-              label="Centro de rotación X"
-              value={c.pivotX * w}
-              change={(v) => patch({ pivotX: v / w })}
-            />
-            <Field
-              label="Centro de rotación Y"
-              value={c.pivotY * h}
-              change={(v) => patch({ pivotY: v / h })}
-            />
-          </Group>
-          <Group title="Interpolación de fotogramas clave">
-            <Field
-              label="Suavidad (%)"
-              value={p.smoothness ?? 100}
-              min={0}
-              max={100}
-              change={(v) => p.onSmoothness?.(v)}
-            />
-            <label className="ec-field">
-              Tipo
-              <select
-                aria-label="Interpolación"
-                disabled={!current}
-                value={current?.curve ?? "linear"}
-                onChange={(e) =>
-                  p.onKeys(
-                    upsertKey(p.keys, local, {
-                      ...atPose,
-                      cropFrame: c,
-                      curve: e.target.value as Keyframe["curve"],
-                    }),
-                  )
-                }
-              >
-                {EASE_KINDS.map((kind) => (
-                  <option key={kind} value={kind}>
-                    {EASE_LABEL[kind]}
-                  </option>
+        <aside className="ec-params" hidden={!showProperties}>
+          {maskMode ? (
+            <>
+              <Group title="Máscara">
+                <p className="ec-mask-note">
+                  Seleccione un punto para editar su posición. Dibuje una ruta
+                  con la pluma o arrastre una forma. Las formas reemplazan la
+                  ruta actual.
+                </p>
+              </Group>
+              <Group title="Posición" open>
+                <fieldset
+                  disabled={
+                    selectedPoint === null || !maskPath.points[selectedPoint]
+                  }
+                  style={{ border: 0, padding: 0, margin: 0 }}
+                >
+                  <Field
+                    label="X"
+                    value={(maskPath.points[selectedPoint ?? -1]?.x ?? 0) * w}
+                    min={0}
+                    max={w}
+                    change={(v) => {
+                      if (selectedPoint !== null)
+                        editMask(
+                          moveMaskPoint(maskPath, selectedPoint, {
+                            ...maskPath.points[selectedPoint],
+                            x: v / w,
+                          }),
+                        );
+                    }}
+                  />
+                  <Field
+                    label="Y"
+                    value={(maskPath.points[selectedPoint ?? -1]?.y ?? 0) * h}
+                    min={0}
+                    max={h}
+                    change={(v) => {
+                      if (selectedPoint !== null)
+                        editMask(
+                          moveMaskPoint(maskPath, selectedPoint, {
+                            ...maskPath.points[selectedPoint],
+                            y: v / h,
+                          }),
+                        );
+                    }}
+                  />
+                </fieldset>
+              </Group>
+              <Group title="Ruta">
+                <label className="ec-field">
+                  <span>Modo:</span>
+                  <select
+                    aria-label="Modo de máscara"
+                    value={maskPath.invert ? "negative" : "positive"}
+                    onChange={(e) =>
+                      editMask({
+                        ...maskPath,
+                        invert: e.target.value === "negative",
+                      })
+                    }
+                  >
+                    <option value="positive">Positivo</option>
+                    <option value="negative">Negativo</option>
+                  </select>
+                </label>
+                <Field
+                  label="Pluma"
+                  value={maskPath.feather}
+                  min={0}
+                  max={200}
+                  change={(v) => editMask({ ...maskPath, feather: v })}
+                />
+                <button
+                  disabled={
+                    selectedPoint === null || !maskPath.points[selectedPoint]
+                  }
+                  onClick={() => {
+                    if (selectedPoint !== null)
+                      editMask(removeMaskPoint(maskPath, selectedPoint));
+                    setSelectedPoint(null);
+                  }}
+                >
+                  Eliminar punto seleccionado
+                </button>
+                <button
+                  disabled={!maskPath.points.length}
+                  onClick={() => {
+                    editMask({ ...maskPath, points: [] });
+                    setSelectedPoint(null);
+                  }}
+                >
+                  Borrar ruta
+                </button>
+                <p className="ec-mask-note">
+                  Ruta poligonal; elipse de 64 puntos. Curvas Bézier y animación
+                  de máscara pendientes.
+                </p>
+              </Group>
+            </>
+          ) : (
+            <>
+              <Group title="Posición" open>
+                <Field
+                  label="Anchura"
+                  value={c.width * w}
+                  min={w * 0.001}
+                  max={w * 100}
+                  change={(v) =>
+                    patch({
+                      width: v / w,
+                      ...(lock
+                        ? { height: (c.height * (v / w)) / c.width }
+                        : {}),
+                    })
+                  }
+                />
+                <Field
+                  label="Altura"
+                  value={c.height * h}
+                  min={h * 0.001}
+                  max={h * 100}
+                  change={(v) =>
+                    patch({
+                      height: v / h,
+                      ...(lock
+                        ? { width: (c.width * (v / h)) / c.height }
+                        : {}),
+                    })
+                  }
+                />
+                <Field
+                  label="Centro X"
+                  value={c.x * w}
+                  change={(v) => patch({ x: v / w })}
+                />
+                <Field
+                  label="Centro Y"
+                  value={c.y * h}
+                  change={(v) => patch({ y: v / h })}
+                />
+              </Group>
+              <Group title="Recorte">
+                <label className="ec-field">
+                  <span>Modo:</span>
+                  <select
+                    aria-label="Modo de recorte"
+                    value={c.fill ? "fill" : "crop"}
+                    onChange={(e) => patch({ fill: e.target.value === "fill" })}
+                  >
+                    <option value="fill">Rellenar fotograma</option>
+                    <option value="crop">Recortar sin ampliar</option>
+                  </select>
+                </label>
+                {(
+                  [
+                    ["left", "Izquierda"],
+                    ["right", "Derecha"],
+                    ["top", "Arriba"],
+                    ["bottom", "Abajo"],
+                  ] as const
+                ).map(([edge, label]) => (
+                  <Field
+                    key={edge}
+                    label={`${label} (%)`}
+                    value={cropMargins(c)[edge] * 100}
+                    min={-9900}
+                    max={99.9}
+                    change={(v) => write(setCropMargin(c, edge, v / 100))}
+                  />
                 ))}
-              </select>
-            </label>
-          </Group>
-          <Group title="Origen">
-            <label className="ec-field">
-              Mantener aspecto
-              <select
-                aria-label="Mantener relación de aspecto"
-                value={String(c.aspect)}
-                onChange={(e) => patch({ aspect: e.target.value === "true" })}
-              >
-                <option value="true">Sí</option>
-                <option value="false">No</option>
-              </select>
-            </label>
-            <label className="ec-field">
-              Extender al fotograma
-              <select
-                aria-label="Extender para rellenar fotograma"
-                value={String(c.fill)}
-                onChange={(e) => patch({ fill: e.target.value === "true" })}
-              >
-                <option value="true">Sí</option>
-                <option value="false">No</option>
-              </select>
-            </label>
-          </Group>
+                <button
+                  onClick={() =>
+                    write(
+                      matchCropAspect(
+                        c,
+                        source,
+                        p.project.width / p.project.height,
+                      ),
+                    )
+                  }
+                >
+                  Igualar aspecto de salida
+                </button>
+                <button onClick={() => write(defaultCropFrame())}>
+                  Restaurar recorte
+                </button>
+                <p className="ec-mask-note">
+                  Las asas recortan el encuadre. Ctrl/Comando alterna el bloqueo
+                  de proporción; Alt/Opción alterna el tamaño desde el centro.
+                  Los márgenes siguen los ejes de la caja antes de girarla.
+                </p>
+              </Group>
+              <Group title="Rotación" open>
+                <Field
+                  label="Ángulo"
+                  value={c.angle}
+                  min={-36000}
+                  max={36000}
+                  change={(v) => write(rotateCropFrame(c, v, w, h))}
+                />
+                <Field
+                  label="Centro de rotación X"
+                  value={c.pivotX * w}
+                  change={(v) => patch({ pivotX: v / w })}
+                />
+                <Field
+                  label="Centro de rotación Y"
+                  value={c.pivotY * h}
+                  change={(v) => patch({ pivotY: v / h })}
+                />
+              </Group>
+              <Group title="Interpolación de fotogramas clave">
+                <Field
+                  label="Suavidad (%)"
+                  value={p.smoothness ?? 100}
+                  min={0}
+                  max={100}
+                  change={(v) => p.onSmoothness?.(v)}
+                />
+                <label className="ec-field">
+                  Tipo
+                  <select
+                    aria-label="Interpolación"
+                    disabled={!current}
+                    value={current?.curve ?? "linear"}
+                    onChange={(e) =>
+                      p.onKeys(
+                        upsertKey(p.keys, local, {
+                          ...atPose,
+                          cropFrame: toStored(c),
+                          curve: e.target.value as Keyframe["curve"],
+                        }),
+                      )
+                    }
+                  >
+                    {EASE_KINDS.map((kind) => (
+                      <option key={kind} value={kind}>
+                        {EASE_LABEL[kind]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </Group>
+              <Group title="Origen">
+                <label className="ec-field">
+                  Mantener aspecto
+                  <select
+                    aria-label="Mantener relación de aspecto"
+                    value={String(c.aspect)}
+                    onChange={(e) =>
+                      patch({ aspect: e.target.value === "true" })
+                    }
+                  >
+                    <option value="true">Sí</option>
+                    <option value="false">No</option>
+                  </select>
+                </label>
+                <label className="ec-field">
+                  Extender al fotograma
+                  <select
+                    aria-label="Extender para rellenar fotograma"
+                    value={String(c.fill)}
+                    onChange={(e) => patch({ fill: e.target.value === "true" })}
+                  >
+                    <option value="true">Sí</option>
+                    <option value="false">No</option>
+                  </select>
+                </label>
+              </Group>
+            </>
+          )}
           <Group title="Área de trabajo">
             <Field
               label="Zoom (%)"
@@ -814,34 +1092,6 @@ export function EventPanCrop(p: PanCropWindowProps) {
               change={setGrid}
             />
           </Group>
-          {tool === "mask" && (
-            <Group title="Trazado" open>
-              <Field
-                label="Pluma"
-                value={maskPath.feather}
-                min={0}
-                max={200}
-                change={(v) => editMask({ ...maskPath, feather: v })}
-              />
-              <label className="ec-field">
-                Invertir
-                <input
-                  type="checkbox"
-                  checked={maskPath.invert}
-                  onChange={(e) =>
-                    editMask({ ...maskPath, invert: e.target.checked })
-                  }
-                />
-              </label>
-              <button onClick={() => editMask({ ...maskPath, points: [] })}>
-                Borrar trazado
-              </button>
-              <p className="ec-mask-note">
-                Máscara poligonal. Curvas Bézier y animación del trazado
-                pendientes.
-              </p>
-            </Group>
-          )}
         </aside>
         <div
           className="ec-workspace"
@@ -854,6 +1104,10 @@ export function EventPanCrop(p: PanCropWindowProps) {
           }}
           onContextMenu={(e) => {
             e.preventDefault();
+            if (tool === "zoom") {
+              setZoom((v) => Math.max(0.1, v / 1.25));
+              return;
+            }
             setMenu({ x: e.clientX - bounds.x, y: e.clientY - bounds.y });
           }}
         >
@@ -868,12 +1122,32 @@ export function EventPanCrop(p: PanCropWindowProps) {
             onPointerMove={move}
             onPointerUp={end}
             onPointerCancel={() => {
+              if (shapeGesture.current || maskGesture.current !== null)
+                p.onMaskPath(
+                  shapeGesture.current?.next ?? maskNext.current ?? maskPath,
+                  true,
+                );
+              shapeGesture.current = null;
+              maskGesture.current = null;
+              maskNext.current = null;
               gesture.current = null;
               setDraft(null);
             }}
             onPointerDown={(e) => {
-              if (tool === "mask") {
-                editMask(addMaskPoint(maskPath, maskPoint(e)));
+              if (e.button !== 0) return;
+              if (maskMode && tool === "select") {
+                if (maskTool === "add") {
+                  editMask(addMaskPoint(maskPath, maskPoint(e)));
+                  setSelectedPoint(maskPath.points.length);
+                } else if (maskTool === "rectangle" || maskTool === "ellipse") {
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                  p.onBeginMask();
+                  shapeGesture.current = {
+                    start: maskPoint(e),
+                    next: maskPath,
+                  };
+                  setSelectedPoint(null);
+                } else setSelectedPoint(null);
               } else start(e, tool === "zoom" ? "zoom" : "pan");
             }}
           >
@@ -902,7 +1176,7 @@ export function EventPanCrop(p: PanCropWindowProps) {
                 pointerEvents="none"
               />
             )}
-            {tool !== "mask" && (
+            {!maskMode && (
               <>
                 <circle
                   cx={ox + c.pivotX * w * scale}
@@ -972,7 +1246,7 @@ export function EventPanCrop(p: PanCropWindowProps) {
                 />
               </>
             )}
-            {tool === "mask" && (
+            {maskMode && (
               <g>
                 <polygon
                   points={maskSpots.map((pt) => `${pt.x},${pt.y}`).join(" ")}
@@ -988,18 +1262,33 @@ export function EventPanCrop(p: PanCropWindowProps) {
                     y={pt.y - 4}
                     width="8"
                     height="8"
-                    fill="#fff"
+                    fill={selectedPoint === i ? "#61b9ed" : "#fff"}
                     stroke="#222"
                     onPointerDown={(e) => {
+                      if (e.button !== 0) return;
+                      if (
+                        tool !== "select" ||
+                        maskTool === "rectangle" ||
+                        maskTool === "ellipse"
+                      )
+                        return;
                       e.stopPropagation();
+                      if (maskTool === "delete") {
+                        editMask(removeMaskPoint(maskPath, i));
+                        setSelectedPoint(null);
+                        return;
+                      }
+                      setSelectedPoint(i);
                       e.currentTarget.setPointerCapture(e.pointerId);
                       p.onBeginMask();
                       maskGesture.current = i;
+                      maskNext.current = maskPath;
                     }}
                     onContextMenu={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
                       editMask(removeMaskPoint(maskPath, i));
+                      setSelectedPoint(null);
                     }}
                   />
                 ))}
@@ -1015,12 +1304,27 @@ export function EventPanCrop(p: PanCropWindowProps) {
       </main>
       <section className="ec-keyeditor" aria-label="Fotogramas clave">
         <div className="ec-keylabels">
-          <div className="selected">Posición</div>
-          <label title="Editar máscara poligonal">
+          <div
+            className={!maskMode ? "selected" : ""}
+            onClick={() => {
+              setMaskMode(false);
+              setTool("select");
+            }}
+          >
+            Posición
+          </div>
+          <label
+            className={maskMode ? "selected" : ""}
+            title="Editar máscara poligonal"
+          >
             <input
               type="checkbox"
-              checked={tool === "mask"}
-              onChange={(e) => setTool(e.target.checked ? "mask" : "select")}
+              checked={maskMode}
+              onChange={(e) => {
+                setMaskMode(e.target.checked);
+                setTool("select");
+                setSelectedPoint(null);
+              }}
             />
             Máscara
           </label>
@@ -1302,13 +1606,21 @@ export function EventPanCrop(p: PanCropWindowProps) {
             ["Centrar", () => patch({ x: 0.5, y: 0.5 })],
             ["Voltear horizontalmente", () => patch({ flipX: !c.flipX })],
             ["Voltear verticalmente", () => patch({ flipY: !c.flipY })],
-            ["Igualar aspecto de salida", () => patch({ height: c.width })],
+            [
+              "Igualar aspecto de salida",
+              () =>
+                write(
+                  matchCropAspect(
+                    c,
+                    source,
+                    p.project.width / p.project.height,
+                  ),
+                ),
+            ],
             [
               "Igualar aspecto de origen",
               () =>
-                patch({
-                  height: (((c.width * w) / source.width) * source.height) / h,
-                }),
+                write(matchCropAspect(c, source, source.width / source.height)),
             ],
             [
               "Restablecer vista",

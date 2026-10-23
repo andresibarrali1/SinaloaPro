@@ -1,3 +1,4 @@
+import { waveformSource } from '@/lib/editor/waveform-source';
 'use client';
 // Trimmer (edición de tres puntos): se marca la entrada y la salida en el material de origen y se coloca en el
 // cursor de la línea de tiempo, insertando (lo de después se corre) o sobrescribiendo (se deja el hueco limpio).
@@ -74,8 +75,8 @@ export function Trimmer({ library, media, at, onEdit, onClose }: TrimmerProps) {
             columns={TRIM_WAVE_COLUMNS}
             from={0}
             to={seconds(duration)}
-            channels={library.items.get(media.id)?.pcm?.channels}
-            sampleRate={library.items.get(media.id)?.pcm?.sampleRate}
+            source={waveformSource(library.items.get(media.id)?.pcm)}
+            
             label="Forma de onda del material"
           /></div>
         : <canvas ref={canvas} className="trimmer-preview" width={480} height={270} />}

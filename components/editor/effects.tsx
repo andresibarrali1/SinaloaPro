@@ -1,4 +1,5 @@
 'use client';
+import {PresetPreview} from './preset-preview';
 // Pila de efectos de vídeo de un evento: catálogo para añadir, orden, encendido/apagado y parámetros.
 // Los efectos se aplican en este orden sobre el evento (sobre sus propios píxeles, en su capa) y el monitor
 // del editor muestra el resultado al instante, igual que la exportación.
@@ -37,7 +38,7 @@ export function EffectsWindow({ event, onChange, onClose }: EffectsWindowProps) 
         : `«${event.name}» no tiene efectos. Añade uno desde el catálogo.`}</p>
       <div className="preset-list effects-catalog">
         {EFFECT_KINDS.map(kind => (
-          <button key={kind} disabled={event.kind === 'audio'} title={EFFECT_DESCRIPTION[kind]} onClick={() => add(kind)}>{EFFECT_LABEL[kind]}</button>
+          <button key={kind} disabled={event.kind === 'audio'} title={EFFECT_DESCRIPTION[kind]} onClick={() => add(kind)}><PresetPreview kind="effect" id={kind}/><span>{EFFECT_LABEL[kind]}</span></button>
         ))}
       </div>
       {event.kind === 'audio' && <p className="export-warning" role="alert">Los efectos de vídeo no se aplican a los eventos de audio.</p>}

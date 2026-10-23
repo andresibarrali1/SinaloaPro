@@ -169,3 +169,26 @@ export const SyncCursor = (p: Props) => (
     <path d="M10 10v2" stroke="#333" />
   </Glyph>
 );
+
+export const MaskPen = () => (
+  <Glyph>
+    <path d="M3 3l9 3-4 7-5-2zM3 3l4 5" />
+    <circle cx="7" cy="8" r="1" />
+  </Glyph>
+);
+export const MaskDelete = () => (
+  <Glyph>
+    <path d="M3 3l9 3-4 7-5-2z" />
+    <path d="M10 1l5 5m0-5l-5 5" stroke="#ed9292" />
+  </Glyph>
+);
+export const MaskRectangle = () => (
+  <Glyph>
+    <rect x="2" y="3" width="12" height="10" />
+  </Glyph>
+);
+export const MaskEllipse = () => (
+  <Glyph>
+    <ellipse cx="8" cy="8" rx="6" ry="4" />
+  </Glyph>
+);

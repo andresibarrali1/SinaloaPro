@@ -6,6 +6,7 @@
 // construir decenas de elementos por evento, y el coste crecía con el tamaño del montaje hasta congelar la
 // interfaz. Las acciones llegan en un objeto estable (ver `TimelineActions`) cuyas propiedades se leen **al
 // llamarlas**, así que el gesto siempre usa la versión actual del editor aunque la fila no se haya repintado.
+import type { WaveformSourceReader } from "@/lib/editor/waveform-source";
 import { memo, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { Crop, Link } from "lucide-react";
 import { AudioWaveform } from "./audio-waveform";
@@ -30,8 +31,7 @@ export type TimelineActions = {
 export type TimelineEventRowProps = {
   event: Event;
   media?: Media;
-  // Muestras decodificadas del material, si están: la onda las usa cuando el tramo es corto.
-  pcm?: { channels: Float32Array[]; sampleRate: number };
+  waveSource?: WaveformSourceReader;
   zoom: number;
   trackKind: "video" | "audio";
   selected: boolean;
@@ -57,7 +57,7 @@ function TextEditorIcon({ size = 11 }: { size?: number }): ReactNode {
 export const TimelineEventRow = memo(function TimelineEventRow({
   event,
   media,
-  pcm,
+  waveSource,
   zoom,
   trackKind,
   selected,
@@ -128,9 +128,12 @@ export const TimelineEventRow = memo(function TimelineEventRow({
           <span>ƒx</span>
         </button>
       </div>
+      {/* La onda de la línea de tiempo se dibuja con los picos guardados en el medio (`media.peaks`, 1024 por
+          canal). Pasarle además las muestras decodificadas de cada evento obligaba a barrer PCM en cada repintado y
+          era lo que trababa el editor; las muestras se usan solo en el trimmer, donde hay una sola onda. */}
       <div className="event-body">
         {event.kind === "audio" && media ? (
-          <AudioWaveform event={event} media={media} width={width} channels={pcm?.channels} sampleRate={pcm?.sampleRate} />
+          <AudioWaveform event={event} media={media} width={width} source={waveSource} />
         ) : media?.thumbnail ? (
           <div className="event-thumbnails" style={{ backgroundImage: `url(${media.thumbnail})` }} />
         ) : event.kind === "text" ? (

@@ -1,4 +1,5 @@
 'use client';
+import {PresetPreview} from './preset-preview';
 // Ventana de Títulos y texto, con los parámetros del plugin «Títulos & Texto de VEGAS» de VEGAS Pro 15:
 // texto, fuente, tamaño, negrita y cursiva, color, alineación, punto de anclaje (9), interlineado,
 // seguimiento, ancho máximo, fondo, contorno, sombra y animación. El monitor se repinta con la composición
@@ -24,12 +25,13 @@ export type TitlesWindowProps = {
   event: Event;
   onChange: (patch: Partial<Event>) => void;
   onClose: () => void;
+  onApplyPresetTrack?: (id:string) => void;
 };
 
 const PREVIEW_WIDTH = 640;
 const HEX = /^#[0-9a-f]{6}$/i;
 
-export function TitlesWindow({ project, library, time, event, onChange, onClose }: TitlesWindowProps) {
+export function TitlesWindow({ project, library, time, event, onChange, onClose, onApplyPresetTrack }: TitlesWindowProps) {
   const style = styleOf(event);
   const presetId = detectTextPreset(event);
   const positionId = detectTextPosition(event);
@@ -59,6 +61,7 @@ export function TitlesWindow({ project, library, time, event, onChange, onClose 
       </div>
       <div className="titles-fields">
         <section className="text-presets">
+          {onApplyPresetTrack && <button disabled={presetId==='custom'} onClick={()=>onApplyPresetTrack(presetId)}>Aplicar plantilla a todos los textos de esta pista</button>}
           <h4>Plantillas de texto y subtítulos</h4>
           <div className="text-preset-groups" role="group" aria-label="Plantillas de texto y subtítulos">
             {TEXT_PRESET_GROUPS.map(group => (
@@ -73,7 +76,7 @@ export function TitlesWindow({ project, library, time, event, onChange, onClose 
                       aria-label={`Plantilla ${preset.name}`}
                       title={preset.note}
                       onClick={() => onChange(applyTextPreset(event, preset.id))}
-                    >{preset.name}</button>
+                    ><PresetPreview kind="text" id={preset.id}/><span>{preset.name}</span></button>
                   ))}
                 </span>
               </div>

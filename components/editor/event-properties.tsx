@@ -89,7 +89,7 @@ export function EventProperties({project,event,media,onChange,onSpeed,onSwitch,o
        <div><dt>Duración:</dt><dd>{seconds(media.duration).toFixed(3)} s</dd></div>
       </dl>
      </section>
-    </>:<p className="export-warning" role="alert">Este evento no tiene medio: es un generador (título, color o texto) creado dentro del proyecto. La pestaña «Medios» de VEGAS muestra aquí las propiedades del material generado; en Corte 15 se editan en la pestaña de generadores y en la ventana de títulos.</p>}
+    </>:<p className="export-warning" role="alert">Este evento no tiene medio: es un generador (título, color o texto) creado dentro del proyecto. La pestaña «Medios» de VEGAS muestra aquí las propiedades del material generado; en Sinaloa Pro se editan en la pestaña de generadores y en la ventana de títulos.</p>}
    </TabsContent>
   </Tabs>
   <div className="dialog-actions"><button onClick={onAccept}>Aceptar</button><button onClick={onCancel}>Cancelar</button></div>

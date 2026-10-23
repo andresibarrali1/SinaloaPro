@@ -9,8 +9,10 @@
 // los picos se leen de las muestras decodificadas cuando están —detalle real a cualquier zoom— o de los picos
 // guardados en el medio cuando el proyecto se abre sin el archivo. Lo cuenta `data-waveform-source` y
 // `data-waveform-columns`, que es lo que comprueban las pruebas.
+import { observeVisibleRange } from "@/lib/editor/visible-range";
+import type { WaveformSourceReader } from "@/lib/editor/waveform-source";
 import { indexedPeakColumns } from "@/lib/editor/waveform-index";
-import { memo, useMemo } from "react";
+import { createContext, useContext, memo, useMemo, useLayoutEffect, useRef, useState } from "react";
 import {
   columnsFor,
   sourceRange,
@@ -19,12 +21,15 @@ import {
 } from "@/lib/editor/waveform";
 import type { Event, Media } from "@/lib/editor/project";
 
+export const WaveformDisplayContext = createContext(1);
+
 const TICKS_PER_SECOND = 705600000;
 const seconds = (value: number) => value / TICKS_PER_SECOND;
 
 export type AudioWaveformProps = {
   media: Media;
   width: number; // ancho en pantalla, en píxeles: de ahí salen las columnas
+  source?: WaveformSourceReader;
   channels?: Float32Array[];
   samples?: Float32Array; // muestras decodificadas del material, si están
   sampleRate?: number;
@@ -43,6 +48,7 @@ export type AudioWaveformProps = {
 export const AudioWaveform = memo(function AudioWaveform({
   media,
   width,
+  source,
   channels,
   samples,
   sampleRate,
@@ -53,14 +59,28 @@ export const AudioWaveform = memo(function AudioWaveform({
   columns,
   label = "Forma de onda real",
 }: AudioWaveformProps) {
-  const count = columns ?? columnsFor(width);
-  const range = event
+  const gain=useContext(WaveformDisplayContext);
+  const host=useRef<HTMLDivElement>(null);
+  const [visible,setVisible]=useState({left:0,width:Math.min(width,1500)});
+  useLayoutEffect(()=>{
+    const el=host.current;if(!el)return;
+    return observeVisibleRange(el,width,range=>{
+      setVisible(old=>old.left===range.left&&old.width===range.width?old:range);
+    });
+  },[width,event?.start]);
+  const count = columns ?? columnsFor(visible.width);
+  const fullRange = event
     ? sourceRange(seconds(event.offset), seconds(event.duration), event.speed)
     : { from: from ?? 0, to: to ?? seconds(media.duration) };
   const reversedWave = event ? Boolean(event.reversed) : Boolean(reversed);
+  const span=fullRange.to-fullRange.from;
+  const left=visible.left/Math.max(1,width),right=(visible.left+visible.width)/Math.max(1,width);
+  const range={from:fullRange.from+span*(reversedWave?1-right:left),to:fullRange.from+span*(reversedWave?1-left:right)};
   // Leer las muestras cuesta un barrido por columna, así que se guarda mientras no cambien ni el tramo ni el
   // ancho: arrastrar un evento por la línea de tiempo repinta muchas veces y la onda no cambia.
   const waveforms = useMemo(() => {
+    if (visible.width<=0)return [];
+    if (source) return source(range.from, range.to, count).map(values => ({values: reversedWave ? values.reverse() : values, source: "pcm" as const}));
     const countChannels = channels?.length ?? media.channelPeaks?.length ?? 1;
     return Array.from({ length: Math.min(2, countChannels) }, (_, channel) => {
       const pcm = channels?.[channel] ?? (channel === 0 ? samples : undefined);
@@ -89,6 +109,8 @@ export const AudioWaveform = memo(function AudioWaveform({
       });
     }).filter((wave): wave is NonNullable<typeof wave> => Boolean(wave));
   }, [
+    visible.width,
+    source,
     channels,
     samples,
     sampleRate,
@@ -100,10 +122,10 @@ export const AudioWaveform = memo(function AudioWaveform({
     count,
     reversedWave,
   ]);
-  if (!waveforms.length)
-    return <span className="waveform-unavailable">Sin datos de onda</span>;
   return (
-    <svg
+    <div ref={host} className="waveform-viewport" style={{position:'relative',width:'100%',height:'100%',overflow:'hidden'}}>
+    {waveforms.length>0 ? <svg
+      style={{position:'absolute',left:visible.left,width:visible.width,height:'100%'}}
       className="audio-wave"
       viewBox={`0 0 ${waveforms[0].values.length} ${100 * waveforms.length}`}
       preserveAspectRatio="none"
@@ -129,7 +151,7 @@ export const AudioWaveform = memo(function AudioWaveform({
           />
           <path
             className="audio-wave-body"
-            d={waveformPath(wave.values)}
+            d={waveformPath(wave.values,gain)}
             vectorEffect="non-scaling-stroke"
           />
         </g>
@@ -144,6 +166,7 @@ export const AudioWaveform = memo(function AudioWaveform({
           vectorEffect="non-scaling-stroke"
         />
       )}
-    </svg>
+    </svg> : visible.width>0 ? <span className="waveform-unavailable">Sin datos de onda</span> : null}
+    </div>
   );
 });

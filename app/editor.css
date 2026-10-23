@@ -39,3 +39,28 @@
 
 /* Carril resaltado mientras se arrastra un medio o una transición sobre él. */
 .track-lane.drop-target{outline:2px dashed #8edf9c;outline-offset:-3px;background-color:rgba(142,223,156,.10)}
+.wave-gain{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;font-size:11px;margin:0 6px}
+.wave-gain select{background:#303030;color:#eee;border:1px solid #686868;padding:2px}
+
+/* Two independent cursors: solid edit cursor and moving playback indicator. */
+.playback-head{position:absolute;top:0;bottom:0;width:1px;border-left:1px dotted #fafafa;box-shadow:1px 0 #151515;z-index:24;pointer-events:none}
+.playback-head i{position:absolute;top:14px;left:-4px;width:7px;height:8px;background:#ddd;clip-path:polygon(0 0,100% 0,50% 100%)}
+
+.editor .transition-junction{position:absolute;top:50%;transform:translate(-50%,-50%);z-index:8;width:24px;height:24px;background:#292929;color:#fff;border:1px solid #aab3ba;border-radius:3px;font:bold 20px Arial;box-shadow:0 1px 4px #0009;}
+.editor .transition-junction:hover,.editor .transition-junction.drop-active,.editor .transition-junction.has-transition{background:#246fa8;border-color:#8dcaff;}
+.junction-settings{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px;border:1px solid #679bc0;margin-bottom:10px;}.junction-settings small{width:100%;}.junction-settings input{width:65px;}
+
+/* The junction remains selected after clicking; hover and drop feedback are independent. */
+.editor .transition-junction.selected-junction,
+.editor .transition-junction[aria-pressed="true"],
+.editor .transition-junction.drop-active {
+ background:#246fa8!important;border-color:#8dcaff!important;color:#fff!important;
+ box-shadow:0 0 0 2px #61b6ff66,0 1px 4px #0009;
+}
+.editor .transition-junction:focus-visible {outline:2px solid #b9e0ff;outline-offset:2px;}
+
+.preset-preview{display:block;width:128px;height:72px;object-fit:contain;background:#172b39;pointer-events:none;border:1px solid #222;}
+.preset-preview[data-error="true"]{opacity:.35;}
+.preset-list button:has(.preset-preview),.text-preset-buttons button:has(.preset-preview),.effects-window button:has(.preset-preview){display:inline-flex;flex-direction:column;align-items:center;justify-content:flex-start;width:144px!important;height:auto!important;min-height:106px;gap:6px;padding:6px!important;vertical-align:top;white-space:normal;}
+.text-preset-buttons:has(.preset-preview){display:flex;flex-wrap:wrap;gap:6px;}
+.preset-list button:has(.preset-preview)>span,.text-preset-buttons button:has(.preset-preview)>span{font-size:11px;line-height:1.3;}

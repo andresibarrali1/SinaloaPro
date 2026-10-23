@@ -483,3 +483,26 @@
   outline: 1px solid #9ccadd;
   background: #535e66;
 }
+
+.ec-main.ec-properties-hidden {
+  grid-template-columns: 29px minmax(0, 1fr);
+}
+.ec-params[hidden] {
+  display: none;
+}
+
+/* Keep the pressed state visible while hovering and after the pointer leaves. */
+.ec-window .ec-tools button[aria-pressed="true"],
+.ec-window .ec-tools button[aria-pressed="true"]:hover:not(:disabled) {
+  background: #246fa8;
+  border-color: #79bfff;
+  box-shadow: inset 1px 1px 0 #15476c, inset -1px -1px 0 #438fc7;
+}
+.ec-window .ec-tools button[aria-pressed="false"]:hover:not(:disabled) {
+  background: #494949;
+  border-color: #797979;
+}
+.ec-window .ec-tools button:focus-visible {
+  outline: 1px solid #d5e9f5;
+  outline-offset: -3px;
+}

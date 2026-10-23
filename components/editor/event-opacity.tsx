@@ -100,14 +100,10 @@ export function EventOpacity({
         }}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
-          if (
-            (e.ctrlKey || e.metaKey) &&
-            ["z", "y"].includes(e.key.toLowerCase())
-          )
-            return;
-          e.stopPropagation();
+          if(e.ctrlKey || e.metaKey || e.altKey || e.nativeEvent.isComposing)return;
           if (disabled) return;
           if (e.key === "Escape" && drag.current) {
+            e.stopPropagation();
             e.preventDefault();
             drag.current = null;
             setActive(false);
@@ -125,6 +121,7 @@ export function EventOpacity({
                     ? value - (e.shiftKey ? 0.1 : 0.01)
                     : null;
           if (next !== null) {
+            e.stopPropagation();
             e.preventDefault();
             onSet(clampOpacity(next));
           }
