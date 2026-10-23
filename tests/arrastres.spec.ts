@@ -42,7 +42,7 @@ async function esperarProyecto(page: Page, comprobar: (proyecto: Guardado) => bo
 }
 
 async function nuevaSesion(page: Page) {
-  await page.goto('/');
+  await page.goto('/?bienvenida=no');
   await page.evaluate((clave) => {
     localStorage.clear();
     void clave;

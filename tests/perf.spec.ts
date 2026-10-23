@@ -31,7 +31,7 @@ async function stopFrames(page:import('@playwright/test').Page):Promise<Stats>{
 }
 
 test('rendimiento de la interfaz: reproducción, arrastre de la aguja, zoom y reposo tras editar',async({page},info)=>{
- await page.goto('/');
+ await page.goto('/?bienvenida=no');
  await page.evaluate(()=>localStorage.clear());
  await page.reload();
  await expect(page.getByRole('button',{name:'Nuevo proyecto',exact:true})).toBeVisible();

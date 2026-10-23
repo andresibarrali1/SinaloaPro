@@ -8,7 +8,7 @@ test("Pan/Crop: layout, inverse zoom, independent axes, keys and reopening", asy
     event = newEvent(project.tracks[0].id, "color");
   event.name = "Encuadre de prueba";
   project.events.push(event);
-  await page.goto("/");
+  await page.goto('/?bienvenida=no');
   await page.evaluate((p) => {
     localStorage.clear();
     localStorage.setItem("corte15-autosave-v1", JSON.stringify(p));

@@ -6,7 +6,7 @@ const out=path.resolve('evidencias');
 test('captura el espacio de trabajo a dos tamaños de escritorio',async({page,browserName})=>{
  test.skip(browserName!=='chromium','Las capturas se toman una sola vez, en Chromium.');
  fs.mkdirSync(out,{recursive:true});
- await page.goto('/');await page.evaluate(()=>localStorage.clear());await page.reload();
+ await page.goto('/?bienvenida=no');await page.evaluate(()=>localStorage.clear());await page.reload();
  await expect(page.getByRole('button',{name:'Nuevo proyecto',exact:true})).toBeVisible();
  await page.locator('input[type=file]').nth(0).setInputFiles([fixture('Video_A.mp4'),fixture('Video_B.mp4'),fixture('Audio.wav')]);
  await expect(page.locator('.media-item')).toHaveCount(3,{timeout:60000});

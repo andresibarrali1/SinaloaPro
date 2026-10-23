@@ -4,7 +4,7 @@ import {test,expect} from '@playwright/test';import path from 'node:path';
 const fixture=(s:string)=>path.resolve('tests/fixtures',s);
 test('capacidades del motor y resultado real de importación',async({page,browserName})=>{
  const errors:string[]=[];page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`);});
- await page.goto('/');
+ await page.goto('/?bienvenida=no');
  const apis=await page.evaluate(()=>({VideoDecoder:typeof (globalThis as unknown as {VideoDecoder?:unknown}).VideoDecoder,AudioDecoder:typeof (globalThis as unknown as {AudioDecoder?:unknown}).AudioDecoder,VideoEncoder:typeof (globalThis as unknown as {VideoEncoder?:unknown}).VideoEncoder,AudioEncoder:typeof (globalThis as unknown as {AudioEncoder?:unknown}).AudioEncoder,OffscreenCanvas:typeof (globalThis as unknown as {OffscreenCanvas?:unknown}).OffscreenCanvas,createImageBitmap:typeof createImageBitmap,AudioContext:typeof (globalThis as unknown as {AudioContext?:unknown}).AudioContext,indexedDB:typeof indexedDB,storageEstimate:typeof navigator.storage?.estimate,isSecureContext:window.isSecureContext}));
  const caps=await page.evaluate(async()=>{try{const modulePath='/lib/editor/export.ts';const mod=await import(modulePath);return await (mod as {capabilities:(w:number,h:number,s:number)=>Promise<{mp4:boolean;webm:boolean}>}).capabilities(320,180,48000);}catch(e){return {error:e instanceof Error?e.message:String(e)};}});
  console.log(`[${browserName}] APIs ${JSON.stringify(apis)}`);
@@ -21,7 +21,7 @@ test('capacidades del motor y resultado real de importación',async({page,browse
 // Medición de rendimiento reproducible del renderizado: 300 fotogramas a 1280×720 (10 s a 30 fps).
 test('rendimiento de renderizado: 10 s a 1280×720',async({page,browserName})=>{
  test.skip(browserName!=='chromium','La medición de referencia se toma en Chromium.');
- await page.goto('/');
+ await page.goto('/?bienvenida=no');
  const caps=await page.evaluate(async()=>{const modulePath='/lib/editor/export.ts';const mod=await import(modulePath);return await (mod as {capabilities:(w:number,h:number,s:number)=>Promise<{mp4:boolean}>}).capabilities(1280,720,48000);});
  test.skip(!caps.mp4,'Sin codificador H.264/AAC: no se puede medir esta ruta.');
  await page.getByRole('tab',{name:'Generadores de medios',exact:true}).click();

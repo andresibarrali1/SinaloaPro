@@ -18,14 +18,14 @@ async function waitForTitle(page:Page, check:(event:Record<string, unknown>)=>bo
 }
 
 test.beforeEach(async({page})=>{
-  await page.goto('/');
+  await page.goto('/?bienvenida=no');
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await expect(page.getByRole('button',{name:'Nuevo proyecto',exact:true})).toBeVisible();
 });
 
 async function createTitle(page:Page,content='TITULO DE PRUEBA'){
-  await page.getByRole('button',{name:'Ir al inicio',exact:true}).click();
+  await page.locator('.bottom-toolbar .transport').getByRole('button',{name:'Ir al inicio',exact:true}).click();
   await page.getByRole('tab',{name:'Generadores de medios',exact:true}).click();
   await page.getByRole('button',{name:'Títulos y texto',exact:true}).click();
   await page.getByLabel('Texto del título').fill(content);
@@ -688,7 +688,7 @@ test('Edición de precisión: slip, slide y recorte por rizo con el teclado',asy
   // Alt + [ y Alt + ] son los atajos que anuncia el menú del clic derecho del evento: recortan por rizo el
   // principio y el final hasta el cursor. Se comprueban en un evento nuevo y entero, porque el de arriba ya está
   // recortado a un trozo diminuto y ahí el cursor no cabe.
-  await page.getByRole('button',{name:'Ir al final',exact:true}).click();
+  await page.locator('.bottom-toolbar .transport').getByRole('button',{name:'Ir al final',exact:true}).click();
   await page.locator('.media-item').first().dblclick();
   const fresh=page.locator('.timeline-event.video').last();
   await expect(page.locator('.timeline-event.video')).toHaveCount(2);
@@ -874,8 +874,8 @@ test('Medidores calibrados: el pico llega a la barra y la sonoridad se informa e
   await expect(meters.getByText(/BS\.1770/)).toBeVisible();
 
   // Al reproducir, la barra crece y aparece una medición numérica real.
-  await page.getByRole('button',{name:'Ir al inicio',exact:true}).click();
-  await page.getByRole('button',{name:'Reproducir',exact:true}).click();
+  await page.locator('.bottom-toolbar .transport').getByRole('button',{name:'Ir al inicio',exact:true}).click();
+  await page.locator('.preview-transport').getByRole('button',{name:'Reproducir',exact:true}).click();
   await expect.poll(async()=>page.evaluate(()=>{
     const bar=document.querySelector('.meters .meter-bar i') as HTMLElement|null;
     return bar?parseFloat(bar.style.height):0;
@@ -883,7 +883,7 @@ test('Medidores calibrados: el pico llega a la barra y la sonoridad se informa e
   const reading=await meters.locator('small').first().textContent();
   expect(reading).toMatch(/Pico -?\d/);
   expect(reading).toMatch(/LUFS/);
-  await page.getByRole('button',{name:'Pausa',exact:true}).click();
+  await page.locator('.preview-transport').getByRole('button',{name:'Pausa',exact:true}).click();
   // Al pausar, los medidores vuelven al silencio.
   await expect.poll(async()=>page.evaluate(()=>{
     const bar=document.querySelector('.meters .meter-bar i') as HTMLElement|null;
@@ -1163,7 +1163,7 @@ test('Copiar y pegar atributos: los efectos y el estilo de un clip pasan a otro,
   await page.locator('input[type=file]').nth(0).setInputFiles([fixture('Video_A.mp4'),fixture('Video_B.mp4')]);
   await expect(page.locator('.media-item')).toHaveCount(2,{timeout:60000});
   await page.locator('.media-item').filter({hasText:'Video_A.mp4'}).dblclick();
-  await page.getByRole('button',{name:'Ir al final',exact:true}).click();
+  await page.locator('.bottom-toolbar .transport').getByRole('button',{name:'Ir al final',exact:true}).click();
   await page.locator('.media-item').filter({hasText:'Video_B.mp4'}).dblclick();
   const clips=page.locator('.timeline-event.video');
   await expect(clips).toHaveCount(2);
@@ -1209,7 +1209,7 @@ test('Copiar y pegar atributos: los efectos y el estilo de un clip pasan a otro,
 
   // El diálogo deja elegir los grupos: se copia otra vez del primero y se pega solo los efectos en un tercer
   // clip, que debe quedarse con su encuadre neutro y quedarse con el efecto.
-  await page.getByRole('button',{name:'Ir al final',exact:true}).click();
+  await page.locator('.bottom-toolbar .transport').getByRole('button',{name:'Ir al final',exact:true}).click();
   await page.getByRole('tab',{name:'Medios de proyecto',exact:true}).click();
   await page.locator('.media-item').filter({hasText:'Video_A.mp4'}).dblclick();
   await expect(clips).toHaveCount(3);

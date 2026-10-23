@@ -5,7 +5,7 @@ const fixture=(s:string)=>path.resolve('tests/fixtures',s);
 // El proyecto autoguardado, para comprobar que lo que se ve en pantalla ha llegado de verdad al modelo.
 type Saved = { events: Record<string, unknown>[] };
 const autosave = (page:Page) => page.evaluate(() => JSON.parse(localStorage.getItem('corte15-autosave-v1') ?? '{}')) as Promise<Saved>;
-test.beforeEach(async({page})=>{await page.goto('/');await page.evaluate(()=>localStorage.clear());await page.reload();await expect(page.getByRole('button',{name:'Nuevo proyecto',exact:true})).toBeVisible();});
+test.beforeEach(async({page})=>{await page.goto('/?bienvenida=no');await page.evaluate(()=>localStorage.clear());await page.reload();await expect(page.getByRole('button',{name:'Nuevo proyecto',exact:true})).toBeVisible();});
 test('flujo real: dos videos y audio, recorte, split, texto, fundido, guardar, abrir, exportar',async({page},info)=>{
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
  // Capability gate: this scenario needs decoders and Web Audio. Engines that do not expose them are
@@ -17,14 +17,14 @@ test('flujo real: dos videos y audio, recorte, split, texto, fundido, guardar, a
  await page.locator('.media-item').filter({hasText:'Video_A.mp4'}).dblclick();
  const ruler=page.locator('.ruler');await ruler.click({position:{x:130,y:30}});
  await page.locator('.media-item').filter({hasText:'Video_B.mp4'}).dblclick();
- await page.getByRole('button',{name:'Ir al inicio',exact:true}).click();await page.locator('.media-item').filter({hasText:'Audio.wav'}).dblclick();
+ await page.locator('.bottom-toolbar .transport').getByRole('button',{name:'Ir al inicio',exact:true}).click();await page.locator('.media-item').filter({hasText:'Audio.wav'}).dblclick();
  const clip=page.locator('.timeline-event.video').filter({hasText:'Video_A.mp4'}).first();await clip.dblclick();
  await page.getByLabel('Duración (s)',{exact:true}).fill('2.5');await page.getByRole('button',{name:'Cerrar',exact:true}).click();
  await ruler.click({position:{x:65,y:30}});await clip.click();await page.keyboard.press('s');await expect(page.locator('.timeline-event.video').filter({hasText:'Video_A.mp4'})).toHaveCount(2);
  await page.keyboard.press('Control+z');await expect(page.locator('.timeline-event.video').filter({hasText:'Video_A.mp4'})).toHaveCount(1);await page.keyboard.press('Control+y');await expect(page.locator('.timeline-event.video').filter({hasText:'Video_A.mp4'})).toHaveCount(2);
- await page.getByRole('button',{name:'Ir al inicio',exact:true}).click();await page.getByRole('tab',{name:'Generadores de medios',exact:true}).click();await page.getByRole('button',{name:'Títulos y texto',exact:true}).click();
+ await page.locator('.bottom-toolbar .transport').getByRole('button',{name:'Ir al inicio',exact:true}).click();await page.getByRole('tab',{name:'Generadores de medios',exact:true}).click();await page.getByRole('button',{name:'Títulos y texto',exact:true}).click();
  await page.getByLabel('Texto del título').fill('PRUEBA CORTE 15');await page.getByLabel('Entrada (s)',{exact:true}).fill('0.3');await page.getByLabel('Salida (s)',{exact:true}).fill('0.5');await page.getByRole('button',{name:'Cerrar',exact:true}).click();
- await page.getByRole('button',{name:'Reproducir',exact:true}).click();await page.waitForTimeout(700);await page.getByRole('button',{name:'Pausa (Enter)',exact:true}).click();await expect(page.locator('.big-timecode')).not.toHaveText('00:00:00:00');
+ await page.locator('.preview-transport').getByRole('button',{name:'Reproducir',exact:true}).click();await page.waitForTimeout(700);await page.locator('.bottom-toolbar .transport').getByRole('button',{name:'Pausa (Enter)',exact:true}).click();await expect(page.locator('.big-timecode')).not.toHaveText('00:00:00:00');
  const saved=page.waitForEvent('download');await page.getByRole('button',{name:'Guardar proyecto',exact:true}).click();const projectDownload=await saved;const projectPath=info.outputPath('roundtrip.corte15');await projectDownload.saveAs(projectPath);const data=JSON.parse(fs.readFileSync(projectPath,'utf8'));expect(data.events.some((e:{kind:string})=>e.kind==='text')).toBe(true);
  await page.locator('input[type=file]').nth(1).setInputFiles(projectPath);await expect(page.locator('.timeline-event')).toHaveCount(data.events.length);await expect(page.getByRole('status').first()).toContainText('restaurado',{timeout:60000});
  await page.getByRole('button',{name:'Renderizar como…',exact:true}).click();await page.getByLabel('Ancho',{exact:true}).fill('320');await page.getByLabel('Alto',{exact:true}).fill('180');const result=page.waitForEvent('download',{timeout:120000});await page.getByRole('button',{name:'Renderizar y descargar'}).click();const rendered=await result;const renderPath=info.outputPath(rendered.suggestedFilename());await rendered.saveAs(renderPath);
@@ -69,7 +69,7 @@ test('un clic en un evento lo selecciona y coloca la aguja en ese punto',async({
  await page.locator('input[type=file]').nth(0).setInputFiles([fixture('Video_A.mp4')]);
  await expect(page.locator('.media-item')).toHaveCount(1,{timeout:60000});
  await page.locator('.media-item').first().dblclick();
- await page.getByRole('button',{name:'Ir al inicio',exact:true}).click();
+ await page.locator('.bottom-toolbar .transport').getByRole('button',{name:'Ir al inicio',exact:true}).click();
  const timecode=page.locator('.big-timecode');
  await expect(timecode).toHaveText('00:00:00:00');
  const clip=page.locator('.timeline-event.video').first();
@@ -95,9 +95,9 @@ test('la forma de onda del audio: una columna por píxel, leída del sonido y co
  await expect(clip).toBeVisible();
  const wave=clip.locator('svg.audio-wave');
  await expect(wave).toHaveCount(1);
- // La onda sale del más fino de los dos: con pocas columnas bastan los picos guardados en el medio; al acercar,
- // cuando los picos no llegan a una columna por pico, se leen las muestras decodificadas.
- expect(['pcm','guardado']).toContain(await wave.getAttribute('data-waveform-source'));
+ // La onda de la línea de tiempo se dibuja solo con los picos guardados en el medio (1024 por canal): pasarle
+ // además las muestras de cada evento obligaba a barrer PCM en cada repintado y trababa el editor.
+ expect(await wave.getAttribute('data-waveform-source')).toBe('guardado');
  await expect(wave.locator('.audio-wave-center')).toHaveCount(1);
  await expect(wave.locator('.audio-wave-body')).toHaveCount(1);
  // Las columnas son las del ancho del evento en pantalla (bajando al escalón de la escalera), no una constante:
@@ -132,14 +132,15 @@ test('la forma de onda del audio: una columna por píxel, leída del sonido y co
  expect(50-drawn.top,'hay picos hacia arriba').toBeGreaterThan(15);
  expect(drawn.bottom-50,'y hacia abajo, lo mismo').toBeGreaterThan(15);
  expect(Math.abs((50-drawn.top)-(drawn.bottom-50)),'la silueta está centrada en el cero').toBeLessThanOrEqual(1);
- // Y la onda dice algo: al acercar el zoom hay más columnas, la fuente pasa a las muestras decodificadas (los
- // picos guardados ya no llegan a una columna por pico), la envolvente tiene muchas alturas distintas y las
- // pausas de la voz se ven como columnas casi en el cero (y = 50 en el lienzo de 100).
+ // Y la onda dice algo: al acercar el zoom hay más columnas, la envolvente tiene muchas alturas distintas y las
+ // pausas de la voz se ven como columnas casi en el cero (y = 50 en el lienzo de 100). La fuente sigue siendo la
+ // guardada en el medio: la línea de tiempo no lee muestras decodificadas —eso es lo que trababa el editor—, así
+ // que el detalle al acercar sale de los 1024 picos por canal, no de un barrido de PCM por evento y repintado.
  await page.locator('.timeline-scroll').hover();
  for(let notch=0;notch<6;notch++){await page.mouse.wheel(0,-400);await page.waitForTimeout(120);}
  const zoomed=await shape();
  expect(zoomed.columns).toBeGreaterThan(drawn.columns);
- expect(zoomed.source,'al acercar del todo, la onda se lee del sonido decodificado').toBe('pcm');
+ expect(zoomed.source,'la línea de tiempo no lee PCM: sigue con los picos guardados').toBe('guardado');
  expect(zoomed.heights,`la envolvente tiene detalle (${zoomed.heights} alturas distintas)`).toBeGreaterThan(8);
  expect(zoomed.quiet,`las pausas se ven en la onda (${zoomed.quiet} columnas casi en el cero)`).toBeGreaterThan(0);
  if(info.project.name==='chrome')await page.screenshot({path:path.resolve('evidencias','onda-audio.png')});
@@ -168,7 +169,7 @@ test('la aguja se agarra desde los carriles y se arrastra sin tocar el evento de
  await page.locator('.media-item').first().dblclick();
  const clip=page.locator('.timeline-event.video').first();
  await expect(clip).toBeVisible();
- await page.getByRole('button',{name:'Ir al inicio',exact:true}).click();
+ await page.locator('.bottom-toolbar .transport').getByRole('button',{name:'Ir al inicio',exact:true}).click();
  const state=()=>page.evaluate(()=>{
    const project=JSON.parse(localStorage.getItem('corte15-autosave-v1')??'{}') as {events?:{start?:number}[];region?:unknown};
    return {start:Number((project.events??[])[0]?.start??0),region:project.region??null};
@@ -332,8 +333,18 @@ test('los subtítulos se generan, se añaden al proyecto como .srt y aparecen en
  await page.locator('input[type=file]').nth(0).setInputFiles([fixture('Audio.wav')]);
  await expect(page.locator('.media-item')).toHaveCount(1,{timeout:60000});
  await page.locator('.media-item').first().dblclick();
+ // El botón abre un diálogo que pregunta cuántas palabras lleva cada subtítulo: se eligen dos.
  await page.getByRole('button',{name:'Generar subtítulos'}).click();
+ const subtitleDialog=page.getByRole('dialog');
+ await expect(subtitleDialog.getByLabel('Palabras por subtítulo')).toContainText('4 palabras');
+ await subtitleDialog.getByLabel('Palabras por subtítulo').click();
+ await page.getByRole('option',{name:'2 palabras',exact:true}).click();
+ await expect(subtitleDialog.getByLabel('Palabras por subtítulo')).toContainText('2 palabras');
+ if(test.info().project.name==='chrome')await page.screenshot({path:path.resolve('evidencias','subtitulos-palabras.png')});
+ await subtitleDialog.getByRole('button',{name:'Transcribir y crear subtítulos'}).click();
  await expect(page.getByRole('status').first()).toContainText('Subtítulos listos',{timeout:60000});
+ await expect(page.getByRole('status').first()).toContainText('2 palabras por subtítulo');
+ await expect(page.getByRole('dialog')).toHaveCount(0);
  // El .srt queda en Medios de proyecto y se ve en Subtítulos, en Videos y en Todos los medios.
  await expect(page.locator('.media-item').filter({hasText:'subtitulos.srt'})).toHaveCount(1);
  const tree=page.locator('.media-tree');
@@ -343,16 +354,30 @@ test('los subtítulos se generan, se añaden al proyecto como .srt y aparecen en
  await expect(page.locator('.media-item').filter({hasText:'subtitulos.srt'})).toHaveCount(1);
  await tree.getByRole('button',{name:'Todos los medios',exact:true}).click();
  await expect(page.locator('.media-item')).toHaveCount(2);
- // Y los textos están en la línea de tiempo, sobre la pista «Subtítulos».
- await expect(page.locator('.timeline-event').filter({hasText:'Hola, esto es una prueba'})).toHaveCount(1);
- await expect(page.locator('.timeline-event').filter({hasText:'de subtítulos automáticos'})).toHaveCount(1);
+ // Y los textos están en la línea de tiempo, sobre la pista «Subtítulos»: una línea cada dos palabras (ocho
+ // palabras → cuatro líneas), igual que en el .srt.
+ await expect(page.locator('.timeline-event').filter({hasText:'Hola, esto'})).toHaveCount(1);
+ await expect(page.locator('.timeline-event').filter({hasText:'es una'})).toHaveCount(1);
+ await expect(page.locator('.timeline-event').filter({hasText:'prueba de'})).toHaveCount(1);
+ await expect(page.locator('.timeline-event').filter({hasText:'subtítulos automáticos'})).toHaveCount(1);
+ await expect(page.locator('.timeline-event').filter({hasText:'automáticos'})).toHaveCount(1);
+ // El .srt guardado tiene esas cuatro líneas.
+ const savedSrt=await page.evaluate(()=>JSON.parse(localStorage.getItem('corte15-autosave-v1')??'{}').media?.find((item:{kind:string})=>item.kind==='subtitle')?.text??'');
+ expect(String(savedSrt).split('-->').length-1,'cuatro líneas en el .srt').toBe(4);
+ expect(String(savedSrt)).toContain('Hola, esto');
+ expect(String(savedSrt)).toContain('subtítulos automáticos');
  // Doble clic en el .srt lo lleva otra vez a la línea de tiempo (es el gesto de insertar subtítulos); se
- // comprueba que aparecen las dos líneas otra vez y se deshace para no dejar el proyecto tocado.
+ // comprueba que aparecen las líneas otra vez y se deshace para no dejar el proyecto tocado.
  await page.locator('.media-item').filter({hasText:'subtitulos.srt'}).dblclick();
- await expect(page.locator('.timeline-event').filter({hasText:'de subtítulos automáticos'})).toHaveCount(2,{timeout:20000});
+ await expect(page.locator('.timeline-event').filter({hasText:'automáticos'})).toHaveCount(2,{timeout:20000});
  await expect(page.getByRole('status').first()).toContainText('línea(s) de subtítulos');
  await page.keyboard.press('Control+z');
- await expect(page.locator('.timeline-event').filter({hasText:'de subtítulos automáticos'})).toHaveCount(1,{timeout:20000});
+ await expect(page.locator('.timeline-event').filter({hasText:'automáticos'})).toHaveCount(1,{timeout:20000});
+ // La elección se recuerda: al volver a abrir el diálogo sigue en dos palabras, y «Cancelar» lo cierra sin tocar nada.
+ await page.getByRole('button',{name:'Generar subtítulos'}).click();
+ await expect(page.getByRole('dialog').getByLabel('Palabras por subtítulo')).toContainText('2 palabras');
+ await page.getByRole('dialog').getByRole('button',{name:'Cancelar'}).click();
+ await expect(page.getByRole('dialog')).toHaveCount(0);
  // El .srt se descarga desde el botón de descarga de su ficha, no con el doble clic.
  await page.locator('.media-item').filter({hasText:'subtitulos.srt'}).click();
  const download=page.waitForEvent('download');
@@ -361,6 +386,25 @@ test('los subtítulos se generan, se añaden al proyecto como .srt y aparecen en
  expect(file.suggestedFilename()).toBe('subtitulos.srt');
  await tree.getByRole('button',{name:'Todos los medios',exact:true}).click();
  if(test.info().project.name==='chrome')await page.screenshot({path:path.resolve('evidencias','subtitulos.png')});
+ // Y con «Una línea por frase» cada línea es la intervención completa del servicio: dos líneas para dos frases.
+ await page.getByRole('button',{name:'Generar subtítulos'}).click();
+ await page.getByRole('dialog').getByLabel('Palabras por subtítulo').click();
+ await page.getByRole('option',{name:'Una línea por frase',exact:true}).click();
+ await page.getByRole('dialog').getByRole('button',{name:'Transcribir y crear subtítulos'}).click();
+ await expect(page.getByRole('status').first()).toContainText('una línea por frase',{timeout:60000});
+ await expect(page.locator('.timeline-event').filter({hasText:'de subtítulos automáticos'})).toHaveCount(1,{timeout:20000});
+ // El segundo .srt guardado tiene dos líneas (una por frase); el autoguardado tarda 450 ms, así que se espera.
+ const lastSrtLines=()=>page.evaluate(()=>{
+  const media=(JSON.parse(localStorage.getItem('corte15-autosave-v1')??'{}') as {media?:{kind:string;text?:string}[]}).media??[];
+  const text=media.filter(item=>item.kind==='subtitle').at(-1)?.text??'';
+  return String(text).split('-->').length-1;
+ });
+ await expect.poll(lastSrtLines,{timeout:20000}).toBe(2);
+ const phraseSrt=await page.evaluate(()=>{
+  const media=(JSON.parse(localStorage.getItem('corte15-autosave-v1')??'{}') as {media?:{kind:string;text?:string}[]}).media??[];
+  return media.filter(item=>item.kind==='subtitle').at(-1)?.text??'';
+ });
+ expect(String(phraseSrt)).toContain('Hola, esto es una prueba');
 });
 test('los recursos de Pexels se descargan, se colocan en la línea de tiempo y se añaden al proyecto',async({page})=>{
  // El clip descargado se importa de verdad, así que hace falta poder decodificarlo.
@@ -406,27 +450,52 @@ test('los recursos de Pexels se colocan según lo que dice la transcripción, en
  await page.locator('input[type=file]').nth(0).setInputFiles([fixture('Audio.wav')]);
  await expect(page.locator('.media-item')).toHaveCount(1,{timeout:60000});
  await page.locator('.media-item').first().dblclick();
+ // Los subtítulos se crean con el reparto que se elige en el diálogo; aquí se deja el de por defecto (4 palabras).
  await page.getByRole('button',{name:'Generar subtítulos'}).click();
+ await page.getByRole('dialog').getByRole('button',{name:'Transcribir y crear subtítulos'}).click();
  await expect(page.getByRole('status').first()).toContainText('Subtítulos listos',{timeout:60000});
+ await expect(page.getByRole('status').first()).toContainText('4 palabras por subtítulo');
  await page.getByRole('button',{name:/Recursos Pexels/}).click();
  await expect(page.getByLabel('Modo de búsqueda en Pexels')).toContainText('transcripción');
  await page.getByRole('button',{name:'Colocar recursos según la transcripción'}).click();
- await expect(page.getByRole('status').first()).toContainText('Recursos por transcripción',{timeout:120000});
+ await expect(page.getByRole('status').first()).toContainText('Recursos por palabra',{timeout:120000});
  expect(queries,'se buscó la palabra que se dice').toContain('dinero');
- // El clip de «dinero» tiene que caer en el instante en que se dice (5,3 s), no al principio.
- const startOf=(name:RegExp)=>page.evaluate((pattern)=>{
-  const project=JSON.parse(localStorage.getItem('corte15-autosave-v1')??'{}');
-  const event=(project.events??[]).find((item:{name:string})=>new RegExp(pattern).test(item.name));
-  return event?event.start/705600000:-1;
- },name.source);
- await expect.poll(()=>startOf(/dinero/),{timeout:20000}).toBeGreaterThan(0);
- const moneyStart=await startOf(/dinero/);
- expect(Math.abs(moneyStart-5.3),`el recurso de dinero empezó en ${moneyStart} s`).toBeLessThan(.1);
- const otherStart=await startOf(/hola/);
- expect(Math.abs(otherStart-0.2)).toBeLessThan(.1);
+ // Un clip por palabra: la transcripción tiene 9 palabras y hay 9 eventos en la pista «Pexels», en orden, cada
+ // uno en el instante en que se dice su palabra y enlazado con el siguiente sin dejar huecos.
+ type SavedEvent={name:string;start:number;duration:number;trackId:string;mediaId:string};
+ const placedEvents=async()=>{
+  const saved=await page.evaluate(()=>({project:JSON.parse(localStorage.getItem('corte15-autosave-v1')??'{}')})) as {project:{events?:SavedEvent[];tracks?:{id:string;name:string}[]}};
+  const track=(saved.project.tracks??[]).find(item=>item.name==='Pexels');
+  return track?(saved.project.events??[]).filter(event=>event.trackId===track.id).sort((a,b)=>a.start-b.start):[];
+ };
+ await expect.poll(async()=>(await placedEvents()).length,{timeout:20000}).toBe(9);
+ const placed=await placedEvents();
+ expect(placed.map(event=>event.name.split(' · ')[0])).toEqual(['hola','esto','es','una','prueba','Aquí','hablamos','del','dinero']);
+ for(let index=1;index<placed.length;index++){
+  // Los clips nunca se pisan: cada uno empieza cuando empieza su palabra.
+  const gap=placed[index].start-(placed[index-1].start+placed[index-1].duration);
+  expect(gap,`«${placed[index-1].name}» y «${placed[index].name}» no se pisan`).toBeGreaterThanOrEqual(-2);
+ }
+ // Dentro de una frase los clips se tocan (la pista no deja huecos entre palabras); entre frases separadas por
+ // un silencio largo puede quedar un hueco, porque el clip dura lo que dura el archivo descargado.
+ const insidePhrase=placed.slice(0,5);
+ for(let index=1;index<insidePhrase.length;index++){
+  const gap=insidePhrase[index].start-(insidePhrase[index-1].start+insidePhrase[index-1].duration);
+  expect(Math.abs(gap),`hueco entre «${insidePhrase[index-1].name}» y «${insidePhrase[index].name}»`).toBeLessThanOrEqual(2);
+ }
+ expect(placed[4].start+placed[4].duration).toBeLessThan(placed[5].start);
+ const startOf=(prefix:string)=>placed.find(event=>event.name.startsWith(prefix))!.start/705600000;
+ expect(Math.abs(startOf('hola')-0.2),'la primera palabra empieza con su frase').toBeLessThan(.05);
+ // «dinero» cae dentro de su frase (5,3 s .. 6,7 s), no al principio del proyecto.
+ const moneyStart=startOf('dinero');
+ expect(moneyStart,`el recurso de dinero empezó en ${moneyStart} s`).toBeGreaterThan(5.2);
+ expect(moneyStart).toBeLessThan(6.8);
+ // Las palabras sin búsqueda propia (una muletilla) reutilizan el clip de su frase en vez de descargar otro.
+ const shared=placed.find(event=>event.name.startsWith('esto'))!;
+ const own=placed.find(event=>event.name.startsWith('hola'))!;
+ expect(shared.mediaId,'la muletilla usa el clip de la palabra principal').toBe(own.mediaId);
  await expect(page.locator('.track-header').filter({hasText:'Pexels'})).toHaveCount(1);
- // Los dos clips están en la pista, cada uno nombrado con la palabra que lo pidió.
- await expect(page.locator('.timeline-event').filter({hasText:'dinero \u00b7'})).toHaveCount(1);
+ await expect(page.locator('.timeline-event').filter({hasText:'dinero ·'})).toHaveCount(1);
  await expect(page.locator('.timeline-event').filter({hasText:'hola ·'})).toHaveCount(1);
  if(test.info().project.name==='chrome')await page.screenshot({path:path.resolve('evidencias','recursos-transcripcion.png')});
 });
@@ -473,10 +542,10 @@ test('el bucle de reproducción repite el tramo cuando no hay región de bucle',
  await page.getByRole('button',{name:'Marcar fin del tramo'}).click();
  await expect(page.locator('.range-status')).toContainText('00:00:01:00');
  // Sin región de bucle marcada, la repetición sigue al tramo de renderizado.
- await page.getByRole('button',{name:'Bucle de reproducción (Alt+L)'}).click();
- await page.getByRole('button',{name:'Reproducir',exact:true}).click();
+ await page.locator('.bottom-toolbar .transport').getByRole('button',{name:/Bucle de reproducción/}).click();
+ await page.locator('.preview-transport').getByRole('button',{name:'Reproducir',exact:true}).click();
  await page.waitForTimeout(2600);
- await page.getByRole('button',{name:'Pausa (Enter)',exact:true}).click();
+ await page.locator('.bottom-toolbar .transport').getByRole('button',{name:'Pausa (Enter)',exact:true}).click();
  const timecode=await page.locator('.big-timecode').innerText();
  const seconds=Number(timecode.split(':')[2]);
  // Sin bucle el cursor estaría en 2,6 s; con bucle tiene que seguir dentro del tramo.
@@ -779,7 +848,7 @@ test('arrastrar en un hueco de la línea de tiempo crea el tramo',async({page})=
  await expect(page.locator('.region')).toHaveCount(0);
 });
 // La región de bucle es la parte que se repite al reproducir. Se marca con Ctrl y arrastrar sobre la línea de
-// tiempo, se ajusta con sus tiradores y se activa con Alt+L. Es independiente del tramo de renderizado: aquí se
+// tiempo, se ajusta con sus tiradores y se activa con Q. Es independiente del tramo de renderizado: aquí se
 // comprueba que marcar el bucle no crea un tramo, que el archivo guardado lleva el bucle y que la reproducción
 // vuelve al principio de la zona en lugar de terminar el proyecto.
 test('la región de bucle se marca con Ctrl, se ajusta con sus tiradores y repite la reproducción',async({page})=>{
@@ -823,22 +892,22 @@ test('la región de bucle se marca con Ctrl, se ajusta con sus tiradores y repit
  await page.mouse.up();
  expect(await loopEnd()-beforeEnd).toBeGreaterThan(.9);
  expect(await loopEnd()-beforeEnd).toBeLessThan(1.1);
- // Alt+L activa la repetición; el botón del pie lo dice y el estado también.
- await page.keyboard.press('Alt+l');
+ // Q activa la repetición; el botón del pie lo dice y el estado también.
+ await page.keyboard.press('q');
  await expect(page.getByLabel('Activar el bucle')).toHaveAttribute('aria-pressed','true');
  await expect(page.getByLabel('Activar el bucle')).toHaveText('Repitiendo');
  await expect(page.locator('.loop-status')).toContainText('activo');
  // Al reproducir desde el principio, la aguja vuelve al inicio de la zona en vez de llegar al final del proyecto:
  // tras 4,2 s de reproducción con un bucle de 2 s, el cursor está dentro de la zona, no en 4,2 s.
- await page.getByRole('button',{name:'Ir al inicio',exact:true}).click();
- await page.getByRole('button',{name:'Reproducir',exact:true}).click();
+ await page.locator('.bottom-toolbar .transport').getByRole('button',{name:'Ir al inicio',exact:true}).click();
+ await page.locator('.preview-transport').getByRole('button',{name:'Reproducir',exact:true}).click();
  await page.waitForTimeout(4200);
  const at=await page.locator('.big-timecode').innerText();
- await page.getByRole('button',{name:'Pausa (Enter)',exact:true}).click();
+ await page.locator('.bottom-toolbar .transport').getByRole('button',{name:'Pausa (Enter)',exact:true}).click();
  const secondsAt=timecodeSeconds(at);
  expect(secondsAt,`cursor en ${at} tras 4,2 s con un bucle de 1 s a 4 s`).toBeGreaterThanOrEqual(1);
  expect(secondsAt).toBeLessThan(4);
- await page.keyboard.press('Alt+l');
+ await page.keyboard.press('q');
  await expect(page.getByLabel('Activar el bucle')).toHaveAttribute('aria-pressed','false');
  // Ctrl+L no se captura (el navegador lo reserva para la barra de direcciones): el tramo se copia al bucle con
  // el botón «Desde tramo» o desde el menú Insertar.
@@ -855,8 +924,8 @@ test('la región de bucle se marca con Ctrl, se ajusta con sus tiradores y repit
  await expect(page.locator('.loop-status')).toContainText('00:00:05:00');
  await expect(page.locator('.region')).toHaveCount(1);
  await expect(page.locator('.range-status')).toContainText('00:00:02:00');
- // Ctrl+Mayús+L quita el bucle y deja el tramo como estaba.
- await page.keyboard.press('Control+Shift+l');
+ // Mayús+U quita el bucle (propio de Sinaloa Pro) y deja el tramo como estaba.
+ await page.keyboard.press('Shift+u');
  await expect(page.locator('.loop-region')).toHaveCount(0);
  await expect(page.locator('.loop-status')).toContainText('Sin bucle');
  await expect(page.locator('.region')).toHaveCount(1);
@@ -905,7 +974,7 @@ test('las pistas se pueden mover de sitio: menú, Alt+flechas y arrastre',async(
  expect(await names()).toEqual(['Video','Títulos','Audio']);
  await expect(page.getByRole('status').first()).toContainText('movida');
  // Alt+flecha abajo la devuelve a su sitio.
- await page.keyboard.press('Alt+ArrowDown');
+ await page.keyboard.press('Shift+ArrowDown');
  expect(await names()).toEqual(['Títulos','Video','Audio']);
  await page.keyboard.press('Control+z');
  expect(await names()).toEqual(['Video','Títulos','Audio']);
@@ -924,7 +993,7 @@ test('las pistas se pueden mover de sitio: menú, Alt+flechas y arrastre',async(
 });
 test('la línea de tiempo no deja ningún hueco a la derecha en ventanas anchas',async({page})=>{
  await page.setViewportSize({width:2200,height:900});
- await page.goto('/');
+ await page.goto('/?bienvenida=no');
  await page.evaluate(()=>localStorage.clear());
  await page.reload();
  // Con el zoom al mínimo, el ancho pedido (900 px) es menor que la ventana: antes quedaba un hueco.

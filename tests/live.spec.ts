@@ -8,13 +8,14 @@ import {test,expect} from '@playwright/test';import path from 'node:path';
 const fixture=(s:string)=>path.resolve('tests/fixtures',s);
 test('subtítulos reales: de la mezcla local a Groq y de vuelta a la línea de tiempo',async({page})=>{
  test.setTimeout(300000);
- await page.goto('/');
+ await page.goto('/?bienvenida=no');
  await page.evaluate(()=>localStorage.clear());
  await page.reload();
  await page.locator('input[type=file]').nth(0).setInputFiles([fixture('voz-prueba.wav')]);
  await expect(page.locator('.media-item')).toHaveCount(1,{timeout:60000});
  await page.locator('.media-item').first().dblclick();
  await page.getByRole('button',{name:'Generar subtítulos'}).click();
+ await page.getByRole('dialog').getByRole('button',{name:'Transcribir y crear subtítulos'}).click();
  await expect(page.getByRole('status').first()).toContainText('Subtítulos listos',{timeout:240000});
  await expect(page.locator('.media-item').filter({hasText:'subtitulos.srt'})).toHaveCount(1);
  // El autoguardado tarda 450 ms: se espera a que el .srt esté en el proyecto guardado.
