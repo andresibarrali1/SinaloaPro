@@ -353,7 +353,11 @@ export function EventPanCrop(p: PanCropWindowProps) {
     off.height = Math.max(1, Math.round((960 * h) / w));
     void compose(
       off,
-      isolated,
+      event.adjustmentLayer ? {
+        ...p.project,
+        tracks:p.project.tracks.slice(p.project.tracks.findIndex(t=>t.id===event.trackId)+1),
+        events:p.project.events.filter(e=>e.id!==event.id),
+      } : isolated,
       p.library,
       p.eventStart + Math.min(local, Math.max(0, p.duration - tick)),
     )

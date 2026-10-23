@@ -23,7 +23,7 @@ export const compositeOperation = (mode?: CompositeMode): GlobalCompositeOperati
 
 // La exportación y la vista previa piden el lienzo de trabajo de la misma forma; en las pruebas unitarias ese
 // lienzo lo fabrica @napi-rs/canvas, así que la fábrica se puede inyectar.
-export type ComposeOptions = { createCanvas?: CanvasFactory; notes?: string[]; cancelled?: () => boolean };
+export type ComposeOptions = { adjustmentSource?: HTMLCanvasElement; createCanvas?: CanvasFactory; notes?: string[]; cancelled?: () => boolean };
 const browserCanvas: CanvasFactory | null = typeof document === 'undefined' ? null : (width, height) => {
   const canvas = document.createElement('canvas');
   canvas.width = width;
@@ -208,7 +208,8 @@ function reduceFlickerBlend(layer:HTMLCanvasElement,createCanvas:(w:number,h:num
 }
 // Dibuja el contenido del evento en coordenadas del fotograma: la posición, la escala y el giro los pone la
 // matriz del contexto (y, cuando hay efectos, la capa se dibuja después dentro de esa misma matriz).
-async function drawContent(ctx:CanvasRenderingContext2D,event:Event,project:Project,library:MediaLibrary,w:number,h:number,time:number,mask:CropMask,at:Transform){
+async function drawContent(ctx:CanvasRenderingContext2D,event:Event,project:Project,library:MediaLibrary,w:number,h:number,time:number,mask:CropMask,at:Transform,adjustmentSource?:HTMLCanvasElement){
+ if(adjustmentSource){drawMedia(ctx,adjustmentSource,{width:w,height:h},{width:w,height:h},mask,false);return;}
  const scale=h/Math.max(1,project.height);
  if(event.kind==='text'){
   const spaced=ctx as SpacedContext;
@@ -248,9 +249,24 @@ export async function compose(canvas:HTMLCanvasElement,p:Project,library:MediaLi
  }
  for(const track of activeTracks(p,'video').reverse()){
   const events=byTrack.get(track.id);if(!events)continue;
-  if(events.length>1)events.sort((a,b)=>a.start-b.start);
+  if(events.length>1)events.sort((a,b)=>Number(Boolean(b.adjustmentLayer))-Number(Boolean(a.adjustmentLayer))||a.start-b.start);
   ctx.globalCompositeOperation=compositeOperation(track.composite); // modo de fusión de la pista
-  for(const e of events){if(options.cancelled?.())return;const eventTime=heldTimes.get(e.id)??time;const local=eventTime-e.start; // A crossfade keeps the outgoing image fully opaque beneath the incoming layer.
+  for(const e of events){if(options.cancelled?.())return;
+   if(e.adjustmentLayer){
+    if(e.muted)continue;
+    if(!createCanvas)throw new Error('La capa de efectos necesita un lienzo de composición.');
+    const strength=Math.max(0,Math.min(1,pose(e,time).opacity*track.transform.opacity*envelope(e,time)*(e.videoOpacity??1)));
+    if(strength===0)continue;
+    const source=createCanvas(w,h);source.getContext('2d')!.drawImage(canvas,0,0);
+    const adjusted=createCanvas(w,h);
+    const layerEvent={...e,adjustmentLayer:false,videoOpacity:1,fadeIn:0,fadeOut:0,gainCurve:undefined,transition:undefined,transitionOut:undefined,
+     transform:{...e.transform,opacity:1},keys:e.keys.map(key=>({...key,opacity:1}))};
+    await compose(adjusted,{...p,tracks:[{...track,mute:false,solo:false,composite:'normal',transform:{...track.transform,opacity:1}}],events:[layerEvent]},library,time,{...options,adjustmentSource:source});
+    if(options.cancelled?.())return;
+    ctx.save();ctx.resetTransform();ctx.globalCompositeOperation='source-over';ctx.filter='none';ctx.globalAlpha=strength;ctx.drawImage(adjusted,0,0);ctx.restore();
+    continue;
+   }
+const eventTime=heldTimes.get(e.id)??time;const local=eventTime-e.start; // A crossfade keeps the outgoing image fully opaque beneath the incoming layer.
    // «Extender para rellenar f.» del grupo «Origen» de la ventana de Panoramización y recorte: con la casilla
    // puesta, el material se escala hasta cubrir el fotograma del proyecto (sin deformar) y el recorte sigue
    // mandando. Es el mismo encaje que la acción «Encajar el contenido al fotograma».
@@ -289,7 +305,7 @@ export async function compose(canvas:HTMLCanvasElement,p:Project,library:MediaLi
     // fotograma compuesto, y el giro 3D deforma la capa entera con su transparencia.
     layerCtx.clearRect(0,0,w,h);layerCtx.filter=grade;
     if(warped3D){applyPose(layerCtx,track.transform,w,h);if(at.cropFrame)applyCropFrame(layerCtx,at.cropFrame,w,h);applyPose(layerCtx,at,w,h);}
-    await drawContent(layerCtx,e,p,library,w,h,eventTime,mask,at);
+    await drawContent(layerCtx,e,p,library,w,h,eventTime,mask,at,options.adjustmentSource);
     if(options.cancelled?.()){ctx.restore();return;}
     layerCtx.filter='none';
     // «Reducir parpadeo de entrelazado»: mezcla vertical de tres tomas (la capa copiada un píxel arriba y un
@@ -312,7 +328,7 @@ export async function compose(canvas:HTMLCanvasElement,p:Project,library:MediaLi
     }else ctx.drawImage(layer,0,0);
    }else{
     ctx.filter=grade;
-    await drawContent(ctx,e,p,library,w,h,eventTime,mask,at);
+    await drawContent(ctx,e,p,library,w,h,eventTime,mask,at,options.adjustmentSource);
     if(options.cancelled?.()){ctx.restore();return;}
     ctx.filter='none';
    }

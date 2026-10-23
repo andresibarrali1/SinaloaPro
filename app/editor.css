@@ -64,3 +64,14 @@
 .preset-list button:has(.preset-preview),.text-preset-buttons button:has(.preset-preview),.effects-window button:has(.preset-preview){display:inline-flex;flex-direction:column;align-items:center;justify-content:flex-start;width:144px!important;height:auto!important;min-height:106px;gap:6px;padding:6px!important;vertical-align:top;white-space:normal;}
 .text-preset-buttons:has(.preset-preview){display:flex;flex-wrap:wrap;gap:6px;}
 .preset-list button:has(.preset-preview)>span,.text-preset-buttons button:has(.preset-preview)>span{font-size:11px;line-height:1.3;}
+
+/* Compact catalog: two previews per row, including narrow title dialogs. */
+.text-presets .text-preset-group{display:block;min-width:0;}
+.text-presets .text-preset-group-name{display:block;width:auto;margin:6px 0 4px;}
+.text-presets .text-preset-buttons:has(.preset-preview){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;width:100%;}
+.text-presets .text-preset-buttons button:has(.preset-preview){width:100%!important;min-width:0;}
+.text-presets .preset-preview{max-width:100%;height:auto;aspect-ratio:16/9;}
+.transition-targets{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0;}
+.transition-targets button[aria-pressed=true],.render-snap[aria-pressed=true]{background:#17638c!important;border-color:#66c6ff!important;color:#fff!important;}
+.render-snap{display:inline-flex;align-items:center;gap:6px;margin:6px 0;}
+.preview-box,.preview-handle{touch-action:none;}

@@ -3,7 +3,7 @@
 //
 // El clic derecho dentro del editor abre este menú en lugar del del navegador: el navegador no sabe nada del
 // proyecto ni de la línea de tiempo, así que su menú no sirve para editar. El menú se coloca donde está el
-// puntero (sin salirse de la pantalla), se cierra con Escape, con la rueda, al cambiar el tamaño de la ventana
+// puntero (sin salirse de la pantalla), se cierra con Escape, con la rueda fuera del menú, al cambiar el tamaño de la ventana
 // o al hacer clic fuera, y sus entradas llevan `role="menuitem"` para poder manejarlo con el teclado.
 //
 // Las entradas pueden tener hijas (`items`): en VEGAS los submenús del clic derecho (Modificadores, Toma, Grupo,
@@ -63,7 +63,7 @@ export function WorkspaceMenu({ menu, onClose }: { menu: WorkspaceMenuState; onC
       if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp' && event.key !== 'Enter') return;
       // El recorrido se queda dentro del panel que tiene el foco: los submenús cerrados no entran en la lista.
       const scope = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>('.workspace-menu-subpanel') ?? ref.current;
-      const items = Array.from(scope?.querySelectorAll<HTMLButtonElement>(':scope > button[role=menuitem]:not([disabled])') ?? []);
+      const items = Array.from(scope?.querySelectorAll<HTMLButtonElement>('button[role=menuitem]:not([disabled])') ?? []).filter(item=>item.closest('[role=menu]')===scope);
       if (!items.length) return;
       event.preventDefault();
       const active = document.activeElement as HTMLElement | null;
@@ -73,11 +73,12 @@ export function WorkspaceMenu({ menu, onClose }: { menu: WorkspaceMenuState; onC
       items[(index + step + items.length) % items.length].focus();
     };
     const close = () => onClose();
+    const onWheel = (event: WheelEvent) => { if (!inside(event.target)) onClose(); };
     window.addEventListener('pointerdown', onPointerDown, true);
     window.addEventListener('keydown', onKeyDown, true);
     window.addEventListener('resize', close);
     window.addEventListener('blur', close);
-    window.addEventListener('wheel', close, { passive: true });
+    window.addEventListener('wheel', onWheel, { passive: true });
     // El primer elemento activo recibe el foco para poder navegar con el teclado desde el primer momento.
     ref.current?.querySelector<HTMLButtonElement>(':scope > button[role=menuitem]:not([disabled])')?.focus();
     return () => {
@@ -85,7 +86,7 @@ export function WorkspaceMenu({ menu, onClose }: { menu: WorkspaceMenuState; onC
       window.removeEventListener('keydown', onKeyDown, true);
       window.removeEventListener('resize', close);
       window.removeEventListener('blur', close);
-      window.removeEventListener('wheel', close);
+      window.removeEventListener('wheel', onWheel);
     };
   }, [menu, onClose]);
   if (!menu) return null;
@@ -130,15 +131,19 @@ function MenuEntries({ items, onDone }: { items: WorkspaceMenuItem[]; onDone: ()
 // Una entrada con hijas: el botón abre el panel, que se mide al abrirse para decidir de qué lado cae.
 function SubMenu({ item, open, onOpen, onClose, onDone }: { item: WorkspaceMenuItem; open: boolean; onOpen: () => void; onClose: () => void; onDone: () => void }) {
   const panel = useRef<HTMLDivElement>(null);
-  const [flip, setFlip] = useState({ x: false, y: 0 });
+  const [position, setPosition] = useState({x:0,y:0});
   useLayoutEffect(() => {
     if (!open) return;
-    const box = panel.current?.getBoundingClientRect();
-    const anchor = panel.current?.parentElement?.getBoundingClientRect();
-    if (!box || !anchor) return;
-    const overX = anchor.right + box.width > window.innerWidth - 4;
-    const overY = anchor.top + box.height > window.innerHeight - 4;
-    setFlip({ x: overX, y: overY ? Math.min(0, window.innerHeight - 4 - box.height - anchor.top) : 0 });
+    const place = () => {
+      const box = panel.current?.getBoundingClientRect();
+      const anchor = panel.current?.parentElement?.getBoundingClientRect();
+      if (!box || !anchor) return;
+      const x = anchor.right + box.width <= window.innerWidth - 6 ? anchor.right : anchor.left - box.width;
+      setPosition({x:Math.max(6,Math.min(x,window.innerWidth-box.width-6)),y:Math.max(6,Math.min(anchor.top,window.innerHeight-box.height-6))});
+    };
+    place();
+    window.addEventListener('scroll',place,true);
+    return ()=>window.removeEventListener('scroll',place,true);
   }, [open]);
   return <div className="workspace-menu-sub" onPointerEnter={onOpen} onPointerLeave={onClose}>
     <button
@@ -159,7 +164,7 @@ function SubMenu({ item, open, onOpen, onClose, onDone }: { item: WorkspaceMenuI
       role="menu"
       aria-label={item.label}
       className="workspace-menu-subpanel"
-      style={{ left: flip.x ? undefined : '100%', right: flip.x ? '100%' : undefined, top: flip.y }}
+      style={{ left: position.x, top: position.y }}
     >
       <MenuEntries items={trimSeparators(item.items ?? [])} onDone={onDone} />
     </div>}

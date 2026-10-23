@@ -15,7 +15,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { Crop, Maximize2 } from 'lucide-react';
 import type { CropMask, Event, Project, Track, Transform } from '@/lib/editor/project';
-import { HANDLES, HandleId, applyMatrix, boxCorners, contentBox, dragHandle, dragScale, frameBox, handlePoint, maskOf, poseMatrix, toLocalDelta } from '@/lib/editor/pancrop';
+import { HANDLES, HandleId, applyMatrix, boxCorners, contentBox, dragHandle, dragScale, handlePoint, maskOf, poseMatrix, toLocalDelta } from '@/lib/editor/pancrop';
 
 export type PreviewOverlayProps = {
   project: Project;
@@ -23,12 +23,14 @@ export type PreviewOverlayProps = {
   track: Track | null;                 // pista seleccionada, si no hay evento
   pose: Transform;
   source: { width: number; height: number } | null;
+  onBegin?: () => void;
+  onEnd?: () => void;
   onPose: (pose: Transform) => void;
   onMask?: (mask: CropMask) => void;   // el recorte vive en el evento, no en la pose
   onStatus: (message: string) => void;
 };
 
-export function PreviewOverlay({ project, event, track, pose, source, onPose, onMask, onStatus }: PreviewOverlayProps) {
+export function PreviewOverlay({ project, event, track, pose, source, onBegin, onEnd, onPose, onMask, onStatus }: PreviewOverlayProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ handle: HandleId; startX: number; startY: number; pose: Transform; perPixel: number } | null>(null);
   const [active, setActive] = useState<HandleId | null>(null);
@@ -40,7 +42,7 @@ export function PreviewOverlay({ project, event, track, pose, source, onPose, on
   const frame = useMemo(() => ({ width: Math.max(1, project.width), height: Math.max(1, project.height) }), [project.width, project.height]);
   const mask = useMemo(() => maskOf(event ?? { transform: pose }), [event, pose]);
   const box = useMemo(() => {
-    if (event && (event.kind === 'text' || event.kind === 'color')) return frameBox(mask);
+    if (event && (event.kind === 'text' || event.kind === 'color')) return contentBox(frame, frame, mask);
     return contentBox(frame, source ?? frame, mask);
   }, [event, frame, mask, source]);
   const matrix = poseMatrix(frame, pose);
@@ -56,13 +58,14 @@ export function PreviewOverlay({ project, event, track, pose, source, onPose, on
   const canCrop = Boolean(event) && event?.kind !== 'audio' && Boolean(onMask);
 
   const start = (pointer: React.PointerEvent, handle: HandleId) => {
-    if (pointer.button !== 0) return;
+    if (pointer.button !== 0 || event?.locked || event?.kind === 'audio') return;
     const rect = hostRef.current?.getBoundingClientRect();
     if (!rect) return;
     pointer.preventDefault();
     pointer.stopPropagation();
     (pointer.currentTarget as HTMLElement).setPointerCapture(pointer.pointerId);
     drag.current = { handle, startX: pointer.clientX, startY: pointer.clientY, pose, perPixel: frame.width / Math.max(1, rect.width) };
+    onBegin?.();
     setActive(handle);
   };
   const move = (pointer: React.PointerEvent) => {
@@ -70,7 +73,7 @@ export function PreviewOverlay({ project, event, track, pose, source, onPose, on
     if (!current) return;
     const output = { x: (pointer.clientX - current.startX) * current.perPixel, y: (pointer.clientY - current.startY) * current.perPixel };
     if (current.handle === 'move') {
-      const next = dragHandle({ frame, source: source ?? frame, pose: current.pose, mask, handle: 'move', delta: toLocalDelta(output, current.pose) });
+      const next = dragHandle({ frame, source: source ?? frame, pose: current.pose, mask, handle: 'move', delta: output });
       onPose(next.pose);
       onStatus(`Encuadre de «${label}»: ${(next.pose.x * 100).toFixed(1)} % a la derecha, ${(next.pose.y * 100).toFixed(1)} % hacia abajo.`);
       return;
@@ -89,10 +92,11 @@ export function PreviewOverlay({ project, event, track, pose, source, onPose, on
     if (!drag.current) return;
     drag.current = null;
     setActive(null);
+    onEnd?.();
     try { (pointer.currentTarget as HTMLElement).releasePointerCapture(pointer.pointerId); } catch { /* ya liberado */ }
   };
 
-  if (!event && !track) return null;
+  if ((!event && !track) || event?.kind === 'audio' || event?.locked) return null;
   return (
     <div className="preview-overlay" ref={hostRef}>
       {canCrop && <span className="preview-modes" onPointerDown={pointer => pointer.stopPropagation()}>

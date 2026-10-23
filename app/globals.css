@@ -1607,7 +1607,7 @@ body {
   position: relative;
 }
 .workspace-menu-subpanel {
-  position: absolute;
+  position: fixed;
   z-index: 61;
   min-width: 190px;
   max-width: 340px;
@@ -2055,3 +2055,17 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .install-attention { animation: none; }
 }
+
+/* Long context menus remain inside the viewport; fixed submenus escape parent scrolling. */
+.workspace-menu, .workspace-menu-subpanel {
+  box-sizing: border-box;
+  max-height: calc(100dvh - 12px);
+  max-width: min(360px, calc(100vw - 12px));
+  min-width: min(220px, calc(100vw - 12px));
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #888 #303030;
+}
+.workspace-menu-item > span:first-child {min-width:0;overflow-wrap:anywhere;}
