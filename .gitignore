@@ -48,3 +48,7 @@ next-env.d.ts
 /.codex/
 /outputs/
 /work/
+
+# artefactos locales sueltos (informes de lint y salidas accidentales de la consola)
+/lint.json
+/0
