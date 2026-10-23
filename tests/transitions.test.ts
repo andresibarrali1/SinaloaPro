@@ -1,3 +1,5 @@
+import {transitionJunctions} from '../lib/editor/transition-drop';
+import {validateProject} from '../lib/editor/validation';
 // Pruebas de las transiciones: se renderizan dos clips solapados (rojo → azul) y se mira qué hay en cada
 // punto del fotograma a mitad de la transición. Así se comprueba la geometría de cada familia y las curvas de
 // los fundidos, no una descripción de la geometría.
@@ -35,8 +37,8 @@ const blue=(pixel:[number,number,number])=>pixel[2]>200&&pixel[0]<60;
 const red=(pixel:[number,number,number])=>pixel[0]>200&&pixel[2]<60;
 const mixed=(pixel:[number,number,number])=>pixel[0]>60&&pixel[0]<200&&pixel[2]>60&&pixel[2]<200;
 
-test('catálogo: treinta y seis transiciones con nombre y familia',()=>{
-  assert.equal(TRANSITION_KINDS.length,36);
+test('catálogo: cuarenta transiciones con nombre y familia',()=>{
+  assert.equal(TRANSITION_KINDS.length,40);
   for(const kind of TRANSITION_KINDS){
     assert.ok(TRANSITION_LABEL[kind],`falta el nombre de ${kind}`);
     assert.ok(TRANSITION_GROUP[kind],`falta la familia de ${kind}`);
@@ -268,4 +270,30 @@ test('todas las transiciones del catálogo entran sin dejar el fotograma a media
     const end=await render(overlap(kind),1.999);
     assert.ok(blue(end.at(4,4))&&blue(end.at(16,16))&&blue(end.at(28,28)),`${kind} no termina cubriendo el fotograma`);
   }
+});
+
+
+test('corte: + solo entre clips contiguos, omite huecos, solapamientos y bloqueos',()=>{
+ const p=overlap('dissolve-linear');const [a,b]=p.events;b.start=a.start+a.duration;
+ assert.equal(transitionJunctions(p.events,p.fps).length,1);
+ b.start+=ticks(1);assert.equal(transitionJunctions(p.events,p.fps).length,0);
+ b.start-=ticks(2);assert.equal(transitionJunctions(p.events,p.fps).length,0);
+ b.start=a.start+a.duration;b.locked=true;assert.equal(transitionJunctions(p.events,p.fps).length,0);
+});
+test('corte contiguo mezcla ambos clips sin mover sus tiempos y persiste',async()=>{
+ const p=overlap('dissolve-linear');const [a,b]=p.events;b.start=ticks(2);a.fadeOut=0;
+ const before=JSON.stringify(p);
+ const frame=await render(p,2.5);assert.ok(mixed(frame.at(16,16)),String(frame.at(16,16)));
+ assert.equal(JSON.stringify(p),before);
+ b.locked=true;const locked=await render(p,2.5);assert.ok(mixed(locked.at(16,16)));
+ for(const kind of ['punch-zoom','spin-pop','whip-right','flash-white'] as const){
+  b.transition=kind;const saved=validateProject(JSON.parse(JSON.stringify(p)));
+  assert.equal(saved.events[1].transition,kind);
+  const start=await render(p,2);assert.ok(red(start.at(16,16)),kind);
+  const end=await render(p,3.01);assert.ok(blue(end.at(16,16)),kind);
+ }
+});
+test('destello blanco ilumina realmente la mezcla a mitad del corte',async()=>{
+ const p=overlap('flash-white');p.events[1].start=ticks(2);
+ const frame=await render(p,2.5);assert.ok(frame.at(16,16)[1]>100);
 });

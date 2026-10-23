@@ -120,7 +120,14 @@ export function mix(p:Project,library:MediaLibrary,start:number,count:number,rat
 }
 export class PlaybackAudio {
  ctx:AudioContext|null=null;nodes=new Set<AudioBufferSourceNode>();origin=0;position=0;scheduled=0;analyser:AnalyserNode|null=null;meter=new LoudnessMeter(48000,2);
- async start(position:number){this.stop();this.ctx ||= new AudioContext();await this.ctx.resume();this.analyser ||= this.ctx.createAnalyser();this.analyser.fftSize=256;this.analyser.connect(this.ctx.destination);this.origin=this.ctx.currentTime+.08;this.position=position;this.scheduled=position;this.meter=new LoudnessMeter(this.ctx.sampleRate,2);}
+ async start(position:number){this.stop();this.ctx ||= new AudioContext();await this.ctx.resume();if(!this.analyser||this.analyser.context!==this.ctx)this.analyser=this.ctx.createAnalyser();this.analyser.fftSize=256;this.analyser.connect(this.ctx.destination);this.origin=this.ctx.currentTime+.08;this.position=position;this.scheduled=position;this.meter=new LoudnessMeter(this.ctx.sampleRate,2);}
+ // Relocate an already running clock synchronously: no resume promises can race.
+ seek(position:number){
+  for(const node of this.nodes){try{node.stop();}catch{}node.disconnect();}
+  this.nodes.clear();this.position=position;this.scheduled=position;
+  this.origin=(this.ctx?.currentTime??0)+.015;
+  this.meter=new LoudnessMeter(this.ctx?.sampleRate??48000,2);
+ }
  clock(){return this.position+Math.max(0,(this.ctx?.currentTime||0)-this.origin);}
  schedule(p:Project,library:MediaLibrary,end:number){if(!this.ctx||!this.analyser)return;this.scheduled=Math.max(this.scheduled,this.clock());const until=Math.min(end,this.clock()+.65);while(this.scheduled<until){const duration=Math.min(.25,end-this.scheduled);if(duration<=0)break;const count=Math.ceil(duration*p.sampleRate),data=mix(p,library,this.scheduled,count);this.meter.push(data);const b=this.ctx.createBuffer(2,count,p.sampleRate);for(let c=0;c<2;c++)b.copyToChannel(data[c] as Float32Array<ArrayBuffer>,c);const node=this.ctx.createBufferSource();node.buffer=b;node.connect(this.analyser);node.onended=()=>{node.disconnect();this.nodes.delete(node);};node.start(this.origin+this.scheduled-this.position);this.nodes.add(node);this.scheduled+=count/p.sampleRate;}}
  level(){if(!this.analyser)return 0;const values=new Float32Array(this.analyser.fftSize);this.analyser.getFloatTimeDomainData(values);return Math.max(...values.map(Math.abs));}
@@ -137,5 +144,5 @@ export class PlaybackAudio {
   return meter.reading().loudnessLufs;
  }
  stop(){for(const n of this.nodes){try{n.stop();}catch{}n.disconnect();}this.nodes.clear();this.analyser?.disconnect();}
- dispose(){this.stop();void this.ctx?.close();this.ctx=null;}
+ dispose(){this.stop();void this.ctx?.close();this.ctx=null;this.analyser=null;}
 }

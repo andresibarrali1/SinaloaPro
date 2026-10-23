@@ -18,7 +18,7 @@ export function detectInterchange(name:string,text:string):InterchangeFormat{
  if(text.startsWith('riff.')||lower.endsWith('.veg'))return 'veg';
  if(/<xmeml[\s>]/.test(text)||lower.endsWith('.fcpxml'))return 'fcpxml';
  if((/^\s*TITLE:/im.test(text)&&/^\s*\d{3,6}\s+\S+\s+\S+\s+\S+\s+\d/m.test(text))||lower.endsWith('.edl'))return 'edl';
- if(lower.endsWith('.corte15')||text.trimStart().startsWith('{'))return 'corte15';
+ if(lower.endsWith('.sinaloapro')||lower.endsWith('.corte15')||text.trimStart().startsWith('{'))return 'corte15';
  return 'unknown';
 }
 // ---------------------------------------------------------------------------------------------------
@@ -250,5 +250,5 @@ export function parseInterchange(name:string,content:string):Interchange{
  if(kind==='veg')throw new Error(VEG_EXPLANATION);
  if(kind==='fcpxml')return parseFcpXml(content,name);
  if(kind==='edl')return parseEdl(content,name);
- throw new Error('El archivo no parece un proyecto de Corte 15, ni un XML de Final Cut Pro 7/DaVinci Resolve, ni un EDL CMX 3600. Para traer un proyecto desde VEGAS Pro 15, expórtalo antes como XML o EDL.');
+ throw new Error('El archivo no parece un proyecto de Sinaloa Pro, ni un XML de Final Cut Pro 7/DaVinci Resolve, ni un EDL CMX 3600. Para traer un proyecto desde VEGAS Pro 15, expórtalo antes como XML o EDL.');
 }

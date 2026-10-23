@@ -82,7 +82,7 @@ test('animaciones: fundido, desplazamientos y máquina de escribir progresan den
  close(animationState('scroll-left',500,1000,frame).dx,160);
  close(animationState('typewriter',500,1000,frame).chars,.5);
  assert.equal(animationState('none',0,0,frame).opacity,1);      // duración cero no divide por cero
- assert.equal(ANIMATIONS.length,12);
+ assert.equal(ANIMATIONS.length,20);
  assert.equal(revealText('abc\ndef',-1),'abc\ndef');
  assert.equal(revealText('abc\ndef',.5),'abc\n');
  assert.equal(revealText('abc\ndef',0),'');

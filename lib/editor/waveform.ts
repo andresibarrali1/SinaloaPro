@@ -150,13 +150,13 @@ export const columnsFor = (width: number): number => {
 // El trazado SVG de la silueta: sube por la envolvente de picos, baja por la misma vuelta y cierra. Se dibuja en
 // un lienzo de `columns` × 100 con la línea central en 50 y cuatro unidades de margen arriba y abajo. Las
 // coordenadas van en enteros: el trazado es la mitad de largo que con decimales y el navegador lo pinta igual.
-export function waveformPath(values: number[]): string {
+export function waveformPath(values: number[], gain = 1): string {
   const count = values.length;
   if (!count) return '';
   const half = 46;
   const up: string[] = [], down: string[] = [];
   values.forEach((value, index) => {
-    const peak = Math.round(Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0)) * half);
+    const peak = Math.round(Math.max(0, Math.min(1, Number.isFinite(value) ? value * gain : 0)) * half * 1000) / 1000;
     up.push(`${index},${50 - peak}`);
     down.push(`${index},${50 + peak}`);
   });

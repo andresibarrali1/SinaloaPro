@@ -20,8 +20,8 @@ export function subtitleEvents(project: Project, cues: SubtitleCue[], trackId?: 
     .filter(cue => cue.text?.trim())
     .map((cue, index) => {
       const start = ticks(cue.start);
-      // Al menos un fotograma y, si la frase no trae duración, 0,2 s: así nunca queda un evento invisible.
-      const duration = Math.max(frameTicks(project.fps), ticks(Math.max(.2, cue.end - cue.start)));
+      // Al menos un fotograma y, si el subtítulo no trae duración, 0,2 s: así nunca queda un evento invisible.
+      const duration = Math.max(frameTicks(project.fps), ticks(cue.end > cue.start ? cue.end - cue.start : .2));
       const event = newEvent(track.id, 'text', start, duration);
       event.name = `Subtítulo ${index + 1}`;
       event.text = cue.text.trim();

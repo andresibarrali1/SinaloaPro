@@ -55,7 +55,7 @@ export function buildMarkerExport(markers: Marker[], format: MarkerExportFormat,
   switch (format) {
     case 'txt':
       // Cabecera con almohadilla para que se vea que es una lista, como la del script, pero con el nombre.
-      return [`# Capítulos de Corte 15 · ${sorted.length} marcador(es)`, ...sorted.map((marker, index) => `${tc(marker.time)}\t${nameOf(marker, index)}`)].join('\n') + '\n';
+      return [`# Capítulos de Sinaloa Pro · ${sorted.length} marcador(es)`, ...sorted.map((marker, index) => `${tc(marker.time)}\t${nameOf(marker, index)}`)].join('\n') + '\n';
     case 'youtube': {
       // YouTube exige que la primera marca sea 00:00 y al menos tres capítulos de 10 s o más.
       const lines = sorted.map((marker, index) => {

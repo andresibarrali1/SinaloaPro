@@ -7,7 +7,7 @@
 // que VEGAS convierte en .veg (escritura).
 //
 // Este módulo tiene dos mitades bien separadas:
-//   · el mapeo puro entre el documento de VEGAS y el modelo de Corte 15, que se prueba sin VEGAS en
+//   · el mapeo puro entre el documento de VEGAS y el modelo de Sinaloa Pro, que se prueba sin VEGAS en
 //     tests/veg-bridge.test.ts;
 //   · el cliente HTTP del puente, que solo se usa desde el navegador.
 import { Project,Event,Media,Keyframe,Transform,TICKS,uid,newProject,newTrack,newEvent,transform as newTransform } from './project';
@@ -15,7 +15,7 @@ import { validateProject } from './validation';
 
 // ------------------------------------------------------------------ conversión de unidades
 
-// VEGAS mide el tiempo en nanosegundos (Timecode.Nanos) y Corte 15 en «ticks» de 100 ns.
+// VEGAS mide el tiempo en nanosegundos (Timecode.Nanos) y Sinaloa Pro en «ticks» de 100 ns.
 export const NANOS_PER_SECOND=1e9;
 export const nanosToTicks=(nanos:number)=>Math.round((nanos/NANOS_PER_SECOND)*TICKS);
 export const ticksToNanos=(time:number)=>Math.round((time/TICKS)*NANOS_PER_SECOND);
@@ -63,7 +63,7 @@ function mediaKindOf(path:string):Media['kind']{
  return 'video';
 }
 
-// Velocidades que admite el modelo de Corte 15; VEGAS guarda un doble, que puede venir con ruido.
+// Velocidades que admite el modelo de Sinaloa Pro; VEGAS guarda un doble, que puede venir con ruido.
 const RATES=[{num:24000,den:1001,value:24000/1001},{num:24,den:1,value:24},{num:25,den:1,value:25},{num:30000,den:1001,value:30000/1001},{num:30,den:1,value:30},{num:50,den:1,value:50},{num:60000,den:1001,value:60000/1001},{num:60,den:1,value:60}];
 export function mapFrameRate(rate:number):{fps:{num:number;den:number};exact:boolean}{
  if(!Number.isFinite(rate)||rate<=0)return {fps:{num:30,den:1},exact:false};
@@ -73,7 +73,7 @@ export function mapFrameRate(rate:number):{fps:{num:number;den:number};exact:boo
 
 // ------------------------------------------------------------------ movimiento y opacidad
 
-// VEGAS describe el encuadre con cuatro vértices en píxeles del fotograma y un centro; Corte 15 usa
+// VEGAS describe el encuadre con cuatro vértices en píxeles del fotograma y un centro; Sinaloa Pro usa
 // fracciones del ancho y del alto. La escala es el ancho encuadrado entre el ancho del proyecto, y el
 // desplazamiento es la diferencia entre el centro y el centro del fotograma, en fracciones.
 function motionSamples(raw:VegEventDocument,width:number,height:number,length:number){
@@ -110,13 +110,13 @@ function motionToPose(raw:VegEventDocument,width:number,height:number,length:num
  return {transform:pose,keys};
 }
 
-// ------------------------------------------------------------------ .veg -> Corte 15
+// ------------------------------------------------------------------ .veg -> Sinaloa Pro
 
 export function vegDocumentToProject(document:VegDocument,fallbackName='proyecto.veg'):{project:Project;report:VegTimelineReport}{
  if(!document||typeof document!=='object')throw new Error('El puente no devolvió un montaje legible.');
  const warnings:string[]=[],ignored:string[]=[];
  const rate=mapFrameRate(number(document.frameRate,0));
- if(!rate.exact&&number(document.frameRate,0)>0)warnings.push(`VEGAS guarda ${number(document.frameRate,0).toFixed(6)} fps, que no es una de las velocidades de Corte 15: se importa como ${rate.fps.num}/${rate.fps.den}.`);
+ if(!rate.exact&&number(document.frameRate,0)>0)warnings.push(`VEGAS guarda ${number(document.frameRate,0).toFixed(6)} fps, que no es una de las velocidades de Sinaloa Pro: se importa como ${rate.fps.num}/${rate.fps.den}.`);
  const width=even(clamp(Math.round(number(document.width,1920)),16,7680));
  const height=even(clamp(Math.round(number(document.height,1080)),16,4320));
  const sampleRate=number(document.sampleRate,48000)===44100?44100:48000;
@@ -182,7 +182,7 @@ export function vegDocumentToProject(document:VegDocument,fallbackName='proyecto
   }
  });
 
- if(effectCount)warnings.push(`${effectCount} efecto(s) de VEGAS (filtros, transiciones, corrección de color) no se importan: el modelo de Corte 15 no los representa.`);
+ if(effectCount)warnings.push(`${effectCount} efecto(s) de VEGAS (filtros, transiciones, corrección de color) no se importan: el modelo de Sinaloa Pro no los representa.`);
  if(project.media.length)warnings.push('Los medios del .veg se añaden como referencias sin analizar (duración 0). Selecciona cada uno en Medios de proyecto y pulsa Revincular para poder reproducirlos y recortarlos.');
 
  project.markers=array(document.markers).map(marker=>({id:uid(),name:cell(String(marker.label??''))||'Marcador',time:Math.max(0,nanosToTicks(number(marker.nanos,0)))}));
@@ -190,14 +190,14 @@ export function vegDocumentToProject(document:VegDocument,fallbackName='proyecto
  if(regions.length){
   const start=Math.max(0,nanosToTicks(number(regions[0].startNanos,0)));
   project.region={start,end:start+Math.max(1,nanosToTicks(number(regions[0].lengthNanos,0)))};
-  if(regions.length>1)warnings.push(`El .veg tiene ${regions.length} regiones y Corte 15 solo guarda un tramo: se usó la primera.`);
+  if(regions.length>1)warnings.push(`El .veg tiene ${regions.length} regiones y Sinaloa Pro solo guarda un tramo: se usó la primera.`);
  }
 
  let validated:Project;
  try{
   validated=validateProject(project);
  }catch(error){
-  throw new Error(`El montaje leído de VEGAS no encaja en el modelo de Corte 15: ${error instanceof Error?error.message:String(error)}`);
+  throw new Error(`El montaje leído de VEGAS no encaja en el modelo de Sinaloa Pro: ${error instanceof Error?error.message:String(error)}`);
  }
  return {
   project:validated,
@@ -205,7 +205,7 @@ export function vegDocumentToProject(document:VegDocument,fallbackName='proyecto
  };
 }
 
-// ------------------------------------------------------------------ Corte 15 -> .veg (TSV)
+// ------------------------------------------------------------------ Sinaloa Pro -> .veg (TSV)
 
 export function projectToVegTsv(project:Project):{tsv:string;skipped:string[];stats:{tracks:number;events:number;markers:number;regions:number}}{
  const skipped:string[]=[];
@@ -227,7 +227,7 @@ export function projectToVegTsv(project:Project):{tsv:string;skipped:string[];st
  }
  for(const marker of project.markers)lines.push(['marker',seconds(marker.time),cell(marker.name)].join('\t'));
  let regions=0;
- if(project.region){lines.push(['region',seconds(project.region.start),seconds(project.region.end-project.region.start),'Tramo de Corte 15'].join('\t'));regions=1;}
+ if(project.region){lines.push(['region',seconds(project.region.start),seconds(project.region.end-project.region.start),'Tramo de Sinaloa Pro'].join('\t'));regions=1;}
  if(!events)skipped.push('No se exportó ningún evento: VEGAS abriría un proyecto vacío.');
  return {tsv:`${lines.join('\n')}\n`,skipped,stats:{tracks:project.tracks.length,events,markers:project.markers.length,regions}};
 }

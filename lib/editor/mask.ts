@@ -72,3 +72,11 @@ export function applyMaskPath(layer: HTMLCanvasElement, path: MaskPath, options:
   layerCtx.drawImage(mask, 0, 0);
   layerCtx.restore();
 }
+
+// Shapes reuse the saved polygon model and the shared preview/export mask renderer.
+export function shapeMask(path:MaskPath, start:MaskPoint, end:MaskPoint, kind:'rectangle'|'ellipse'):MaskPath {
+ const a=clampPoint(start),b=clampPoint(end);
+ const left=Math.min(a.x,b.x),right=Math.max(a.x,b.x),top=Math.min(a.y,b.y),bottom=Math.max(a.y,b.y);
+ const points=kind==='rectangle'?[{x:left,y:top},{x:right,y:top},{x:right,y:bottom},{x:left,y:bottom}]:Array.from({length:MAX_MASK_POINTS},(_,i)=>{const angle=i*2*Math.PI/MAX_MASK_POINTS;return {x:(left+right)/2+Math.cos(angle)*(right-left)/2,y:(top+bottom)/2+Math.sin(angle)*(bottom-top)/2};});
+ return {...path,points};
+}

@@ -1,6 +1,6 @@
 // Panoramización y recorte (Pan/Crop) y movimiento de pista: toda la geometría en un solo sitio.
 //
-// Cómo coloca Corte 15 una imagen dentro del fotograma: el medio se ajusta al fotograma conservando su
+// Cómo coloca Sinaloa Pro una imagen dentro del fotograma: el medio se ajusta al fotograma conservando su
 // proporción (como el «ajustar al fotograma» de VEGAS) y se centra; después `transform.x/y` lo desplazan en
 // fracciones del ancho y del alto, `transform.scale` lo escala alrededor del centro y `transform.rotation`
 // lo gira. Sobre eso, este módulo añade el recorte por los cuatro lados.

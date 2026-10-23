@@ -95,3 +95,9 @@ export function describeTransitionDrop(
     ? `«${label}» como entrada de «${clip}»: dura ${duration} s.`
     : `«${label}» como salida de «${clip}»: dura ${duration} s. Para el corte entre dos clips, suéltala sobre el segundo.`;
 }
+
+/** Explicit junction targets, excluding audio, overlaps and locked clips. */
+export function transitionJunctions(events:Event[],fps:{num:number;den:number},includeLocked=false){
+ const sorted=events.filter(e=>e.kind!=='audio' && e.kind!=='text').slice().sort((a,b)=>a.start-b.start);
+ return sorted.slice(1).flatMap((next,i)=>{const previous=sorted[i];return previous.trackId===next.trackId && (includeLocked || (!previous.locked && !next.locked)) && Math.abs(previous.start+previous.duration-next.start)<=junctionTolerance(fps)?[{previous,next}]:[];});
+}

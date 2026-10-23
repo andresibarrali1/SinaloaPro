@@ -28,7 +28,7 @@ export type TextAnchor = 'top-left'|'top-center'|'top-right'|'middle-left'|'midd
 // Animaciones de texto: las cinco del plugin «Títulos & Texto» de VEGAS 15 (ninguna, fundido, dos
 // desplazamientos y máquina de escribir) más las de plantilla tipo CapCut (aparición con rebote, zoom,
 // deslizamientos, rebote y sacudida continuos y karaoke palabra a palabra).
-export type TextAnimation = 'none'|'fade'|'scroll-up'|'scroll-left'|'typewriter'|'pop'|'zoom-in'|'slide-up'|'slide-down'|'bounce'|'shake'|'karaoke';
+export type TextAnimation = 'none'|'fade'|'scroll-up'|'scroll-left'|'typewriter'|'pop'|'zoom-in'|'slide-up'|'slide-down'|'bounce'|'shake'|'karaoke'|'slide-left'|'slide-right'|'spin-in'|'drop-in'|'zoom-out'|'pulse'|'float'|'swing';
 export type TextShadow = { enabled: boolean; color: string; offsetX: number; offsetY: number; blur: number };
 export type TextBackground = { color: string; opacity: number; padding: number };
 // Modos de interpolación de fotogramas clave de VEGAS 15: en sus recursos aparecen como KeyframeModeLinear,
@@ -76,9 +76,9 @@ export const newMaskPath = (): MaskPath => ({ points: [], feather: 0, invert: fa
 // `sftrans1.dll` (Fundido suave/rápido, Barrido de salida, Círculos centrados, Comprimir verticalmente,
 // Persianas en pendiente/superpuestas/torcidas, Acercar y alejar zoom, Espiral exterior) más el despegado de
 // página de `sfpagepeel.dll`.
-export type TransitionKind = 'dissolve-linear'|'dissolve-slow'|'dissolve-fast'|'dissolve-smooth'|'dissolve-quick'|'wipe-from-left'|'wipe-from-right'|'wipe-from-top'|'wipe-from-bottom'|'wipe-out-left'|'wipe-out-right'|'wipe-out-top'|'wipe-out-bottom'|'gradient-wipe'|'iris-circle'|'iris-diamond'|'blinds-vertical'|'blinds-horizontal'|'blinds-venetian'|'blinds-slanted'|'blinds-stacked'|'blinds-twisted'|'checkerboard'|'slide-from-left'|'slide-from-right'|'slide-from-top'|'slide-from-bottom'|'squeeze-from-left'|'squeeze-from-right'|'squeeze-from-top'|'squeeze-from-bottom'|'zoom-in'|'zoom-out'|'spiral'|'spiral-out'|'page-peel';
+export type TransitionKind = 'dissolve-linear'|'dissolve-slow'|'dissolve-fast'|'dissolve-smooth'|'dissolve-quick'|'wipe-from-left'|'wipe-from-right'|'wipe-from-top'|'wipe-from-bottom'|'wipe-out-left'|'wipe-out-right'|'wipe-out-top'|'wipe-out-bottom'|'gradient-wipe'|'iris-circle'|'iris-diamond'|'blinds-vertical'|'blinds-horizontal'|'blinds-venetian'|'blinds-slanted'|'blinds-stacked'|'blinds-twisted'|'checkerboard'|'slide-from-left'|'slide-from-right'|'slide-from-top'|'slide-from-bottom'|'squeeze-from-left'|'squeeze-from-right'|'squeeze-from-top'|'squeeze-from-bottom'|'zoom-in'|'zoom-out'|'spiral'|'spiral-out'|'page-peel'|'punch-zoom'|'spin-pop'|'whip-right'|'flash-white';
 export const generator = (kind: GeneratorKind = 'solid', color = '#28688d'): Generator => ({ kind, color, color2: '#101010', angle: 0, size: 24, amount: .5 });
-export type Media = { id: string; name: string; size: number; modified: number; kind: 'video'|'audio'|'image'|'subtitle'; duration: number; width: number; height: number; hasAudio: boolean; mime: string; thumbnail?: string; peaks?: number[]; channelPeaks?: number[][]; sourcePath?: string; text?: string };
+export type Media = { id: string; name: string; size: number; modified: number; kind: 'video'|'audio'|'image'|'subtitle'; duration: number; width: number; height: number; hasAudio: boolean; mime: string; thumbnail?: string; peaks?: number[]; channelPeaks?: number[][]; sourcePath?: string; text?: string; textTemplate?: Event };
 // Audio: buses (el «Mezclador» de VEGAS, que enruta pistas a un bus A–Z antes del maestro), el maestro y las
 // envolventes de volumen y panorámica que se dibujan sobre la pista.
 export type AudioPoint = { time: number; value: number };
@@ -342,5 +342,5 @@ export function threePointEdit(p:Project,media:Media,edit:ThreePointEdit):string
  return created;
 }
 export class History { past:Project[]=[];future:Project[]=[]; push(p:Project){this.past.push(clone(p));if(this.past.length>100)this.past.shift();this.future=[];} undo(p:Project){const last=this.past.pop();if(!last)return p;this.future.push(clone(p));return last;} redo(p:Project){const next=this.future.pop();if(!next)return p;this.past.push(clone(p));return next;} }
-export function parseProject(text:string):Project { const value=JSON.parse(text); if(value.format!=="corte15"||value.version!==1)throw new Error("Formato no compatible. Abre un proyecto .corte15 versión 1; .veg no es compatible.");return validateProject(value); }
+export function parseProject(text:string):Project { const value=JSON.parse(text); if(value.format!=="corte15"||value.version!==1)throw new Error("Formato no compatible. Abre un proyecto .sinaloapro o .corte15 versión 1; .veg no es compatible.");return validateProject(value); }
 export function timecode(time:number,fps:FPS){const s=Math.max(0,seconds(time));const f=Math.floor((s%1)*fps.num/fps.den+1e-5);return `${Math.floor(s/3600).toString().padStart(2,'0')}:${Math.floor(s/60%60).toString().padStart(2,'0')}:${Math.floor(s%60).toString().padStart(2,'0')}.${f.toString().padStart(2,'0')}`;}

@@ -27,6 +27,15 @@ export const ANCHOR_LABEL: Record<TextAnchor, string> = {
 };
 export const ANIMATIONS: { value: TextAnimation; label: string }[] = [
   { value: 'none', label: 'Ninguna (estático)' },
+  { value: 'slide-left', label: 'Entrada desde la izquierda' },
+  { value: 'slide-right', label: 'Entrada desde la derecha' },
+  { value: 'spin-in', label: 'Giro de entrada' },
+  { value: 'drop-in', label: 'Caída elástica' },
+  { value: 'zoom-out', label: 'Alejamiento de entrada' },
+  { value: 'pulse', label: 'Pulso continuo' },
+  { value: 'float', label: 'Flotación suave' },
+  { value: 'swing', label: 'Balanceo continuo' },
+
   { value: 'fade', label: 'Fundido de entrada' },
   { value: 'pop', label: 'Aparición con rebote (pop)' },
   { value: 'zoom-in', label: 'Zoom de entrada' },
@@ -121,6 +130,14 @@ export function animationState(animation: TextAnimation | undefined, local: numb
   const seconds = duration / 705600000;
   const cycle = seconds > 0 ? local / 705600000 / seconds : progress;   // vueltas completas dentro del evento
   switch (animation) {
+    case 'slide-left': return {...STILL, opacity: Math.min(1,entry*3), dx: -Math.pow(1-entry,3)*frame.width*.3};
+    case 'slide-right': return {...STILL, opacity: Math.min(1,entry*3), dx: Math.pow(1-entry,3)*frame.width*.3};
+    case 'spin-in': return {...STILL, opacity: Math.min(1,entry*3), scale: .25+.75*easeOutBack(entry), rotation: -180*Math.pow(1-entry,3)};
+    case 'drop-in': return {...STILL, opacity: Math.min(1,entry*4), dy: -(1-easeOutBack(entry))*frame.height*.3};
+    case 'zoom-out': return {...STILL, opacity: entry, scale: 1+1.4*Math.pow(1-entry,3)};
+    case 'pulse': return {...STILL, scale: 1+.08*(1-Math.cos(progress*Math.PI*6))};
+    case 'float': return {...STILL, dy: -Math.sin(progress*Math.PI*4)*frame.height*.025};
+    case 'swing': return {...STILL, rotation: Math.sin(progress*Math.PI*6)*7};
     case 'fade': return { ...STILL, opacity: Math.min(1, progress * 4) };
     case 'pop': return { ...STILL, opacity: Math.min(1, entry * 3), scale: Math.max(.05, easeOutBack(entry)) };
     case 'zoom-in': return { ...STILL, opacity: Math.min(1, entry * 3), scale: .2 + .8 * (1 - Math.pow(1 - entry, 3)) };

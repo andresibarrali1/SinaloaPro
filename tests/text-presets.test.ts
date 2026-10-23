@@ -25,7 +25,7 @@ test('cada plantilla de texto es coherente: identificador único, animación con
   assert.ok(size>=8&&size<=500,`${preset.id} usa un tamaño imposible`);
  }
  // Hay plantillas de las tres familias y al menos una con contorno, una con sombra, una con caja y una karaoke.
- assert.deepEqual(TEXT_PRESET_GROUPS,['Redes (vertical)','Subtítulos','Títulos']);
+ assert.deepEqual(TEXT_PRESET_GROUPS,['Nuevas animaciones','Subtítulos dinámicos','Títulos dinámicos','Redes (vertical)','Subtítulos','Títulos']);
  assert.ok(TEXT_PRESETS.some(preset=>(preset.patch.outlineWidth??0)>0));
  assert.ok(TEXT_PRESETS.some(preset=>preset.patch.shadow?.enabled));
  assert.ok(TEXT_PRESETS.some(preset=>(preset.patch.background?.opacity??0)>0));

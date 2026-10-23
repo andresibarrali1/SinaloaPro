@@ -132,3 +132,72 @@ export function resizeCropFrame(
     y: c.y + (lx * Math.sin(-r) + ly * Math.cos(-r)) / h,
   };
 }
+
+// Keep the saved camera in project coordinates for compatibility; edit it in source pixels.
+export function cropFrameSpace(
+  c: CropFrame,
+  source: { width: number; height: number },
+  output: { width: number; height: number },
+  toSource = false,
+  stretch = false,
+): CropFrame {
+  const fit = Math.min(
+    output.width / source.width,
+    output.height / source.height,
+  );
+  const fx = stretch ? 1 : (source.width * fit) / output.width,
+    fy = stretch ? 1 : (source.height * fit) / output.height;
+  const map = (v: number, f: number) =>
+    toSource ? (v - 0.5) / f + 0.5 : (v - 0.5) * f + 0.5;
+  return {
+    ...c,
+    x: map(c.x, fx),
+    y: map(c.y, fy),
+    pivotX: map(c.pivotX, fx),
+    pivotY: map(c.pivotY, fy),
+    width: toSource ? c.width / fx : c.width * fx,
+    height: toSource ? c.height / fy : c.height * fy,
+  };
+}
+export function cropMargins(c: CropFrame) {
+  return {
+    left: c.x - c.width / 2,
+    right: 1 - c.x - c.width / 2,
+    top: c.y - c.height / 2,
+    bottom: 1 - c.y - c.height / 2,
+  };
+}
+export function setCropMargin(
+  c: CropFrame,
+  edge: "left" | "right" | "top" | "bottom",
+  value: number,
+): CropFrame {
+  const m = cropMargins(c);
+  const opposite =
+    edge === "left"
+      ? "right"
+      : edge === "right"
+        ? "left"
+        : edge === "top"
+          ? "bottom"
+          : "top";
+  m[edge] = Math.max(-99, Math.min(1 - m[opposite] - 0.001, value));
+  return {
+    ...c,
+    x: (1 + m.left - m.right) / 2,
+    y: (1 + m.top - m.bottom) / 2,
+    width: 1 - m.left - m.right,
+    height: 1 - m.top - m.bottom,
+  };
+}
+export function matchCropAspect(
+  c: CropFrame,
+  source: { width: number; height: number },
+  ratio: number,
+): CropFrame {
+  const width = c.width * source.width,
+    height = c.height * source.height;
+  return width / height > ratio
+    ? { ...c, width: (height * ratio) / source.width }
+    : { ...c, height: width / ratio / source.height };
+}

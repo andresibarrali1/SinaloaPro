@@ -6,7 +6,7 @@ import {createCanvas} from '@napi-rs/canvas';
 import {compose} from '../lib/editor/compositor';
 import {MediaLibrary} from '../lib/editor/media';
 import {MaskPath,newEvent,newMaskPath,newProject,ticks} from '../lib/editor/project';
-import {MAX_MASK_POINTS,addMaskPoint,applyMaskPath,clearMask,maskActive,normalizeMaskPath,maskPointAt,moveMaskPoint,removeMaskPoint} from '../lib/editor/mask';
+import {shapeMask,MAX_MASK_POINTS,addMaskPoint,applyMaskPath,clearMask,maskActive,normalizeMaskPath,maskPointAt,moveMaskPoint,removeMaskPoint} from '../lib/editor/mask';
 
 const factory=(width:number,height:number)=>createCanvas(width,height) as unknown as HTMLCanvasElement;
 const SIZE=64;
@@ -116,4 +116,26 @@ test('la máscara se combina con los efectos: primero el recorte, después el co
   const masked=layerCtx.getImageData(8,8,1,1).data;
   assert.equal(masked[3],255,'dentro se conserva el alfa');
   assert.equal(layerCtx.getImageData(SIZE-8,SIZE-8,1,1).data[3],0,'fuera el alfa se va a cero');
+});
+
+
+test('formas: arrastre inverso, límites y conservación de propiedades',()=>{
+ const path={...newMaskPath(),feather:12,invert:true};
+ const rect=shapeMask(path,{x:.8,y:.9},{x:-1,y:.1},'rectangle');
+ assert.deepEqual(rect.points,[{x:0,y:.1},{x:.8,y:.1},{x:.8,y:.9},{x:0,y:.9}]);
+ assert.equal(rect.feather,12);assert.equal(rect.invert,true);
+ assert.equal(path.points.length,0);
+ const ellipse=shapeMask(path,{x:.2,y:.2},{x:.8,y:.8},'ellipse');
+ assert.equal(ellipse.points.length,64);
+ for(const point of ellipse.points)assert.ok(Math.abs(((point.x-.5)/.3)**2+((point.y-.5)/.3)**2-1)<1e-10);
+});
+test('rectángulo y elipse recortan píxeles en el compositor compartido',async()=>{
+ for(const shape of ['rectangle','ellipse'] as const){
+   const path=shapeMask(newMaskPath(),{x:.2,y:.2},{x:.8,y:.8},shape);
+   const at=await renderWithMask(path);
+   assert.ok(red(at(32,32)));assert.ok(black(at(2,2)));
+   if(shape==='ellipse')assert.ok(black(at(14,14)));
+   const inverted=await renderWithMask({...path,invert:true});
+   assert.ok(black(inverted(32,32)));assert.ok(red(inverted(2,2)));
+ }
 });

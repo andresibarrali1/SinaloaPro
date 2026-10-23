@@ -22,7 +22,7 @@ export const TRANSITION_KINDS: TransitionKind[] = [
   'slide-from-left', 'slide-from-right', 'slide-from-top', 'slide-from-bottom',
   'squeeze-from-left', 'squeeze-from-right', 'squeeze-from-top', 'squeeze-from-bottom',
   'zoom-in', 'zoom-out',
-  'spiral', 'spiral-out', 'page-peel',
+  'spiral', 'spiral-out', 'page-peel', 'punch-zoom', 'spin-pop', 'whip-right', 'flash-white',
 ];
 export const TRANSITION_LABEL: Record<TransitionKind, string> = {
   'dissolve-linear': 'Fundido lineal', 'dissolve-slow': 'Fundido lento', 'dissolve-fast': 'Fundido brusco',
@@ -42,6 +42,7 @@ export const TRANSITION_LABEL: Record<TransitionKind, string> = {
   'squeeze-from-top': 'Comprimir desde arriba', 'squeeze-from-bottom': 'Comprimir desde abajo',
   'zoom-in': 'Acercar zoom', 'zoom-out': 'Alejar zoom',
   'spiral': 'Remolino', 'spiral-out': 'Espiral exterior',
+  'punch-zoom':'Zoom con rebote', 'spin-pop':'Giro rápido', 'whip-right':'Barrido rápido lateral', 'flash-white':'Destello blanco',
   'page-peel': 'Despegado de página',
 };
 export const TRANSITION_GROUP: Record<TransitionKind, string> = {
@@ -56,6 +57,7 @@ export const TRANSITION_GROUP: Record<TransitionKind, string> = {
   'squeeze-from-left': 'Compresiones', 'squeeze-from-right': 'Compresiones', 'squeeze-from-top': 'Compresiones', 'squeeze-from-bottom': 'Compresiones',
   'zoom-in': 'Zoom', 'zoom-out': 'Zoom',
   'spiral': 'Barridos', 'spiral-out': 'Barridos',
+  'punch-zoom':'Dinámicas', 'spin-pop':'Dinámicas', 'whip-right':'Dinámicas', 'flash-white':'Dinámicas',
   'page-peel': 'Página',
 };
 // Las familias en el orden en que se enseñan en la pestaña de transiciones.
@@ -71,7 +73,7 @@ export const TRANSITION_NOTE: Partial<Record<TransitionKind, string>> = {
   'blinds-stacked': 'Dos capas de persianas (horizontales y luego verticales) en lugar de las quince superpuestas del original.',
   'blinds-twisted': 'Treinta y dos lamas finas inclinadas: la versión tupida y torcida del catálogo, en 2D.',
   'iris-circle': 'El círculo se abre desde el centro; el original permite elegir el centro y la dirección.',
-  'iris-diamond': 'Rombo que se abre desde el centro: añadido de Corte 15, no aparece con ese nombre en el catálogo de VEGAS 15.',
+  'iris-diamond': 'Rombo que se abre desde el centro: añadido de Sinaloa Pro, no aparece con ese nombre en el catálogo de VEGAS 15.',
   'zoom-in': 'Acerca el clip entrante desde el centro; el original añade el desenfoque de movimiento del zoom.',
   'zoom-out': 'Aleja el clip entrante hasta su tamaño normal; el original añade el desenfoque de movimiento.',
   'page-peel': 'Despegado de página en 2D: la página se levanta en diagonal desde la esquina superior derecha, sin el doblez ni la sombra con volumen del complemento «VEGAS PagePeel».',
@@ -84,6 +86,7 @@ export const TRANSITION_NOTE: Partial<Record<TransitionKind, string>> = {
 // final; «Fundido lento» y «Fundido brusco» son las dos curvas de VEGAS que ya estaban.
 export function transitionAlpha(kind: TransitionKind, progress: number): number {
   const p = Math.max(0, Math.min(1, progress));
+  if (['punch-zoom','spin-pop','whip-right','flash-white'].includes(kind)) return p*p*(3-2*p);
   if (kind === 'dissolve-slow') return Math.pow(p, 1.8);
   if (kind === 'dissolve-fast') return Math.pow(p, .45);
   if (kind === 'dissolve-quick') return Math.pow(p, .28);
@@ -162,6 +165,11 @@ function eraseBlinds(ctx: CanvasRenderingContext2D, erase: Erase, width: number,
   ctx.restore();
 }
 export function maskTransition(layer: HTMLCanvasElement, kind: TransitionKind, progress: number, width: number, height: number): void {
+  if(kind==='flash-white'){
+    const ctx=layer.getContext('2d');if(!ctx)return;
+    ctx.save();ctx.globalAlpha=Math.sin(Math.max(0,Math.min(1,progress))*Math.PI);ctx.fillStyle='#fff';ctx.fillRect(0,0,width,height);ctx.restore();return;
+  }
+
   if (!isGeometric(kind)) return;
   const ctx = layer.getContext('2d');
   if (!ctx) return;
@@ -275,6 +283,14 @@ export function maskTransition(layer: HTMLCanvasElement, kind: TransitionKind, p
 // Deslizar, comprimir y el zoom no borran nada: mueven, estrujan o escalan la capa del evento al dibujarla.
 export function applyTransitionTransform(ctx: CanvasRenderingContext2D, kind: TransitionKind, progress: number, width: number, height: number): void {
   const p = Math.max(0, Math.min(1, progress));
+  if(kind==='punch-zoom'||kind==='spin-pop'){
+    const scale=kind==='punch-zoom'?1+Math.sin(p*Math.PI*2)*(1-p)*.45:1+.8*(1-p);
+    ctx.translate(width/2,height/2);
+    if(kind==='spin-pop')ctx.rotate(-Math.PI*.5*(1-p)*(1-p));
+    ctx.scale(scale,scale);ctx.translate(-width/2,-height/2);return;
+  }
+  if(kind==='whip-right'){ctx.translate(width*Math.pow(1-p,3),0);return;}
+
   if (kind === 'slide-from-left') { ctx.translate(-(1 - p) * width, 0); return; }
   if (kind === 'slide-from-right') { ctx.translate((1 - p) * width, 0); return; }
   if (kind === 'slide-from-top') { ctx.translate(0, -(1 - p) * height); return; }

@@ -1,3 +1,4 @@
+import { transitionJunctions } from './transition-drop';
 import { applyCropFrame } from './crop-frame';
 import { CompositeMode, CropMask, Event, Project, Transform, activeTracks, envelope, pose, seconds, sourceTime } from './project';
 import { fillFrame } from './letterbox';
@@ -235,18 +236,28 @@ export async function compose(canvas:HTMLCanvasElement,p:Project,library:MediaLi
  let sharedLayer:HTMLCanvasElement|null=null;
  const byTrack=new Map<string,typeof p.events>();
  for(const e of p.events)if(time>=e.start&&time<e.start+e.duration){const list=byTrack.get(e.trackId);list?list.push(e):byTrack.set(e.trackId,[e]);}
+ const heldTimes=new Map<string,number>();
+ for(const [trackId,active] of byTrack){
+  for(const incoming of [...active]){
+   if(!incoming.transition || incoming.fadeIn<=0 || time>=incoming.start+incoming.fadeIn)continue;
+   const pair=transitionJunctions(p.events.filter(e=>e.trackId===trackId),p.fps,true).find(pair=>pair.next.id===incoming.id);
+   if(!pair || active.some(e=>e.id===pair.previous.id) || pair.previous.muted)continue;
+   const outgoing={...pair.previous,fadeIn:0,fadeOut:0,transition:undefined,transitionOut:undefined};
+   heldTimes.set(outgoing.id,Math.max(outgoing.start,outgoing.start+outgoing.duration-1));active.push(outgoing);
+  }
+ }
  for(const track of activeTracks(p,'video').reverse()){
   const events=byTrack.get(track.id);if(!events)continue;
   if(events.length>1)events.sort((a,b)=>a.start-b.start);
   ctx.globalCompositeOperation=compositeOperation(track.composite); // modo de fusión de la pista
-  for(const e of events){if(options.cancelled?.())return;const local=time-e.start; // A crossfade keeps the outgoing image fully opaque beneath the incoming layer.
+  for(const e of events){if(options.cancelled?.())return;const eventTime=heldTimes.get(e.id)??time;const local=eventTime-e.start; // A crossfade keeps the outgoing image fully opaque beneath the incoming layer.
    // «Extender para rellenar f.» del grupo «Origen» de la ventana de Panoramización y recorte: con la casilla
    // puesta, el material se escala hasta cubrir el fotograma del proyecto (sin deformar) y el recorte sigue
    // mandando. Es el mismo encaje que la acción «Encajar el contenido al fotograma».
    const mediaRecord=p.media.find(item=>item.id===e.mediaId);
    const at=e.maintainAspect!==false&&e.stretchFill&&mediaRecord&&mediaRecord.width>0&&mediaRecord.height>0
-    ? fillFrame({project:{width:p.width,height:p.height},media:{width:mediaRecord.width,height:mediaRecord.height},pose:pose(e,time)})
-    : pose(e,time);
+    ? fillFrame({project:{width:p.width,height:p.height},media:{width:mediaRecord.width,height:mediaRecord.height},pose:pose(e,eventTime)})
+    : pose(e,eventTime);
    // La transición de un evento puede ser su **entrada** (ocupa su `fadeIn`) o su **salida** (ocupa su
    // `fadeOut`). La de salida se dibuja con el progreso espejado, así el mismo catálogo de transiciones sirve
    // para los dos bordes del clip y el corte se ve igual entrando por un lado que por el otro.
@@ -254,7 +265,7 @@ export async function compose(canvas:HTMLCanvasElement,p:Project,library:MediaLi
    const exit=e.transitionOut&&e.fadeOut>0?transitionProgress(e.duration-local,e.fadeOut):null;
    const transitionKind=entrance!==null?e.transition:exit!==null?e.transitionOut:undefined;
    const transition=entrance!==null?entrance:exit!==null?1-exit:null;
-   let opacity=entrance!==null?Math.max(0,Math.min(1,e.fadeOut?(e.duration-local)/e.fadeOut:1)):exit!==null?1:envelope(e,time);
+   let opacity=entrance!==null?Math.max(0,Math.min(1,e.fadeOut?(e.duration-local)/e.fadeOut:1)):exit!==null?1:envelope(e,eventTime);
    if(e.fadeOut&&events.some(other=>other.start>e.start&&other.fadeIn>0&&time<other.start+other.fadeIn))opacity=e.fadeIn?Math.min(1,(time-e.start)/e.fadeIn):1;
    const track3D=is3D(track.transform);
    const event3D=is3D(at);
@@ -278,7 +289,7 @@ export async function compose(canvas:HTMLCanvasElement,p:Project,library:MediaLi
     // fotograma compuesto, y el giro 3D deforma la capa entera con su transparencia.
     layerCtx.clearRect(0,0,w,h);layerCtx.filter=grade;
     if(warped3D){applyPose(layerCtx,track.transform,w,h);if(at.cropFrame)applyCropFrame(layerCtx,at.cropFrame,w,h);applyPose(layerCtx,at,w,h);}
-    await drawContent(layerCtx,e,p,library,w,h,time,mask,at);
+    await drawContent(layerCtx,e,p,library,w,h,eventTime,mask,at);
     if(options.cancelled?.()){ctx.restore();return;}
     layerCtx.filter='none';
     // «Reducir parpadeo de entrelazado»: mezcla vertical de tres tomas (la capa copiada un píxel arriba y un
@@ -301,7 +312,7 @@ export async function compose(canvas:HTMLCanvasElement,p:Project,library:MediaLi
     }else ctx.drawImage(layer,0,0);
    }else{
     ctx.filter=grade;
-    await drawContent(ctx,e,p,library,w,h,time,mask,at);
+    await drawContent(ctx,e,p,library,w,h,eventTime,mask,at);
     if(options.cancelled?.()){ctx.restore();return;}
     ctx.filter='none';
    }

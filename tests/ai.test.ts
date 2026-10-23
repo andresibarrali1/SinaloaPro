@@ -4,7 +4,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {buildSrt,parseSrt,formatSrtTime,encodeWav16,renderSpeechAudio,transcribe,keywords,resourceTerms,planResourcePlacements,GROQ_ENDPOINT,GROQ_MODEL} from '../lib/editor/speech';
+import {buildSrt,parseSrt,formatSrtTime,encodeWav16,renderSpeechAudio,transcribe,keywords,resourceTerms,planResourcePlacements,wordCuesOf,planWordResources,groupWordCues,subtitleWordsLabel,searchableWord,GROQ_ENDPOINT,GROQ_MODEL} from '../lib/editor/speech';
 import {parsePexelsResponse,pickFile,pexelsFileName,searchVideos,attribution} from '../lib/editor/pexels';
 import {analyzeVeg,isVeg,VEG_LIMITS} from '../lib/editor/veg';
 import {newProject,newEvent,ticks,seconds} from '../lib/editor/project';
@@ -100,7 +100,7 @@ test('palabras clave: se descartan las vacías y se ordenan por frecuencia',()=>
  assert.ok(!words.includes('sobre'));
  assert.ok(!words.includes('con'));
 });
-test('recursos por transcripción: se elige la palabra de cada frase y se coloca cuando se dice',()=>{
+test('recursos por frase: se elige la palabra principal de cada frase y se coloca cuando se dice',()=>{
  const cues=[{start:0,end:2,text:'Hola, esto es una prueba'},{start:5.3,end:6.7,text:'Aquí hablamos del dinero'},{start:8,end:9.5,text:'y del dinero otra vez'},{start:10,end:11,text:'de la y que'}];
  const entries=resourceTerms(cues,3);
  assert.deepEqual(entries[0].terms,['hola','prueba'],'las palabras vacías no cuentan');
@@ -115,6 +115,81 @@ test('recursos por transcripción: se elige la palabra de cada frase y se coloca
  assert.equal(placed[2].term,'dinero','la palabra repetida reutiliza el clip');
  assert.ok(Math.abs(placed[2].start-8)<1e-9,`inicio repetido ${placed[2].start}`);
  assert.equal(planResourcePlacements(cues,{},1/30).length,0,'sin clips disponibles no se coloca nada');
+});
+test('recursos por palabra: la transcripción se parte en palabras y cada una lleva su término',()=>{
+ const cues=[{start:0,end:2,text:'Hola, esto es una prueba'},{start:5.3,end:6.7,text:'Aquí hablamos del dinero'}];
+ const words=wordCuesOf(cues);
+ assert.equal(words.length,9,'4 palabras + 5 palabras');
+ assert.deepEqual(words.map(word=>word.text),['Hola,','esto','es','una','prueba','Aquí','hablamos','del','dinero']);
+ assert.equal(words[0].phrase,'Hola, esto es una prueba','cada palabra recuerda su frase');
+ assert.ok(Math.abs(words[0].start-0)<1e-9&&Math.abs(words[0].end-.4)<1e-9,`la primera palabra ocupa su tramo: ${words[0].start}..${words[0].end}`);
+ assert.ok(words[3].start>0&&words[3].end<=2,'dentro de la frase');
+ assert.ok(words[8].start>=5.3&&words[8].end<=6.7+1e-9,'«dinero» cae dentro de su frase');
+ assert.ok(words.every((word,index)=>index===0||word.start>=words[index-1].start),'van en orden');
+ // Un .srt que ya viene palabra a palabra (lo que genera el editor) conserva sus tiempos exactos y agrupa las
+ // palabras en frases por el silencio y la puntuación, para que cada una sepa a qué frase pertenece.
+ const perWord=wordCuesOf([
+  {start:1.5,end:1.9,text:'dinero'},{start:2,end:2.4,text:'océano'},
+  {start:9,end:9.4,text:'playa'},{start:9.5,end:9.9,text:'sol'},
+ ]);
+ assert.deepEqual(perWord.map(word=>[word.text,word.start,word.end]),[['dinero',1.5,1.9],['océano',2,2.4],['playa',9,9.4],['sol',9.5,9.9]]);
+ assert.equal(perWord[0].phrase,'dinero océano','el silencio de 6,6 s separa dos frases');
+ assert.equal(perWord[2].phrase,'playa sol');
+ // La puntuación final también cierra la frase aunque no haya silencio.
+ const sentences=wordCuesOf([{start:0,end:.4,text:'hola.'},{start:.4,end:.8,text:'adios'}]);
+ assert.equal(sentences[0].phrase,'hola.');
+ assert.equal(sentences[1].phrase,'adios');
+ assert.equal(searchableWord('dinero'),'dinero');
+ assert.equal(searchableWord('Hola,'),'hola','se limpian los signos');
+ assert.equal(searchableWord('de'),null,'las muletillas no se buscan');
+ assert.equal(searchableWord('2024'),null,'los números tampoco');
+});
+test('recursos por palabra: un clip por palabra, pegado a lo que se dice',()=>{
+ const words=wordCuesOf([{start:0,end:1,text:'océano profundo'},{start:3,end:4,text:'otra vez océano'}]);
+ const plan=planWordResources(words,{océano:12,profundo:8},1/30);
+ // Una entrada por palabra, en orden y con el instante en que se dice cada una.
+ assert.equal(plan.length,5,'una entrada por palabra');
+ assert.deepEqual(plan.map(item=>item.word),['océano','profundo','otra','vez','océano']);
+ assert.deepEqual(plan.map(item=>item.start),[0,.5,3,3+1/3,3+2/3]);
+ // La primera palabra dura hasta la siguiente (0,5 s), no lo que dura la frase entera; «profundo» enlaza con el
+ // principio de la frase siguiente, así que la pista no deja huecos.
+ assert.equal(plan[0].duration,.5);
+ assert.equal(plan[1].duration,2.5);
+ assert.ok(Math.abs(plan[3].start-3.3333333)<1e-4);
+ // Cada palabra con clip propio lo usa; «otra» (muletilla) y «vez» (sin clip) se apoyan en el principal de su
+ // frase, que es lo que mantiene el recurso pegado a lo que se cuenta.
+ assert.deepEqual(plan.filter(item=>!item.shared).map(item=>item.term),['océano','profundo','océano']);
+ assert.deepEqual(plan.filter(item=>item.shared).map(item=>[item.word,item.term]),[['otra','océano'],['vez','océano']]);
+ assert.ok(plan.every(item=>item.duration>=1/30),'nunca por debajo de un fotograma');
+ assert.ok(plan.every(item=>item.duration<=12),'nunca más de lo que dura el clip');
+ // Sin clips no se coloca nada, y un clip corto recorta la duración.
+ assert.equal(planWordResources(words,{},1/30).length,0);
+ const short=planWordResources(wordCuesOf([{start:0,end:1,text:'océano'},{start:2,end:3,text:'mar'}]),{océano:.6,mar:9},1/30);
+ assert.equal(short[0].duration,.6,'manda el clip si es más corto');
+ assert.equal(short[1].duration,1,'la última palabra dura lo que se dice');
+});
+test('subtítulos: las palabras se agrupan en líneas del tamaño pedido',()=>{
+ const words=[{start:.2,end:.44,text:'Hola,'},{start:.44,end:.68,text:'esto'},{start:.68,end:.92,text:'es'},{start:.92,end:1.16,text:'una'},{start:1.16,end:1.4,text:'prueba'}];
+ // Una palabra por línea: manda cada palabra con su tiempo.
+ const one=groupWordCues(words,1);
+ assert.deepEqual(one.map(cue=>cue.text),['Hola,','esto','es','una','prueba']);
+ assert.deepEqual(one[0],{start:.2,end:.44,text:'Hola,'});
+ // Dos por línea: la línea va de la primera palabra a la última, y lo que sobra queda en una línea más corta.
+ const two=groupWordCues(words,2);
+ assert.deepEqual(two.map(cue=>cue.text),['Hola, esto','es una','prueba']);
+ assert.equal(two[0].start,.2);
+ assert.equal(two[0].end,.68);
+ assert.equal(two[2].start,1.16);
+ assert.equal(two[2].end,1.4);
+ // Con 0 se devuelve una línea por frase, y una frase de entrada se parte en palabras antes de agrupar.
+ assert.deepEqual(groupWordCues([{start:0,end:2,text:'Hola, esto es una prueba'}],0).map(cue=>cue.text),['Hola, esto es una prueba']);
+ const fromPhrase=groupWordCues([{start:0,end:2,text:'una dos tres cuatro cinco'}],3);
+ assert.deepEqual(fromPhrase.map(cue=>cue.text),['una dos tres','cuatro cinco']);
+ assert.ok(Math.abs(fromPhrase[0].end-1.2)<1e-9,'la línea acaba donde acaba su última palabra');
+ // Y el texto que se enseña en el diálogo y en la barra de estado.
+ assert.equal(subtitleWordsLabel(1),'1 palabra por subtítulo');
+ assert.equal(subtitleWordsLabel(4),'4 palabras por subtítulo');
+ assert.equal(subtitleWordsLabel(0),'una línea por frase');
 });
 const pexelsPayload={videos:[
  {id:1,url:'https://www.pexels.com/video/ciudad-1/',duration:12,width:3840,height:2160,image:'https://x/1.jpg',user:{name:'Ana'},video_files:[

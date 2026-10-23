@@ -27,6 +27,21 @@ const PRESET_DEFAULTS: Partial<Event> = {
 };
 
 const RAW_PRESETS: TextPreset[] = [
+ {id:'motion-slide-left',name:'Entrada desde la izquierda',group:'Nuevas animaciones',note:'Entrada desde la izquierda para títulos y subtítulos; conserva el texto y sus tiempos.',patch:{font:'Arial',fontSize:88,bold:true,color:'#ffffff',outlineWidth:5,animation:'slide-left'}},
+ {id:'motion-slide-right',name:'Entrada desde la derecha',group:'Nuevas animaciones',note:'Entrada desde la derecha para títulos y subtítulos; conserva el texto y sus tiempos.',patch:{font:'Arial',fontSize:88,bold:true,color:'#fff38c',outlineWidth:5,animation:'slide-right'}},
+ {id:'motion-spin-in',name:'Giro de entrada',group:'Nuevas animaciones',note:'Giro de entrada para títulos y subtítulos; conserva el texto y sus tiempos.',patch:{font:'Arial',fontSize:88,bold:true,color:'#ffb0ed',outlineWidth:5,animation:'spin-in'}},
+ {id:'motion-drop-in',name:'Caída elástica',group:'Nuevas animaciones',note:'Caída elástica para títulos y subtítulos; conserva el texto y sus tiempos.',patch:{font:'Arial',fontSize:88,bold:true,color:'#baff00',outlineWidth:5,animation:'drop-in'}},
+ {id:'motion-zoom-out',name:'Alejamiento de entrada',group:'Nuevas animaciones',note:'Alejamiento de entrada para títulos y subtítulos; conserva el texto y sus tiempos.',patch:{font:'Arial',fontSize:88,bold:true,color:'#ffffff',outlineWidth:5,animation:'zoom-out'}},
+ {id:'motion-pulse',name:'Pulso continuo',group:'Nuevas animaciones',note:'Pulso continuo para títulos y subtítulos; conserva el texto y sus tiempos.',patch:{font:'Arial',fontSize:88,bold:true,color:'#ff6688',outlineWidth:5,animation:'pulse'}},
+ {id:'motion-float',name:'Flotación suave',group:'Nuevas animaciones',note:'Flotación suave para títulos y subtítulos; conserva el texto y sus tiempos.',patch:{font:'Arial',fontSize:88,bold:true,color:'#a6eeff',outlineWidth:5,animation:'float'}},
+ {id:'motion-swing',name:'Balanceo continuo',group:'Nuevas animaciones',note:'Balanceo continuo para títulos y subtítulos; conserva el texto y sus tiempos.',patch:{font:'Arial',fontSize:88,bold:true,color:'#ffda57',outlineWidth:5,animation:'swing'}},
+ {id:'social-lima',name:'Palabra lima',group:'Subtítulos dinámicos',note:'Palabra verde lima con borde negro y entrada elástica.',patch:{font:'Arial',fontSize:86,bold:true,color:'#baff00',outlineWidth:9,animation:'pop',anchor:'bottom-center'}},
+ {id:'social-pill',name:'Etiqueta violeta',group:'Subtítulos dinámicos',note:'Texto blanco sobre una caja violeta con entrada ascendente.',patch:{font:'Arial',fontSize:70,bold:true,color:'#ffffff',background:{color:'#672ee8',opacity:.95,padding:20},animation:'slide-up',anchor:'bottom-center'}},
+ {id:'social-pink',name:'Pop rosa',group:'Subtítulos dinámicos',note:'Letra rosa con contorno blanco y rebote de entrada.',patch:{font:'Arial',fontSize:88,bold:true,color:'#ff389b',outlineWidth:6,outlineColor:'#ffffff',shadow:{enabled:true,color:'#451a40',offsetX:4,offsetY:5,blur:3},animation:'pop',anchor:'bottom-center'}},
+ {id:'social-clean',name:'Minimal deslizante',group:'Subtítulos dinámicos',note:'Blanco sobre banda oscura translúcida, entrada desde arriba.',patch:{font:'Arial',fontSize:66,color:'#ffffff',background:{color:'#101010',opacity:.72,padding:16},animation:'slide-down',anchor:'bottom-center'}},
+ {id:'social-comic',name:'Cómic amarillo',group:'Títulos dinámicos',note:'Letra gruesa amarilla, sombra marcada y sacudida.',patch:{font:'Arial',fontSize:104,bold:true,color:'#ffe600',outlineWidth:7,outlineColor:'#141414',shadow:{enabled:true,color:'#000000',offsetX:7,offsetY:7,blur:0},animation:'shake'}},
+ {id:'social-cyan',name:'Cian eléctrico',group:'Títulos dinámicos',note:'Texto cian con brillo y acercamiento animado.',patch:{font:'Arial',fontSize:96,bold:true,color:'#8cffff',outlineWidth:3,outlineColor:'#00badb',shadow:{enabled:true,color:'#00c8ff',offsetX:0,offsetY:0,blur:32},animation:'zoom-in'}},
+
   {
     id: 'tiktok-clasico', name: 'TikTok clásico', group: 'Redes (vertical)',
     note: 'Blanco en negrita con contorno negro y sombra, aparece con rebote. El subtítulo que más se ve en TikTok.',

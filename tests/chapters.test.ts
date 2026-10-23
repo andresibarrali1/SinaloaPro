@@ -23,7 +23,7 @@ test('los marcadores se ordenan y no se repite el mismo instante',()=>{
 test('la lista de capítulos lleva timecode y nombre, como el script de VEGAS pero sin perder el nombre',()=>{
  const text=clean(buildMarkerExport(markers,'txt',fps));
  const lines=text.trim().split('\n');
- assert.equal(lines[0],'# Capítulos de Corte 15 · 3 marcador(es)');
+ assert.equal(lines[0],'# Capítulos de Sinaloa Pro · 3 marcador(es)');
  assert.equal(lines[1],'00:00:05:00\tIntroducción');
  // El marcador sin nombre se numera como en la línea de tiempo.
  assert.equal(lines[2],'00:00:10:00\tMarcador 2');
