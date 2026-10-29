@@ -25,8 +25,8 @@ export const ATTRIBUTE_GROUPS: AttributeGroup[] = [
     keys: ['effects'], kinds: ['video', 'image', 'text', 'color'],
   },
   {
-    id: 'panCrop', label: 'Panoramización y recorte', note: 'Encuadre (posición, escala, giro, opacidad y 3D), fotogramas clave, recorte y máscara libre.',
-    keys: ['transform', 'keys', 'mask', 'maskPath'], kinds: ['video', 'image', 'text', 'color'],
+    id: 'panCrop', label: 'Panoramización y recorte', note: 'Encuadre (posición, escala, giro, opacidad y 3D), fotogramas clave, recorte, máscara libre, mantener relación de aspecto y encajar el contenido al fotograma.',
+    keys: ['transform', 'keys', 'mask', 'maskPath', 'maintainAspect', 'stretchFill'], kinds: ['video', 'image', 'text', 'color'],
   },
   {
     id: 'text', label: 'Títulos y texto (plantilla)', note: 'Fuente, tamaño, color, contorno, sombra, fondo, anclaje, animación y color de resalte: el estilo y la plantilla, sin cambiar el texto.',
@@ -66,7 +66,8 @@ export const groupFits = (group: AttributeGroup, kind: Event['kind']) => !group.
 export const groupsFor = (kind: Event['kind']) => ATTRIBUTE_GROUPS.filter(group => groupFits(group, kind));
 
 // Lo que se copia: solo los campos de los grupos elegidos que el evento tenga puestos. Los `undefined` no se
-// copian, para que pegar no borre cosas del destino que la fuente no tenía.
+// copian, para que pegar no borre cosas del destino que la fuente no tenía. Los interruptores de
+// encaje sí copian su valor efectivo predeterminado para restaurar el aspecto del origen.
 export type CopiedAttributes = { from: string; groups: AttributeGroupId[]; patch: Partial<Event> };
 
 export function copyAttributes(event: Event, groups: AttributeGroupId[] = ALL_ATTRIBUTES): CopiedAttributes {
@@ -77,7 +78,10 @@ export function copyAttributes(event: Event, groups: AttributeGroupId[] = ALL_AT
     if (!group || !groupFits(group, event.kind)) continue;
     let contributed = false;
     for (const key of group.keys) {
-      const value = (event as Record<string, unknown>)[key as string];
+      // Copy effective defaults too: an omitted switch must reset an opposite destination value.
+      const value = key === 'maintainAspect' ? event.maintainAspect !== false
+        : key === 'stretchFill' ? event.stretchFill === true
+        : (event as Record<string, unknown>)[key as string];
       if (value !== undefined) { patch[key as string] = structuredClone(value); contributed = true; }
     }
     if (contributed) used.push(id);

@@ -1,8 +1,6 @@
 import { Project, parseProject } from './project';
 const KEY='corte15-autosave-v1';
-// Marca de «hay cambios sin guardar». La copia automática existe desde siempre, pero al arrancar solo se ofrece si
-// el proyecto no llegó a guardarse: si la última sesión se guardó, el editor empieza limpio (y si se cerró de golpe
-// —un cierre inesperado o un apagón—, se recupera tal cual estaba).
+// La marca controla el aviso de cambios pendientes; la copia automática se restaura también si está guardada.
 const KEY_PENDIENTE='corte15-pendiente-v1';
 export function saveLocal(p:Project){localStorage.setItem(KEY,JSON.stringify(p));}
 export function recover():Project|null{const raw=localStorage.getItem(KEY);return raw?parseProject(raw):null;}

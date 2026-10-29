@@ -1,6 +1,7 @@
+import {descendants,trackPose,videoTracks} from './track-controls';
 import { transitionJunctions } from './transition-drop';
 import { applyCropFrame } from './crop-frame';
-import { CompositeMode, CropMask, Event, Project, Transform, activeTracks, envelope, pose, seconds, sourceTime } from './project';
+import { CompositeMode, CropMask, Event, Project, Transform, frameTicks, transform, envelope, pose, seconds, sourceTime } from './project';
 import { fillFrame } from './letterbox';
 import { MediaLibrary } from './media';
 import { contentBox, frameBox, maskAt, sourceRect } from './pancrop';
@@ -23,7 +24,7 @@ export const compositeOperation = (mode?: CompositeMode): GlobalCompositeOperati
 
 // La exportación y la vista previa piden el lienzo de trabajo de la misma forma; en las pruebas unitarias ese
 // lienzo lo fabrica @napi-rs/canvas, así que la fábrica se puede inyectar.
-export type ComposeOptions = { adjustmentSource?: HTMLCanvasElement; createCanvas?: CanvasFactory; notes?: string[]; cancelled?: () => boolean };
+export type ComposeOptions = { transparent?: boolean; adjustmentSource?: HTMLCanvasElement; createCanvas?: CanvasFactory; notes?: string[]; cancelled?: () => boolean };
 const browserCanvas: CanvasFactory | null = typeof document === 'undefined' ? null : (width, height) => {
   const canvas = document.createElement('canvas');
   canvas.width = width;
@@ -229,7 +230,7 @@ async function drawContent(ctx:CanvasRenderingContext2D,event:Event,project:Proj
 // One pass per frame: events are grouped by track once instead of filtering the whole list per track, and
 // neutral color filters are skipped because setting ctx.filter forces a slow drawing path in every browser.
 export async function compose(canvas:HTMLCanvasElement,p:Project,library:MediaLibrary,time:number,options:ComposeOptions={}){
- const ctx=canvas.getContext('2d',{alpha:false})!;const w=canvas.width,h=canvas.height;ctx.resetTransform();ctx.globalAlpha=1;ctx.filter='none';ctx.globalCompositeOperation='source-over';ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);
+ const ctx=canvas.getContext('2d',{alpha:options.transparent??false})!;const w=canvas.width,h=canvas.height;ctx.resetTransform();ctx.globalAlpha=1;ctx.filter='none';ctx.globalCompositeOperation='source-over';ctx.clearRect(0,0,w,h);if(!options.transparent){ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);}
  const createCanvas=options.createCanvas??browserCanvas??undefined;
  const note=(message:string)=>{if(options.notes&&!options.notes.includes(message))options.notes.push(message);};
  // Una sola capa de trabajo para todos los eventos del fotograma: se limpia antes de dibujar cada uno, así que
@@ -247,7 +248,37 @@ export async function compose(canvas:HTMLCanvasElement,p:Project,library:MediaLi
    heldTimes.set(outgoing.id,Math.max(outgoing.start,outgoing.start+outgoing.duration-1));active.push(outgoing);
   }
  }
- for(const track of activeTracks(p,'video').reverse()){
+ const visible=videoTracks(p);
+ for(const storedTrack of [...visible].reverse()){
+  if(storedTrack.parentId&&visible.some(t=>t.id===storedTrack.parentId))continue;
+  const track={...storedTrack,transform:trackPose(storedTrack,time)};
+  const children=descendants(visible,track.id);
+  const trackEffects=activeEffects(track.effects);
+  const blur=track.bypassMotionBlur?0:(track.motionBlurFrames??0);
+  if((children.length||trackEffects.length||blur>0)&&createCanvas){
+   // Isolate the track/group before applying its effects, motion and blend mode.
+   const ids=new Set([track.id,...children.map(t=>t.id)]);
+   const innerTracks=visible.filter(t=>ids.has(t.id)).map(t=>t.id===track.id
+    ?{...t,parentId:undefined,transform:transform(),keys:[],effects:[],motionBlurFrames:0,composite:'normal' as const,solo:false}
+    :{...t,parentId:t.parentId===track.id?undefined:t.parentId,solo:false});
+   const inner={...p,tracks:innerTracks,events:p.events.filter(e=>ids.has(e.trackId))};
+   const samples=blur>0?5:1,accumulated=createCanvas(w,h),acc=accumulated.getContext('2d')!;
+   for(let sample=0;sample<samples;sample++){
+    if(options.cancelled?.())return;
+    const at=Math.max(0,time-(samples===1?0:blur*frameTicks(p.fps)*sample/(samples-1)));
+    const layer=createCanvas(w,h);
+    await compose(layer,inner,library,at,{...options,transparent:true});
+    if(options.cancelled?.())return;
+    if(trackEffects.length)applyEffects(layer,trackEffects,{scale:h/Math.max(1,p.height),createCanvas,note});
+    const motion=trackPose(storedTrack,at);
+    acc.save();acc.globalCompositeOperation='lighter';acc.globalAlpha=Math.max(0,Math.min(1,motion.opacity))/samples;
+    if(is3D(motion)){composeQuad(acc,layer,layerQuad(motion,transform(),{width:w,height:h}),{createCanvas});}
+    else{applyPose(acc,motion,w,h);if(motion.cropFrame)applyCropFrame(acc,motion.cropFrame,w,h);acc.drawImage(layer,0,0);}
+    acc.restore();
+   }
+   ctx.save();ctx.globalCompositeOperation=compositeOperation(track.composite);ctx.drawImage(accumulated,0,0);ctx.restore();
+   continue;
+  }
   const events=byTrack.get(track.id);if(!events)continue;
   if(events.length>1)events.sort((a,b)=>Number(Boolean(b.adjustmentLayer))-Number(Boolean(a.adjustmentLayer))||a.start-b.start);
   ctx.globalCompositeOperation=compositeOperation(track.composite); // modo de fusión de la pista
@@ -261,7 +292,7 @@ export async function compose(canvas:HTMLCanvasElement,p:Project,library:MediaLi
     const adjusted=createCanvas(w,h);
     const layerEvent={...e,adjustmentLayer:false,videoOpacity:1,fadeIn:0,fadeOut:0,gainCurve:undefined,transition:undefined,transitionOut:undefined,
      transform:{...e.transform,opacity:1},keys:e.keys.map(key=>({...key,opacity:1}))};
-    await compose(adjusted,{...p,tracks:[{...track,mute:false,solo:false,composite:'normal',transform:{...track.transform,opacity:1}}],events:[layerEvent]},library,time,{...options,adjustmentSource:source});
+    await compose(adjusted,{...p,tracks:[{...track,keys:[],mute:false,solo:false,composite:'normal',transform:{...track.transform,opacity:1}}],events:[layerEvent]},library,time,{...options,adjustmentSource:source});
     if(options.cancelled?.())return;
     ctx.save();ctx.resetTransform();ctx.globalCompositeOperation='source-over';ctx.filter='none';ctx.globalAlpha=strength;ctx.drawImage(adjusted,0,0);ctx.restore();
     continue;

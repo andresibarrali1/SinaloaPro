@@ -6,7 +6,7 @@ import {createCanvas} from '@napi-rs/canvas';
 import {compose} from '../lib/editor/compositor';
 import {MediaLibrary} from '../lib/editor/media';
 import {MaskPath,newEvent,newMaskPath,newProject,ticks} from '../lib/editor/project';
-import {shapeMask,MAX_MASK_POINTS,addMaskPoint,applyMaskPath,clearMask,maskActive,normalizeMaskPath,maskPointAt,moveMaskPoint,removeMaskPoint} from '../lib/editor/mask';
+import {translateMaskPath,shapeMask,MAX_MASK_POINTS,addMaskPoint,applyMaskPath,clearMask,maskActive,normalizeMaskPath,maskPointAt,moveMaskPoint,removeMaskPoint} from '../lib/editor/mask';
 
 const factory=(width:number,height:number)=>createCanvas(width,height) as unknown as HTMLCanvasElement;
 const SIZE=64;
@@ -138,4 +138,16 @@ test('rectángulo y elipse recortan píxeles en el compositor compartido',async(
    const inverted=await renderWithMask({...path,invert:true});
    assert.ok(black(inverted(32,32)));assert.ok(red(inverted(2,2)));
  }
+});
+
+test('mover una máscara conserva su forma y limita el conjunto al fotograma', () => {
+ const original=shapeMask({...newMaskPath(),feather:7,invert:true},{x:.2,y:.3},{x:.6,y:.7},'rectangle');
+ const moved=translateMaskPath(original,{x:.1,y:-.1});
+ assert.ok(Math.abs(moved.points[0].x-.3)<1e-10);
+ assert.ok(Math.abs(moved.points[0].y-.2)<1e-10);
+ const edge=translateMaskPath(original,{x:9,y:-9});
+ assert.equal(edge.points[1].x,1); assert.equal(edge.points[0].y,0);
+ assert.ok(Math.abs(edge.points[1].x-edge.points[0].x-.4)<1e-10);
+ assert.equal(edge.feather,7);assert.equal(edge.invert,true);
+ assert.equal(original.points[0].x,.2);
 });

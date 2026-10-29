@@ -128,3 +128,23 @@ test('el resumen dice qué se va a pegar y avisa cuando no hay nada',()=>{
  assert.deepEqual(pasteableGroups(audioSource,'video'),[]);
  assert.equal(describeAttributes(audioSource,'video'),'Lo copiado de «Color sólido» no se puede pegar en este evento.');
 });
+
+for(const maintainAspect of [true,false,undefined])for(const stretchFill of [true,false,undefined]){
+ test(`encaje: copiar y pegar aspecto=${maintainAspect}, relleno=${stretchFill}`,()=>{
+  const source=newEvent('source','video');source.maintainAspect=maintainAspect;source.stretchFill=stretchFill;
+  source.transform.scale=1.5;
+  const target=newEvent('target','image');target.maintainAspect=false;target.stretchFill=true;
+  const copied=copyAttributes(source);
+  for(const groups of [undefined,['panCrop'] as const]){
+   const pasted=pasteAttributes(target,copied,groups?[...groups]:undefined);
+   assert.equal(pasted.maintainAspect,maintainAspect!==false);
+   assert.equal(pasted.stretchFill,stretchFill===true);
+   assert.equal(pasted.transform.scale,1.5);
+   assert.equal(pasted.id,target.id);
+  }
+  const effectsOnly=pasteAttributes(target,copied,['effects']);
+  assert.equal(effectsOnly.maintainAspect,false);assert.equal(effectsOnly.stretchFill,true);
+  const audio=pasteAttributes(newEvent('a','audio'),copied);
+  assert.equal(audio.maintainAspect,undefined);assert.equal(audio.stretchFill,undefined);
+ });
+}

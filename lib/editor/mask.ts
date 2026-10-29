@@ -80,3 +80,13 @@ export function shapeMask(path:MaskPath, start:MaskPoint, end:MaskPoint, kind:'r
  const points=kind==='rectangle'?[{x:left,y:top},{x:right,y:top},{x:right,y:bottom},{x:left,y:bottom}]:Array.from({length:MAX_MASK_POINTS},(_,i)=>{const angle=i*2*Math.PI/MAX_MASK_POINTS;return {x:(left+right)/2+Math.cos(angle)*(right-left)/2,y:(top+bottom)/2+Math.sin(angle)*(bottom-top)/2};});
  return {...path,points};
 }
+
+// Translate from the original gesture snapshot; clamp the whole shape, never individual vertices.
+export function translateMaskPath(path: MaskPath, delta: MaskPoint): MaskPath {
+  const current = normalizeMaskPath(path);
+  if (!current.points.length) return current;
+  const xs = current.points.map(p => p.x), ys = current.points.map(p => p.y);
+  const dx = Math.max(-Math.min(...xs), Math.min(1 - Math.max(...xs), delta.x));
+  const dy = Math.max(-Math.min(...ys), Math.min(1 - Math.max(...ys), delta.y));
+  return { ...current, points: current.points.map(p => ({ x: p.x + dx, y: p.y + dy })) };
+}
