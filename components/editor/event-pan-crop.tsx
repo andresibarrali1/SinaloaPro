@@ -59,6 +59,7 @@ import {
 } from "@/lib/editor/pancrop";
 import {
   shapeMask,
+  translateMaskPath,
   normalizeMaskPath,
   addMaskPoint,
   moveMaskPoint,
@@ -381,6 +382,7 @@ export function EventPanCrop(p: PanCropWindowProps) {
   const maskPath = normalizeMaskPath(p.maskPath);
   const maskGesture = useRef<number | null>(null);
   const maskNext = useRef<typeof maskPath | null>(null);
+  const maskMove = useRef<{ start: { x: number; y: number }; original: typeof maskPath } | null>(null);
   const maskPoint = (e: React.PointerEvent) => {
     const rect = svg.current!.getBoundingClientRect();
     const point = toLocal(
@@ -432,6 +434,12 @@ export function EventPanCrop(p: PanCropWindowProps) {
     setMenu(null);
   };
   const move = (e: React.PointerEvent) => {
+    if (maskMove.current) {
+      const point = maskPoint(e), g = maskMove.current;
+      maskNext.current = translateMaskPath(g.original, { x: point.x - g.start.x, y: point.y - g.start.y });
+      p.onMaskPath(maskNext.current, false);
+      return;
+    }
     if (shapeGesture.current) {
       const g = shapeGesture.current;
       g.next = shapeMask(
@@ -502,6 +510,11 @@ export function EventPanCrop(p: PanCropWindowProps) {
     setDraft(next);
   };
   const end = (e: React.PointerEvent) => {
+    if (maskMove.current) {
+      p.onMaskPath(maskNext.current ?? maskMove.current.original, true);
+      maskMove.current = null;
+      maskNext.current = null;
+    }
     if (shapeGesture.current) {
       p.onMaskPath(shapeGesture.current.next, true);
       shapeGesture.current = null;
@@ -803,7 +816,7 @@ export function EventPanCrop(p: PanCropWindowProps) {
             <>
               <Group title="Máscara">
                 <p className="ec-mask-note">
-                  Seleccione un punto para editar su posición. Dibuje una ruta
+                  Arrastre el interior para mover la máscara o sus vértices para cambiar su forma. Seleccione un punto para editar su posición. Dibuje una ruta
                   con la pluma o arrastre una forma. Las formas reemplazan la
                   ruta actual.
                 </p>
@@ -1126,11 +1139,12 @@ export function EventPanCrop(p: PanCropWindowProps) {
             onPointerMove={move}
             onPointerUp={end}
             onPointerCancel={() => {
-              if (shapeGesture.current || maskGesture.current !== null)
+              if (shapeGesture.current || maskGesture.current !== null || maskMove.current)
                 p.onMaskPath(
                   shapeGesture.current?.next ?? maskNext.current ?? maskPath,
                   true,
                 );
+              maskMove.current = null;
               shapeGesture.current = null;
               maskGesture.current = null;
               maskNext.current = null;
@@ -1254,18 +1268,32 @@ export function EventPanCrop(p: PanCropWindowProps) {
               <g>
                 <polygon
                   points={maskSpots.map((pt) => `${pt.x},${pt.y}`).join(" ")}
-                  fill="none"
+                  fill="transparent"
+                  className="ec-mask-body"
                   stroke="#222"
                   strokeDasharray="3 2"
-                  pointerEvents="none"
+                  pointerEvents={tool === "select" && maskTool === "select" ? "all" : "none"}
+                  style={{ cursor: "move" }}
+                  onPointerDown={(e) => {
+                    if (e.button !== 0 || tool !== "select" || maskTool !== "select") return;
+                    e.preventDefault(); e.stopPropagation();
+                    svg.current!.setPointerCapture(e.pointerId);
+                    p.onBeginMask();
+                    maskMove.current = { start: maskPoint(e), original: maskPath };
+                    maskNext.current = maskPath;
+                    setSelectedPoint(null);
+                  }}
                 />
                 {maskSpots.map((pt, i) => (
                   <rect
                     key={i}
-                    x={pt.x - 4}
-                    y={pt.y - 4}
-                    width="8"
-                    height="8"
+                    className="ec-mask-point"
+                    aria-label={`Punto de máscara ${i + 1}`}
+                    style={{ cursor: maskTool === "delete" ? "not-allowed" : "move", pointerEvents: "all" }}
+                    x={pt.x - 6}
+                    y={pt.y - 6}
+                    width="12"
+                    height="12"
                     fill={selectedPoint === i ? "#61b9ed" : "#fff"}
                     stroke="#222"
                     onPointerDown={(e) => {
@@ -1283,7 +1311,8 @@ export function EventPanCrop(p: PanCropWindowProps) {
                         return;
                       }
                       setSelectedPoint(i);
-                      e.currentTarget.setPointerCapture(e.pointerId);
+                      e.preventDefault();
+                      svg.current!.setPointerCapture(e.pointerId);
                       p.onBeginMask();
                       maskGesture.current = i;
                       maskNext.current = maskPath;

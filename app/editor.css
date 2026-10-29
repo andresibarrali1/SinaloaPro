@@ -75,3 +75,16 @@
 .transition-targets button[aria-pressed=true],.render-snap[aria-pressed=true]{background:#17638c!important;border-color:#66c6ff!important;color:#fff!important;}
 .render-snap{display:inline-flex;align-items:center;gap:6px;margin:6px 0;}
 .preview-box,.preview-handle{touch-action:none;}
+
+.track-menu-button{font-size:15px!important;min-width:20px!important;padding:0!important;}
+.track-video-buttons{display:flex;gap:3px;padding:1px 5px;}
+.track-video-buttons button{min-width:22px;height:19px;padding:0 3px;background:#383838;border:1px solid #666;}
+.track-video-buttons button.active{background:#17638c;color:#fff;border-color:#66c6ff;}
+.track-automation-controls{display:flex;flex-wrap:wrap;gap:3px;padding:3px 5px;font-size:10px;}
+.track-automation-controls input{width:45px;}
+.track-automation-controls button{padding:0 4px;}
+
+.timeline-event.effect-drop-target{outline:2px solid #70c7ff;outline-offset:-2px;box-shadow:inset 0 0 0 3px #246fa8;filter:brightness(1.25);}
+
+/* Trim edges take precedence over playhead dragging and stay easy to grab. */
+.timeline-event .trim-handle{width:8px;max-width:30%;touch-action:none;}

@@ -8,7 +8,7 @@ import { uid } from '@/lib/editor/project';
 import { EFFECT_DESCRIPTION, EFFECT_KINDS, EFFECT_LABEL, EFFECT_PARAMS, activeEffects, defaultEffect } from '@/lib/editor/effects';
 import { Choice, Field } from './controls';
 
-export type EffectsWindowProps = { event: Event; onChange: (patch: Partial<Event>) => void; onClose: () => void };
+export type EffectsWindowProps = { scope?: 'event'|'track'; event: Event; onChange: (patch: Partial<Event>) => void; onClose: () => void };
 
 const AMOUNT_LABEL: Partial<Record<VideoEffectKind, string>> = {
   blur: 'Radio (px)', blackAndWhite: 'Cantidad de fusión', sepia: 'Cantidad de fusión',
@@ -17,7 +17,7 @@ const AMOUNT_LABEL: Partial<Record<VideoEffectKind, string>> = {
 const SIZE_LABEL: Partial<Record<VideoEffectKind, string>> = { pixelate: 'Tamaño del bloque (px)', border: 'Grosor (px)', glow: 'Radio (px)' };
 const HEX = /^#[0-9a-f]{6}$/i;
 
-export function EffectsWindow({ event, onChange, onClose }: EffectsWindowProps) {
+export function EffectsWindow({ scope='event', event, onChange, onClose }: EffectsWindowProps) {
   const effects = event.effects ?? [];
   const update = (id: string, change: Partial<VideoEffect>) => onChange({ effects: effects.map(effect => effect.id === id ? { ...effect, ...change } : effect) });
   const add = (kind: VideoEffectKind) => onChange({ effects: [...effects, defaultEffect(kind, uid())] });
@@ -34,7 +34,7 @@ export function EffectsWindow({ event, onChange, onClose }: EffectsWindowProps) 
   return (
     <div className="effects-window">
       <p className="export-plan">{effects.length
-        ? `${activeEffects(effects).length} de ${effects.length} efecto(s) activos. Se aplican en este orden sobre el evento, antes de mezclarlo con lo que hay debajo.`
+        ? `${activeEffects(effects).length} de ${effects.length} efecto(s) activos. Se aplican en este orden sobre ${scope==='track'?'la pista y su grupo':'el evento'}, antes de mezclarlo con lo que hay debajo.`
         : `«${event.name}» no tiene efectos. Añade uno desde el catálogo.`}</p>
       <div className="preset-list effects-catalog">
         {EFFECT_KINDS.map(kind => (
