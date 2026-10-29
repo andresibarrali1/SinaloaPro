@@ -1,0 +1,21 @@
+import {test,expect} from '@playwright/test';
+import {newProject,newEvent,ticks} from '../lib/editor/project';
+test('medios: Supr, menú, cancelar medio utilizado y deshacer',async({page})=>{
+ const p=newProject();
+ for(const id of ['used','unused'])p.media.push({id,name:id+'.png',kind:'image',size:0,modified:0,duration:ticks(5),width:100,height:100,hasAudio:false,mime:'image/png'});
+ const event=newEvent(p.tracks.find(t=>t.kind==='video')!.id,'image');event.mediaId='used';p.events.push(event);
+ await page.goto('/?bienvenida=no');
+ await page.locator('input[type=file][accept*=".sinaloapro"]').setInputFiles({name:'Medios.sinaloapro',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(p))});
+ await expect(page.locator('.media-item')).toHaveCount(2);
+ await page.locator('[data-media-id="unused"]').click();await page.keyboard.press('Delete');
+ await expect(page.locator('.media-item')).toHaveCount(1);await expect(page.locator('.timeline-event')).toHaveCount(1);
+ await page.keyboard.press('Control+z');await expect(page.locator('.media-item')).toHaveCount(2);
+ await page.locator('[data-media-id="unused"]').click({button:'right'});
+ await page.getByRole('menuitem',{name:/Eliminar del proyecto/}).click();await expect(page.locator('.media-item')).toHaveCount(1);
+ await page.locator('[data-media-id="used"]').click();
+ page.once('dialog',d=>d.dismiss());await page.keyboard.press('Delete');
+ await expect(page.locator('.media-item')).toHaveCount(1);await expect(page.locator('.timeline-event')).toHaveCount(1);
+ page.once('dialog',d=>d.accept());await page.keyboard.press('Delete');
+ await expect(page.locator('.media-item')).toHaveCount(0);await expect(page.locator('.timeline-event')).toHaveCount(0);
+ await page.keyboard.press('Control+z');await expect(page.locator('.media-item')).toHaveCount(1);await expect(page.locator('.timeline-event')).toHaveCount(1);
+});

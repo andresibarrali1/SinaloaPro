@@ -1,0 +1,23 @@
+import {test,expect} from '@playwright/test';
+import {newProject,newEvent} from '../lib/editor/project';
+test('recargar conserva proyecto guardado, sin bienvenida; recortar ambos bordes',async({page})=>{
+ const p=newProject(),event=newEvent(p.tracks.find(t=>t.kind==='video')!.id,'color');p.events.push(event);
+ await page.goto('/');
+ await page.locator('input[type=file][accept*=".sinaloapro"]').setInputFiles({name:'Recarga.sinaloapro',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(p))});
+ await expect(page.getByTestId('bienvenida')).toBeVisible();
+ await page.reload();
+ await expect(page.locator('.timeline-event')).toHaveCount(1);
+ await expect(page.getByTestId('bienvenida')).toHaveCount(0);
+ expect(await page.evaluate(()=>localStorage.getItem('corte15-pendiente-v1'))).toBe('0');
+ const clip=page.locator('.timeline-event').first();const original=(await clip.boundingBox())!;
+ const left=(await clip.locator('.trim-handle.left').boundingBox())!;
+ await page.mouse.move(left.x+2,left.y+left.height/2);await page.mouse.down();await page.mouse.move(left.x+62,left.y+left.height/2,{steps:8});await page.mouse.up();
+ await expect.poll(async()=>(await clip.boundingBox())!.width).toBeLessThan(original.width-30);
+ const shorter=(await clip.boundingBox())!.width;
+ const right=(await clip.locator('.trim-handle.right').boundingBox())!;
+ await page.mouse.move(right.x+4,right.y+right.height/2);await page.mouse.down();await page.mouse.move(right.x-56,right.y+right.height/2,{steps:8});await page.mouse.up();
+ await expect.poll(async()=>(await clip.boundingBox())!.width).toBeLessThan(shorter-30);
+ const finalWidth=(await clip.boundingBox())!.width;
+ await page.reload();await expect(page.getByTestId('bienvenida')).toHaveCount(0);
+ await expect.poll(async()=>(await clip.boundingBox())!.width).toBeCloseTo(finalWidth,0);
+});

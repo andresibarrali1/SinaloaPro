@@ -1,0 +1,26 @@
+import {test,expect} from '@playwright/test';
+import {newProject,newEvent,ticks} from '../lib/editor/project';
+test('arrastrar efecto: destino exacto, resaltado, deshacer y rechazo de audio',async({page})=>{
+ const p=newProject(),track=p.tracks.find(t=>t.kind==='video')!;
+ const a=newEvent(track.id,'color'),b=newEvent(track.id,'color',ticks(6));
+ const audio=newEvent(p.tracks.find(t=>t.kind==='audio')!.id,'audio');audio.mediaId='audio-test';p.media.push({id:'audio-test',name:'Audio',kind:'audio',size:0,modified:0,duration:ticks(5),width:0,height:0,hasAudio:true,mime:'audio/wav'});p.events.push(a,b,audio);
+ await page.goto('/?bienvenida=no');
+ await page.locator('input[type=file][accept*=".sinaloapro"]').setInputFiles({name:'Efectos.sinaloapro',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(p))});
+ await expect(page.locator('.timeline-event')).toHaveCount(3);
+ await page.getByRole('tab',{name:'Efectos de video',exact:true}).click();
+ const source=page.locator('[draggable=true]').filter({has:page.locator('span',{hasText:'Invertir'})}).first();
+ const target=page.locator(`[data-event-id="${b.id}"]`);
+ const state=()=>page.evaluate(()=>(JSON.parse(localStorage.getItem('corte15-autosave-v1')||'null')?.events??[]));
+ await expect(source).toBeEnabled();
+ await source.dragTo(target);
+ await expect.poll(async()=>(await state()).find((e:any)=>e.id===b.id)?.effects?.length).toBe(1);
+ expect((await state()).find((e:any)=>e.id===a.id).effects??[]).toHaveLength(0);
+ await page.keyboard.press('Control+z');
+ await expect.poll(async()=>((await state()).find((e:any)=>e.id===b.id)?.effects??[]).length).toBe(0);
+ const transfer=await page.evaluateHandle(()=>{const d=new DataTransfer();d.setData('application/sinaloa-video-effect','invert');return d;});
+ await target.dispatchEvent('dragover',{dataTransfer:transfer});await expect(target).toHaveClass(/effect-drop-target/);
+ await target.dispatchEvent('drop',{dataTransfer:transfer});await expect(target).not.toHaveClass(/effect-drop-target/);
+ const audioTarget=page.locator(`[data-event-id="${audio.id}"]`);
+ await audioTarget.dispatchEvent('drop',{dataTransfer:transfer});
+ expect((await state()).find((e:any)=>e.id===audio.id).effects??[]).toHaveLength(0);
+});

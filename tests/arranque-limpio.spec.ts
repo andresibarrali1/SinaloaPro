@@ -1,5 +1,4 @@
-// Arranque del editor: **limpio** cada vez, salvo que la sesión anterior se cerrara sin guardar (cierre inesperado,
-// apagón), que es cuando se ofrece la copia automática. Si el proyecto llegó a guardarse, no se reabre nada.
+// El proyecto abierto se restaura al recargar, tanto guardado como con cambios pendientes.
 import { test, expect, type Page } from '@playwright/test';
 import path from 'node:path';
 
@@ -33,7 +32,7 @@ test('sin copia automática, el editor arranca limpio', async ({ page }) => {
   await page.reload();
   await expect(page.locator('.vegas-toolbar')).toBeVisible();
   await expect(page.locator('.timeline-event')).toHaveCount(0);
-  expect(await guardado(page), 'no hay proyecto guardado todavía').toBeNull();
+  expect((await guardado(page))?.events??[]).toHaveLength(0);
 });
 
 test('un proyecto sin guardar se recupera al volver a abrir (cierre inesperado)', async ({ page }) => {
@@ -47,10 +46,10 @@ test('un proyecto sin guardar se recupera al volver a abrir (cierre inesperado)'
   await page.reload();
   await expect(page.locator('.vegas-toolbar')).toBeVisible();
   await expect(page.locator('.timeline-event.video'), 'el clip vuelve').toHaveCount(1, { timeout: 20000 });
-  await expect(page.locator('.statusbar [role=status]')).toContainText('Se recuperó el proyecto que no llegaste a guardar');
+  await expect(page.locator('.statusbar [role=status]')).toContainText('Proyecto restaurado');
 });
 
-test('un proyecto guardado no se reabre: el siguiente arranque es limpio', async ({ page }) => {
+test('un proyecto guardado se conserva al recargar', async ({ page }) => {
   await abrir(page);
   await montarClip(page);
   const descarga = page.waitForEvent('download');
@@ -61,9 +60,9 @@ test('un proyecto guardado no se reabre: el siguiente arranque es limpio', async
 
   await page.reload();
   await expect(page.locator('.vegas-toolbar')).toBeVisible();
-  await expect(page.locator('.timeline-event'), 'el editor arranca sin el proyecto anterior').toHaveCount(0);
-  expect(await guardado(page), 'y la copia automática se descarta').toBeNull();
-  await expect(page.locator('.statusbar [role=status]')).toContainText('la sesión anterior ya estaba guardada');
+  await expect(page.locator('.timeline-event')).toHaveCount(2);
+  expect((await guardado(page))?.events).toHaveLength(2);
+  await expect(page.locator('.statusbar [role=status]')).toContainText('Proyecto restaurado');
 
   // Y el archivo guardado sí se puede abrir a mano: eso no es «arranque», es abrir un proyecto.
   await page.locator('input[type=file]').nth(1).setInputFiles(path.resolve('test-results', 'arranque-limpio.corte15'));
@@ -71,7 +70,7 @@ test('un proyecto guardado no se reabre: el siguiente arranque es limpio', async
   // Abrir un archivo no cuenta como trabajo sin guardar: si se cierra sin editar, el siguiente arranque sigue limpio.
   expect(await marca(page), 'el proyecto abierto está guardado').toBe('0');
   await page.reload();
-  await expect(page.locator('.timeline-event'), 'sin editar, no se reabre').toHaveCount(0);
+  await expect(page.locator('.timeline-event')).toHaveCount(2);
 });
 
 test('si se edita después de abrir un archivo, esa sesión sí se recupera', async ({ page }) => {
@@ -85,7 +84,7 @@ test('si se edita después de abrir un archivo, esa sesión sí se recupera', as
   await expect.poll(async () => marca(page)).toBe('0');
 
   await page.reload();
-  await expect(page.locator('.timeline-event')).toHaveCount(0);
+  await expect(page.locator('.timeline-event')).toHaveCount(2);
   await page.locator('input[type=file]').nth(1).setInputFiles(ruta);
   await expect(page.locator('.timeline-event.video')).toHaveCount(1, { timeout: 20000 });
   // Un cambio cualquiera (mover la aguja no cuenta; dividir sí): el proyecto vuelve a quedar pendiente. Se pulsa en

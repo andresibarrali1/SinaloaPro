@@ -61,3 +61,30 @@ test("Pan/Crop: layout, inverse zoom, independent axes, keys and reopening", asy
     "810.0",
   );
 });
+
+test("manipular máscara: mover interior, vértices y persistir", async ({page}) => {
+ const project=newProject(), event=newEvent(project.tracks[0].id,"color");
+ event.maskPath={points:[{x:.25,y:.25},{x:.65,y:.25},{x:.65,y:.65},{x:.25,y:.65}],feather:0,invert:false};
+ project.events.push(event);
+ await page.goto('/?bienvenida=no');
+ await page.evaluate(p=>{localStorage.clear();localStorage.setItem('corte15-autosave-v1',JSON.stringify(p));},project);
+ await page.reload();
+ const clip=page.locator('.timeline-event.video').first();
+ await clip.hover();await clip.getByRole('button',{name:/Panoramización y recorte/}).click();
+ const dialog=page.locator('.ec-window');
+ await dialog.getByRole('checkbox').check();
+ const state=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('corte15-autosave-v1')!).events[0].maskPath.points);
+ const body=dialog.locator('.ec-mask-body');
+ const box=(await body.boundingBox())!;
+ await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();
+ await page.mouse.move(box.x+box.width/2+30,box.y+box.height/2+20,{steps:8});await page.mouse.up();
+ await expect.poll(async()=>(await state())[0].x).toBeGreaterThan(.25);
+ const moved=await state();
+ const pt=(await dialog.locator('.ec-mask-point').first().boundingBox())!;
+ await page.mouse.move(pt.x+pt.width/2,pt.y+pt.height/2);await page.mouse.down();
+ await page.mouse.move(pt.x+pt.width/2+20,pt.y+pt.height/2+10,{steps:6});await page.mouse.up();
+ await expect.poll(async()=>(await state())[0].x).toBeGreaterThan(moved[0].x);
+ const edited=await state();expect(edited[1]).toEqual(moved[1]);
+ await dialog.getByRole('button',{name:'Cerrar Panoramización/Recorte',exact:true}).click();
+ await page.reload();expect(await state()).toEqual(edited);
+});

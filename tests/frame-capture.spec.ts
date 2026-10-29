@@ -1,0 +1,20 @@
+import {test,expect} from '@playwright/test';
+import {newProject,newEvent} from '../lib/editor/project';
+import {readFile} from 'node:fs/promises';
+import {loadImage,createCanvas} from '@napi-rs/canvas';
+test('captura PNG guarda composición a resolución del proyecto sin modificar eventos',async({page})=>{
+ const p=newProject();p.width=640;p.height=360;
+ const e=newEvent(p.tracks.find(t=>t.kind==='video')!.id,'color');e.color='#ff0000';p.events.push(e);
+ await page.goto('/?bienvenida=no');
+ await page.locator('input[type=file][accept*=".sinaloapro"]').setInputFiles({name:'Captura.sinaloapro',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(p))});
+ await expect(page.locator('.timeline-event')).toHaveCount(1);
+ const got=page.waitForEvent('download');
+ await page.getByRole('button',{name:'Guardar fotograma como imagen (PNG)',exact:true}).click();
+ const file=await got;expect(file.suggestedFilename()).toMatch(/Fotograma 0\.png$/);
+ const bytes=await readFile((await file.path())!);
+ expect([...bytes.subarray(0,8)]).toEqual([137,80,78,71,13,10,26,10]);
+ const img=await loadImage(bytes);expect(img.width).toBe(640);expect(img.height).toBe(360);
+ const c=createCanvas(640,360),ctx=c.getContext('2d');ctx.drawImage(img,0,0);
+ expect([...ctx.getImageData(320,180,1,1).data]).toEqual([255,0,0,255]);
+ await expect(page.locator('.timeline-event')).toHaveCount(1);
+});
