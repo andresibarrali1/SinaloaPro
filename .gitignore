@@ -52,3 +52,6 @@ next-env.d.ts
 # artefactos locales sueltos (informes de lint y salidas accidentales de la consola)
 /lint.json
 /0
+
+# app de escritorio (Tauri): se mantiene fuera del repositorio web
+/sinaloa-tauri/
