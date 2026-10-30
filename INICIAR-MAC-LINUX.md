@@ -46,6 +46,22 @@ Y si el aviso ya salió, se acepta una vez desde **Ajustes del Sistema → Priva
 
 Un `git clone` no lleva cuarentena ni pierde los permisos: en ese caso `./iniciar.command` y `./iniciar.sh` funcionan directamente.
 
+### Si dice «Operation not permitted»
+
+macOS protege las carpetas **Descargas, Escritorio y Documentos**: Terminal necesita permiso para leer lo que hay dentro. Al abrir `iniciar.command` con doble clic, macOS concede acceso a ese archivo concreto —el que abriste— pero no a sus vecinos, así que el `.command` arranca y el `sh` que intenta leer `iniciar.sh` falla con `Operation not permitted`. El archivo está ahí; lo que falta es el permiso.
+
+La salida más corta es sacar el proyecto de Descargas, porque tu carpeta personal no está protegida:
+
+```sh
+mv ~/Downloads/SinaloaPro-master ~/SinaloaPro
+cd ~/SinaloaPro
+xattr -dr com.apple.quarantine .
+chmod +x iniciar.sh iniciar.command
+sh iniciar.sh
+```
+
+La otra es dar el permiso: **Ajustes del Sistema → Privacidad y seguridad → Archivos y carpetas → Terminal**, y activar *Descargas* (o *Acceso total al disco*, que engloba todo). Después cierra y abre Terminal.
+
 ### Si sigue sin arrancar
 
 Antes de nada, pide el diagnóstico. No arranca nada, solo cuenta lo que ve:
