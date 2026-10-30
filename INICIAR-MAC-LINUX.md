@@ -34,6 +34,24 @@ Y si el aviso ya salió, se acepta una vez desde **Ajustes del Sistema → Priva
 
 Un `git clone` no lleva cuarentena ni pierde los permisos: en ese caso `./iniciar.command` y `./iniciar.sh` funcionan directamente.
 
+### Si sigue sin arrancar
+
+Antes de nada, pide el diagnóstico. No arranca nada, solo cuenta lo que ve:
+
+```sh
+sh iniciar.sh --diagnostico
+```
+
+Imprime el sistema, la carpeta, la ruta y la versión de Node, si npm está a mano, el navegador, las dependencias y si hay compilación previa. Ese texto es lo que hay que mirar (o enviar) cuando algo falla.
+
+Las tres causas que ya están cubiertas por el lanzador:
+
+- **Node instalado pero «no encontrado».** Un `.command` abierto con doble clic no hereda el `PATH` de tu terminal, así que Homebrew (`/opt/homebrew/bin`), nvm, Volta, pnpm y asdf quedan fuera. El lanzador añade esas rutas —y la última versión de nvm— antes de buscar `node`.
+- **Página en blanco al abrirse el navegador.** El editor necesita WebCodecs y Safari no lo tiene. En macOS se abre Google Chrome, Microsoft Edge o Brave si están instalados; si prefieres tu navegador predeterminado, ejecuta `CORTE15_NAVEGADOR=predeterminado sh iniciar.sh` (y si es Safari, la app no funcionará: usa Chrome o Edge).
+- **`npm ci` que no termina** (red, registro o una instalación a medias). El lanzador reintenta con `npm install` antes de rendirse.
+
+Si el mensaje final es un error de compilación, pégalo tal cual: la ventana ya no se cierra sola, espera a que pulses Enter.
+
 ## Linux
 Desde la carpeta del editor:
 
@@ -45,7 +63,7 @@ También puedes ejecutar `chmod +x iniciar.sh` y abrirlo como programa si tu ges
 
 ## Uso
 El lanzador compila el código y sirve la aplicación únicamente en http://127.0.0.1:5173/. Mantén la terminal abierta; Ctrl+C detiene el servidor iniciado por ella. Un servidor existente se reutiliza. Para cargar cambios de código, detén el servidor anterior y vuelve a iniciar.
-`sh iniciar.sh --sin-ventana` inicia sin abrir navegador. Para cambiar de puerto: `CORTE15_PUERTO=5180 sh iniciar.sh`.
+`sh iniciar.sh --sin-ventana` inicia sin abrir navegador. Para cambiar de puerto: `CORTE15_PUERTO=5180 sh iniciar.sh`. Para saber qué ve el lanzador sin arrancar nada: `sh iniciar.sh --diagnostico`.
 Windows conserva iniciar.cmd.
 
 ## Proyectos y plantillas

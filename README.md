@@ -33,8 +33,8 @@ entre orígenes (COOP/COEP)** ni cabeceras especiales.
 **Windows (lo más simple):** doble clic en `Iniciar.cmd`. Instala dependencias si faltan y abre el servidor.
 
 **macOS y Linux:** `sh iniciar.sh` desde Terminal, dentro de la carpeta del proyecto (en macOS también
-`iniciar.command` con doble clic). Guía, y qué hacer si macOS avisa de que el archivo «puede ser malicioso»:
-`INICIAR-MAC-LINUX.md`.
+`iniciar.command` con doble clic). Si no arranca, `sh iniciar.sh --diagnostico` cuenta lo que ve sin abrir nada.
+Guía completa, aviso de Gatekeeper y problemas conocidos: `INICIAR-MAC-LINUX.md`.
 
 **Manual, en cualquier sistema:**
 
