@@ -208,7 +208,37 @@ export function split(p: Project, ids: string[], at: number) { const chosen=new 
 export type Ripple = 'off'|'track'|'all';
 export function trim(p:Project,id:string,edge:'left'|'right',delta:number,ripple:Ripple='off'){const base=p.events.find(e=>e.id===id);if(!base)return; const ids=linkedIds(p,[id]);const min=frameTicks(p.fps);let d=delta;for(const e of p.events.filter(e=>ids.includes(e.id))){ const m=p.media.find(m=>m.id===e.mediaId);d=edge==='left'?Math.min(d,e.duration-min):Math.max(d,min-e.duration);if(edge==='left')d=Math.max(d,-e.offset/e.speed,-e.start);else if(m&&e.kind!=='image'&&!e.loop)d=Math.min(d,(m.duration-e.offset)/e.speed-e.duration); } const oldEnd=base.start+base.duration; for(const e of p.events.filter(e=>ids.includes(e.id))){if(edge==='left'){e.start+=d;e.offset+=d*e.speed;e.duration-=d;e.keys=e.keys.map(k=>({...k,time:k.time-d}));if(e.gainCurve)e.gainCurve=e.gainCurve.map(k=>({...k,time:k.time-d}));}else e.duration+=d;e.fadeIn=Math.min(e.fadeIn,e.duration);e.fadeOut=Math.min(e.fadeOut,e.duration);} if(ripple!=='off'&&edge==='right'){const tracks=new Set(p.events.filter(e=>ids.includes(e.id)).map(e=>e.trackId));for(const e of p.events)if(!ids.includes(e.id)&&e.start>=oldEnd&&(ripple==='all'||tracks.has(e.trackId)))e.start=Math.max(0,e.start+d);if(ripple==='all'){for(const m of p.markers)if(m.time>=oldEnd)m.time=Math.max(0,m.time+d);if(p.region&&p.region.start>=oldEnd){p.region.start+=d;p.region.end+=d;}if(p.loopRegion)p.loopRegion=shiftRange(p.loopRegion,oldEnd,d) as {start:number;end:number};}}}
 export function removeEvents(p:Project,ids:string[],ripple:Ripple){const chosen=new Set(linkedIds(p,ids)); const removed=p.events.filter(e=>chosen.has(e.id));if(!removed.length)return; p.events=p.events.filter(e=>!chosen.has(e.id));if(ripple==='off')return;const intervals=(items:Event[])=>{const merged:{start:number;end:number}[]=[];for(const e of [...items].sort((a,b)=>a.start-b.start)){const last=merged.at(-1);if(last&&e.start<=last.end)last.end=Math.max(last.end,e.start+e.duration);else merged.push({start:e.start,end:e.start+e.duration});}return merged;};const all=intervals(removed);const shift=(time:number,ranges:{start:number;end:number}[])=>ranges.reduce((n,r)=>n+Math.max(0,Math.min(time,r.end)-r.start),0);for(const e of p.events){const ranges=ripple==='all'?all:intervals(removed.filter(r=>r.trackId===e.trackId));e.start=Math.max(0,e.start-shift(e.start,ranges));}if(ripple==='all'){p.markers=p.markers.map(m=>({...m,time:m.time-shift(m.time,all)}));if(p.region){p.region={start:p.region.start-shift(p.region.start,all),end:p.region.end-shift(p.region.end,all)};}if(p.loopRegion){p.loopRegion={start:p.loopRegion.start-shift(p.loopRegion.start,all),end:p.loopRegion.end-shift(p.loopRegion.end,all)};}}}
-export function autoCrossfade(p:Project,ids:string[]){for(const id of ids){const e=p.events.find(e=>e.id===id);if(!e)continue;for(const other of p.events){if(other.id===id||other.trackId!==e.trackId)continue;if(other.start<e.start&&other.start+other.duration>e.start){const overlap=Math.min(e.duration,other.start+other.duration-e.start);e.fadeIn=overlap;other.fadeOut=overlap;}}}}
+// Only end-to-start overlaps form a crossfade; fully contained clips are not a cut.
+export function crossfadePairs(p:Project){
+ const pairs:{outgoing:Event;incoming:Event;duration:number}[]=[];
+ const lanes=new Map<string,Event[]>();
+ for(const e of p.events){const lane=lanes.get(e.trackId)??[];lane.push(e);lanes.set(e.trackId,lane);}
+ for(const lane of lanes.values()){
+  lane.sort((a,b)=>a.start-b.start);
+  for(let i=1;i<lane.length;i++){
+   const outgoing=lane[i-1],incoming=lane[i],end=outgoing.start+outgoing.duration;
+   if(outgoing.start<incoming.start&&end>incoming.start&&end<=incoming.start+incoming.duration)
+    pairs.push({outgoing,incoming,duration:end-incoming.start});
+  }
+ }
+ return pairs;
+}
+export function autoCrossfade(p:Project,ids:string[],before?:Project){
+ const moved=new Set(ids);
+ if(before)for(const pair of crossfadePairs(before)){
+  if(!moved.has(pair.outgoing.id)&&!moved.has(pair.incoming.id))continue;
+  for(const [old,key] of [[pair.outgoing,'fadeOut'],[pair.incoming,'fadeIn']] as const){
+   const current=p.events.find(e=>e.id===old.id);
+   if(current&&!current.locked&&old[key]===pair.duration&&current[key]===pair.duration)current[key]=0;
+  }
+ }
+ for(const {outgoing,incoming,duration} of crossfadePairs(p)){
+  if(!moved.has(outgoing.id)&&!moved.has(incoming.id))continue;
+  if(outgoing.locked||incoming.locked)continue;
+  outgoing.fadeOut=duration;incoming.fadeIn=duration;
+ }
+}
+
 // ------------------------------------------------------------------ edición de precisión
 // Cuánto material queda antes o después del que usa un evento, en ticks de la línea de tiempo. Infinito para
 // los generadores y las imágenes, que no dependen de un archivo.
