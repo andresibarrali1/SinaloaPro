@@ -3,13 +3,25 @@
 Requiere Node.js 22.13 o posterior y npm. La primera ejecución instala dependencias con npm ci (Internet); las posteriores reutilizan las del mismo sistema y arquitectura. No copies node_modules de Windows: se reinstalan al detectar otra plataforma. Copia toda la carpeta de código, incluyendo package-lock.json.
 
 ## macOS
-En Terminal, entra en la carpeta de Sinaloa Pro y ejecuta una vez:
+
+Lo primero es Node.js 22.13 o posterior. Con Homebrew ya instalado basta:
+
+```sh
+brew install node
+node -v
+```
+
+Si Terminal dice `brew: command not found`, es que aún no ha cargado el PATH de Homebrew: cierra y abre Terminal, o ejecuta `eval "$(/opt/homebrew/bin/brew shellenv)"` en un Mac con chip Apple y `eval "$(/usr/local/bin/brew shellenv)"` en uno Intel. También vale el instalador `.pkg` de https://nodejs.org.
+
+Después, en Terminal, entra en la carpeta de Sinaloa Pro y ejecuta una vez:
 
 ```sh
 chmod +x iniciar.command iniciar.sh
 ```
 
 Después abre iniciar.command con doble clic. Alternativa: `sh iniciar.command` desde Terminal.
+
+No hace falta tocar el PATH a mano: el lanzador ya busca Node en `/opt/homebrew/bin`, `/usr/local/bin`, nvm, Volta, pnpm y asdf, porque un `.command` abierto con doble clic no hereda el PATH de tu terminal.
 
 ### Si macOS avisa de que el archivo «puede ser malicioso»
 
