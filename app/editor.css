@@ -88,3 +88,5 @@
 
 /* Trim edges take precedence over playhead dragging and stay easy to grab. */
 .timeline-event .trim-handle{width:8px;max-width:30%;touch-action:none;}
+
+.overlap-crossfade{position:absolute;left:0;top:21px;bottom:0;z-index:4;pointer-events:none;background:#33333344;display:flex;align-items:center;justify-content:center;overflow:hidden}.overlap-crossfade svg{position:absolute;inset:0}.overlap-crossfade span{z-index:1;background:#fff3cc;color:#222;font-size:9px;white-space:nowrap;padding:0 2px;}

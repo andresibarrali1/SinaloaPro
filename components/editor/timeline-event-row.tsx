@@ -31,6 +31,7 @@ export type TimelineActions = {
 export type TimelineEventRowProps = {
   event: Event;
   media?: Media;
+  crossfadeIn?: number;
   waveSource?: WaveformSourceReader;
   zoom: number;
   trackKind: "video" | "audio";
@@ -57,6 +58,7 @@ function TextEditorIcon({ size = 11 }: { size?: number }): ReactNode {
 export const TimelineEventRow = memo(function TimelineEventRow({
   event,
   media,
+  crossfadeIn=0,
   waveSource,
   zoom,
   trackKind,
@@ -153,6 +155,10 @@ export const TimelineEventRow = memo(function TimelineEventRow({
           onSet={(value) => actions.commitOpacity(event.id, value)}
         />
       )}
+      {crossfadeIn>0&&<div className="overlap-crossfade" style={{width:seconds(crossfadeIn)*zoom}} title={`Fundido cruzado: ${seconds(crossfadeIn).toFixed(2)} s`}>
+        <svg width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 100 100"><path d="M0 0L100 100M0 100L100 0" fill="none" stroke="#f3df87" strokeWidth="1.5" vectorEffect="non-scaling-stroke"/></svg>
+        <span>{seconds(crossfadeIn).toFixed(2)} s</span>
+      </div>}
       <div className="trim-handle left" onPointerDown={(ev) => actions.drag(ev, event, "left")} title="Recortar inicio" />
       <div className="trim-handle right" onPointerDown={(ev) => actions.drag(ev, event, "right")} title="Recortar final" />
       <div
