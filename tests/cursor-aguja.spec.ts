@@ -15,7 +15,7 @@ test('sobre la aguja el puntero usa el cursor de la aguja',async({page})=>{
  await cabeza.hover();
  const estilo=await cabeza.evaluate(el=>getComputedStyle(el).cursor);
  expect(estilo).toContain('cursor-aguja.png');
- expect(estilo).toContain('12 31');
+ expect(estilo).toContain('7 14');
  const respuesta=await imagen;
  expect(respuesta.status()).toBe(200);
 });
