@@ -34,6 +34,8 @@ import { PanCropWindow } from './pan-crop';
 import { TimelineEventRow,type TimelineActions } from './timeline-event-row';
 import { TransportToolbar } from './transport-toolbar';
 import { WelcomeSplash } from './welcome-splash';
+import { RenderSuccess } from './render-success';
+import { makeOutcome,type RenderOutcome } from '@/lib/editor/render-success';
 import { DropFilesAnywhere } from './drop-files-anywhere';
 import { TIMELINE_TOOLS,idsInBox,normalizeBox,TOOL_NOTE,zoomForRange,type TimelineTool } from '@/lib/editor/timeline-tools';
 import { rangeIds } from '@/lib/editor/range-selection';
@@ -140,6 +142,8 @@ export default function Editor(){
  // Ventana de bienvenida: se abre al arrancar y al crear un proyecto nuevo; se va sola a los 4 s o con la X.
  const [bienvenida,setBienvenida]=useState(false);
  const cerrarBienvenida=useCallback(()=>setBienvenida(false),[]);
+ // Confirmación del renderizado: el blob se guarda para poder volver a descargarlo desde el aviso.
+ const [renderDone,setRenderDone]=useState<{outcome:RenderOutcome;blob:Blob}|null>(null);
  // Archivos que se están arrastrando sobre la ventana: se muestra el aviso de «suelta para importar».
  const [arrastrandoArchivos,setArrastrandoArchivos]=useState(false);
  // Hay cambios sin guardar (se ve en la barra de título y es lo que hace que al cerrar se pregunte).
@@ -1713,7 +1717,7 @@ useEffect(()=>{
  const exportRange=()=>p?resolveRange(p,exportSettings):{start:0,end:0};
  const exportPlan=()=>plannedFrames(exportSettings.fps,exportRange());
  const exportFormatReady=(f:ExportFormat)=>{const codecOk=f==='mp4'?cap.mp4:f==='webm'?cap.webm:cap.wav;return codecOk&&(exportSettings.includeAudio?!!(support?.audio??true):true);};
- async function exportNow(){if(!p||rendering)return;setRendering(true);pause();abort.current=new AbortController();setStatus('Renderizando localmente→');setProgress({done:0,total:0,rate:0,elapsedMs:0,etaMs:0,stage:'preparando',bytes:0});try{const result=await renderProject(clone(p),library.current,exportSettings,abort.current.signal,setProgress);const range=exportRange();download(result.blob,`${p.name}${exportSettings.scope==='range'?' (tramo)':''}.${exportSettings.format}`);setStatus(`Renderizado ${exportSettings.format.toUpperCase()}: ${result.frames} fotogramas · ${(result.blob.size/1048576).toFixed(2)} MB · ${tc(range.end-range.start)} de salida · ${(result.elapsedMs/1000).toFixed(1)} s (${(result.frames/Math.max(.001,result.elapsedMs/1000)).toFixed(1)} fps de render).`);}catch(e){setStatus(abort.current.signal.aborted?'Renderización cancelada. Recursos liberados.':e instanceof Error?e.message:String(e));}finally{setRendering(false);abort.current=null;}}
+ async function exportNow(){if(!p||rendering)return;setRendering(true);pause();abort.current=new AbortController();setStatus('Renderizando localmente→');setProgress({done:0,total:0,rate:0,elapsedMs:0,etaMs:0,stage:'preparando',bytes:0});try{const result=await renderProject(clone(p),library.current,exportSettings,abort.current.signal,setProgress);const range=exportRange();const fileName=`${p.name}${exportSettings.scope==='range'?' (tramo)':''}.${exportSettings.format}`;download(result.blob,fileName);setDialog('');setRenderDone({outcome:makeOutcome({fileName,format:exportSettings.format,bytes:result.blob.size,frames:result.frames,elapsedMs:result.elapsedMs,startSeconds:seconds(range.start),endSeconds:seconds(range.end)}),blob:result.blob});setStatus(`Renderizado ${exportSettings.format.toUpperCase()}: ${result.frames} fotogramas · ${(result.blob.size/1048576).toFixed(2)} MB · ${tc(range.end-range.start)} de salida · ${(result.elapsedMs/1000).toFixed(1)} s (${(result.frames/Math.max(.001,result.elapsedMs/1000)).toFixed(1)} fps de render).`);}catch(e){setStatus(abort.current.signal.aborted?'Renderización cancelada. Recursos liberados.':e instanceof Error?e.message:String(e));}finally{setRendering(false);abort.current=null;}}
  // Lote de renderizado: la cola del script «Batch Render» de VEGAS. Los trabajos se preparan con los ajustes
  // que hay en el diálogo y se renderizan en serie sobre una copia del proyecto tomada al empezar, para que lo
  // que se edite mientras corre la cola no cambie lo que ya está en marcha. Un trabajo que falla queda marcado
@@ -1735,7 +1739,7 @@ useEffect(()=>{
   const project=clone(p);
   setRendering(true);pause();abort.current=new AbortController();const signal=abort.current.signal;
   setStatus(`Lote: ${queue.length} trabajo(s) en cola.`);
-  let finished=0;const failures:string[]=[];
+  let finished=0;const failures:string[]=[];let batchBytes=0;let lastFileName='';
   for(const job of queue){
    if(signal.aborted){setBatch(list=>list.map(item=>item.status==='pendiente'?{...item,status:'cancelado'}:item));break;}
    setBatch(list=>list.map(item=>item.id===job.id?{...item,status:'renderizando',done:0,error:undefined}:item));
@@ -1743,6 +1747,7 @@ useEffect(()=>{
    try{
     const result=await renderProject(jobProject(project,job),library.current,job.settings,signal,progress=>{setProgress(progress);setBatch(list=>list.map(item=>item.id===job.id?{...item,done:progress.done,bytes:progress.bytes}:item));});
     download(result.blob,job.fileName);
+    batchBytes+=result.blob.size;lastFileName=job.fileName;
     setBatch(list=>list.map(item=>item.id===job.id?{...item,status:'hecho',done:result.frames,bytes:result.blob.size,elapsedMs:result.elapsedMs}:item));
     finished++;
    }catch(e){
@@ -1752,6 +1757,7 @@ useEffect(()=>{
    }
   }
   setRendering(false);abort.current=null;setProgress(null);
+  if(finished>0){setDialog('');setRenderDone({outcome:makeOutcome({fileName:lastFileName||`${p.name}.${exportSettings.format}`,format:exportSettings.format,bytes:batchBytes,frames:0,elapsedMs:0,startSeconds:0,endSeconds:0,files:finished}),blob:new Blob()});}
   setStatus(signal.aborted?`Lote cancelado: ${finished} archivo(s) descargado(s) antes de parar.`:`Lote terminado: ${finished} archivo(s) descargado(s)${failures.length?`, ${failures.length} con error (${failures.join(', ')})`:''}.`);
  }
  useEffect(()=>{
@@ -1937,6 +1943,7 @@ useEffect(()=>{
   </DialogContent></Dialog>
   <WorkspaceMenu menu={contextMenu} onClose={()=>setContextMenu(null)}/>
   {bienvenida&&<WelcomeSplash onClose={cerrarBienvenida}/>}
+  {renderDone&&<RenderSuccess outcome={renderDone.outcome} onDownloadAgain={renderDone.blob.size>0?()=>download(renderDone.blob,renderDone.outcome.fileName):undefined} onClose={()=>setRenderDone(null)}/>}
   {/* Soltar archivos vale en toda la ventana, también encima de diálogos y de la bienvenida. */}
   <DropFilesAnywhere onArchivos={archivos=>void importFiles(archivos)} onArrastrando={setArrastrandoArchivos}/>
   {arrastrandoArchivos&&<div className="drop-overlay" role="status" aria-live="polite">Suelta los archivos para importarlos<small>Vídeo, audio, imágenes, subtítulos… · también sobre un diálogo</small></div>}
