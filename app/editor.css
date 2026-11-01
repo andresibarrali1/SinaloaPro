@@ -90,3 +90,77 @@
 .timeline-event .trim-handle{width:8px;max-width:30%;touch-action:none;}
 
 .overlap-crossfade{position:absolute;left:0;top:21px;bottom:0;z-index:4;pointer-events:none;background:#33333344;display:flex;align-items:center;justify-content:center;overflow:hidden}.overlap-crossfade svg{position:absolute;inset:0}.overlap-crossfade span{z-index:1;background:#fff3cc;color:#222;font-size:9px;white-space:nowrap;padding:0 2px;}
+
+/* Collapsed tracks retain the event title and a draggable bottom edge. */
+.track-header[data-compact=true]{padding:1px 5px;overflow:hidden}
+.track-header[data-compact=true]>:not(.track-label):not(.track-resize){display:none}
+.track-header[data-compact=true] .track-resize{z-index:8;height:5px}
+.track-lane[data-compact=true] .event-body,
+.track-lane[data-compact=true] .event-opacity,
+.track-lane[data-compact=true] .fade-shade,
+.track-lane[data-compact=true] .overlap-crossfade{display:none}
+
+/* Focused text inspector, scoped to the titles dialog. */
+.editor-dialog:has(.titles-modern){width:min(1080px,96vw)!important;max-width:1080px!important;background:#24272d;border:1px solid #454b56;border-radius:12px;padding:20px}
+.editor-dialog:has(.titles-modern) #dialog-description{display:none}
+.editor-dialog .titles-modern{height:min(72vh,700px);max-height:72vh;grid-template-columns:minmax(0,1fr) minmax(360px,1fr);gap:16px}
+.editor-dialog .titles-modern .titles-preview-pane{display:flex;flex-direction:column;background:#191c21;border:1px solid #353b44;border-radius:10px;padding:14px;gap:12px;align-items:stretch}
+.titles-preview-heading{display:flex;justify-content:space-between;color:#e5eaf0;font-weight:600}.titles-preview-heading small{color:#98a5b7;font-weight:400}
+.titles-preview-stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.editor-dialog .titles-modern .titles-preview{max-height:100%;max-width:100%;border:0;box-shadow:0 3px 16px #0006}
+.editor-dialog .titles-modern .titles-fields{display:flex;flex-direction:column;overflow:hidden;padding:0;min-width:0}
+.titles-nav{display:flex;gap:4px;background:#191c21;border-radius:8px;padding:4px;flex-shrink:0;margin-bottom:14px}
+.editor-dialog .titles-nav button{flex:1;border:0!important;border-radius:6px;background:transparent!important;padding:9px 4px!important;color:#aeb9c8;font-size:12px}
+.editor-dialog .titles-nav button[aria-selected=true]{background:#365b8a!important;color:#fff}
+.titles-panel{min-height:0;overflow:auto;overflow-x:hidden;padding:0 8px 12px 0;scrollbar-width:thin;scrollbar-color:#536070 transparent}
+.titles-modern h3{font-size:17px;color:#f0f4fa;margin:0 0 14px;font-weight:600}
+.titles-modern .titles-hint{font-size:11px;line-height:1.5;color:#a9b4c3;margin:0 0 12px}
+.titles-modern .field{font-size:12px;color:#c8d2df;margin:8px 0;gap:7px}
+.editor-dialog .titles-modern textarea{font-family:inherit;font-size:15px;line-height:1.5;min-height:100px;background:#191c21;border:1px solid #475361;border-radius:8px;padding:12px}
+.titles-modern .form-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px}
+.titles-modern input,.titles-modern select{border-radius:5px;background:#191c21;border-color:#475361;max-width:100%}
+.titles-modern section{margin:14px 0;padding-top:10px;border-top:1px solid #3a414c}
+.titles-modern section h4{font-size:13px;font-weight:600;margin:4px 0 10px}
+.titles-modern details summary{cursor:pointer;color:#aabbd0;padding:6px 0}
+.titles-modern .titles-search{width:100%;padding:10px;margin-bottom:10px}
+.titles-modern .text-presets{border:0;margin:0;padding:0}
+.titles-modern .text-preset-group-name{display:block;color:#a7b9ce;margin:14px 0 8px}
+.titles-modern .text-preset-buttons button,.titles-modern .titles-animation-grid button{border-radius:7px;border:1px solid #424c5a;background:#2c323c;padding:8px}
+.titles-modern button[aria-pressed=true]{background:#294b72!important;border-color:#76baff!important;color:#e8f4ff}
+.titles-animation-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.titles-animation-grid button{display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0;font-size:12px}
+.titles-modern .preset-preview{width:100%;height:auto;max-width:180px;border-radius:4px}
+.editor-dialog .titles-modern .titles-actions{border-top:1px solid #3a414c;padding-top:12px;display:flex;align-items:center;gap:10px}
+.titles-save-note{flex:1;color:#9baabd;font-size:11px;text-align:right}
+.editor-dialog .titles-modern .titles-done{background:#3575b9;border:1px solid #6ca1d8;border-radius:7px;padding:8px 24px}
+@media(max-width:860px){.editor-dialog .titles-modern{grid-template-columns:minmax(0,1fr) minmax(320px,1fr);grid-template-areas:"preview fields" "actions actions"}.editor-dialog .titles-modern .titles-preview-pane{max-height:none}.titles-nav{gap:0}.titles-save-note{display:none}}
+
+/* Resource properties: one section at a time and one persistent action bar. */
+.editor-dialog:has(.resource-inspector){width:min(920px,96vw)!important;max-width:920px!important;border-radius:12px!important;background:#252930!important;padding:20px!important;border:1px solid #48515e!important}
+.editor-dialog:has(.resource-inspector) #dialog-description{display:none}
+.resource-inspector{display:flex;flex-direction:column;height:min(70vh,650px);min-height:0;gap:16px;color:#dde5ef}
+.resource-heading{display:flex;gap:12px;align-items:center;min-width:0;background:#1b1f26;padding:12px;border-radius:8px}
+.resource-heading strong{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}.resource-heading>span:last-child{color:#a9b6c8;font-size:12px}
+.resource-kind{background:#31475e;color:#b7d8fb;padding:4px 7px;border-radius:4px;font-size:11px;flex-shrink:0}
+.resource-tabs{display:flex!important;flex-direction:column;flex:1;min-height:0;gap:14px!important}
+.resource-nav{display:flex!important;flex-shrink:0;width:100%!important;justify-content:stretch!important;gap:3px!important;border-radius:8px!important;background:#191d23!important;height:40px!important;padding:4px!important}
+.resource-nav [role=tab]{flex:1;border-radius:5px!important;font-size:12px!important;color:#a9b8cb!important;background:transparent!important;border:0!important;padding:6px!important;white-space:nowrap}
+.resource-nav [role=tab][aria-selected=true]{background:#365d8e!important;color:#fff!important}
+.resource-inspector .property-tab{overflow:auto;min-height:0;flex:1;padding:0 10px 12px 0;scrollbar-width:thin;scrollbar-color:#536070 transparent}
+.resource-inspector .property-tab[data-state=inactive]{display:none}
+.resource-inspector .property-group{padding:16px;border-radius:8px;border:1px solid #424b59;background:#2b3038;margin-top:14px}
+.resource-inspector h3{font-size:14px;color:#edf3fb;font-weight:600;margin:0 0 10px}
+.resource-inspector .resource-hint{font-size:12px;color:#afbdd0;line-height:1.5;margin:0 0 14px}
+.resource-inspector .property-checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:18px 0}
+.resource-inspector .field{margin:12px 0;font-size:12px;gap:14px}
+.resource-inspector input:not([type=checkbox]):not([type=radio]),.resource-inspector textarea{border-radius:6px;border:1px solid #515e70;background:#1b2027;padding:7px;color:#edf3fa;max-width:100%}
+.resource-inspector .form-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.resource-inspector .resource-advanced{border-top:1px solid #48515d;margin-top:16px;padding-top:12px}
+.resource-advanced summary{cursor:pointer;color:#b4c9e3;padding:6px 0}.resource-inspector .property-radios{border:0;display:grid;gap:10px;margin:14px 0;padding:0}
+.resource-inspector .resource-extra>section{max-width:100%;border:0!important;padding:4px 0!important}
+.resource-inspector .resource-extra .wide-button{padding:12px!important;border-radius:6px;background:#303e50!important;border:1px solid #556a84!important;margin:8px 0 16px}
+.resource-inspector .resource-extra textarea{width:100%;font-family:inherit;font-size:14px}
+.resource-inspector .resource-actions{display:flex;align-items:center;gap:10px;border-top:1px solid #414a58;padding-top:14px;margin:0;flex-shrink:0}
+.resource-actions>span{flex:1;color:#a8b5c7;font-size:11px}.resource-actions button{padding:8px 16px!important;border-radius:6px}
+.editor-dialog .resource-actions .resource-done{background:#3677b9!important;border:1px solid #79afe6!important;color:white}
+@media(max-width:750px){.resource-nav [role=tab]{font-size:10px!important}.resource-inspector .property-checks{grid-template-columns:1fr}.resource-actions>span{display:none}}
