@@ -228,9 +228,12 @@ Reels, Shorts y Cuadrado, mira el monitor vertical y recarga la página para ver
   trazado de las ondas baja por una **escalera de resoluciones** y solo se rehace cuando cruza un escalón, las
   coordenadas van en enteros y la silueta se repasa con su propio trazado en vez de con un segundo camino. El
   arrastre de la aguja ya iba fino y sigue igual (p95 16,8 ms) y el autoguardado no deja fotogramas largos.
-- **Límites**: la salida se retiene en memoria (aviso al superar 256 MB) y no hay renderizado en segundo
-  plano: la **cola se ejecuta en serie dentro del diálogo**, así que mientras renderiza no se edita (el bucle
-  de renderizado cede el hilo periódicamente para que la interfaz siga respondiendo y se pueda cancelar).
+- **Límites**: con **Destino → Guardar en un archivo** (Chrome y Edge) el vídeo se escribe en disco mientras se
+  codifica: no pasa por la memoria del navegador y **no hay tope de tamaño**, así que se pueden exportar horas a la
+  máxima calidad. Con **Descargar al terminar**, o en un navegador sin escritura directa (Firefox, Safari), el
+  archivo se genera en memoria: a partir de 256 MB solo se avisa (ya no se bloquea). No hay renderizado en segundo
+  plano: la **cola se ejecuta en serie dentro del diálogo**, así que mientras renderiza no se edita (el bucle de
+  renderizado cede el hilo periódicamente para que la interfaz siga respondiendo y se pueda cancelar).
 
 ### 5.1.1 Lote de renderizado (cola de trabajos)
 
@@ -395,6 +398,37 @@ que se reparten dentro de la frase), así que una línea de *k* palabras **empie
 cuando termina la última**; lo que sobra al final va en una línea más corta. El `.srt` guarda exactamente esas
 líneas, así que lo que se ve en la línea de tiempo y lo que se lee en el archivo coinciden. Los recursos de Pexels
 siguen colocándose palabra a palabra con los tiempos finos de la transcripción, aunque el `.srt` vaya agrupado.
+
+### Transcribir solo una parte: lo que está seleccionado en la línea de tiempo
+
+El mismo diálogo tiene un segundo alcance, **Audio que se transcribe**:
+
+- **Todo el audio del proyecto** (lo de siempre): se mezcla el proyecto entero y se envía tal cual.
+- **Solo lo seleccionado en la línea de tiempo**: se mezclan **solo los eventos de audio elegidos**; el resto del
+  proyecto no sale del equipo. Sirve para una **pista entera** —pulsa su cabecera— o para **una parte de esa
+  pista**: los clips que selecciones (rectángulo de selección o Mayús+clic), uno o varios. Si seleccionas un
+  **vídeo**, entra también su audio enlazado, así que transcribe el sonido de ese plano.
+
+Hay tres accesos al mismo sitio: el selector del diálogo, el botón de **micrófono** que está a la derecha de
+*Generar subtítulos*, y el clic derecho sobre un clip de audio (*Transcribir este audio (Groq)…*) o sobre la
+cabecera de una pista (*Transcribir esta pista (Groq)…*).
+
+Qué se puede esperar:
+
+1. El archivo que se envía **empieza en el primer instante seleccionado**, así que el servicio cuenta desde ahí; al
+   volver, los tiempos se desplazan otra vez (`shiftCues`) para que los subtítulos queden **en su sitio de la línea
+   de tiempo**, no al principio. Un clip que empieza en 00:00:06:00 genera subtítulos que empiezan en 00:00:06:xx.
+2. El `.srt` se llama **`subtitulos-seleccion.srt`**, para no confundirlo con el del proyecto entero, y la barra de
+   estado dice qué se transcribió: *«… Solo se transcribió 1 clip de la pista «Audio»: 6.0 s de audio entre
+   00:00:06:00 y 00:00:12:00, y los subtítulos entran en ese tramo.»*
+3. Lo seleccionado se transcribe **aunque la pista esté silenciada para escuchar** (o si otra pista está en solo):
+   manda la selección. El resto del proyecto sigue callado.
+4. Los huecos entre dos clips seleccionados de la misma tanda viajan como **silencio**, para que los tiempos no se
+   descoloquen; el diálogo dice cuántos segundos se envían y desde cuándo antes de enviar nada.
+
+> **Límite honesto**: el archivo enviado va del primer clip al último, así que una selección muy dispersa (dos clips
+> separados por diez minutos) manda también esos diez minutos de silencio. Para transcripciones largas conviene ir
+> por tandas, y el límite de tamaño de la API es el mismo que en el modo de proyecto entero.
 
 **Verificado de extremo a extremo con voz real**: con la clave nueva, un WAV de voz en español genera
 
@@ -1026,8 +1060,9 @@ resultado real de importar cada archivo de prueba.
 Enumera lo que **no** está resuelto, sin adornos; el detalle está en [FEATURES.md](FEATURES.md) y
 [VERIFICACION.md](VERIFICACION.md). En resumen: **no hay lectura de `.veg` sin VEGAS** (contenedor propietario
 sin especificación; con el puente lo entrega el propio VEGAS, y sin él la vía es exportar XML o EDL desde
-VEGAS, ver §5.1) ni plugins nativos; la velocidad cambia el tono del audio; la exportación se retiene en
-memoria (hay límite de 256 MB) y no hay renderizado en segundo plano; de la composición 3D ya están los giros
+VEGAS, ver §5.1) ni plugins nativos; la velocidad cambia el tono del audio; en la exportación, Chrome y Edge
+escriben el archivo directamente en disco (sin límite de tamaño) y en los demás navegadores se retiene en memoria,
+donde solo se avisa a partir de 256 MB; no hay renderizado en segundo plano; de la composición 3D ya están los giros
 sobre X e Y y la distancia, pero faltan los manejadores Bézier que se arrastran. La composición 3D es la
 proyección de un plano: no hay objetos, luces ni sombras. En el audio hay ocho tomas de efectos propias, pero
 **no se cargan complementos VST ni OFX** (son binarios de terceros y el navegador no los ejecuta) y **no hay

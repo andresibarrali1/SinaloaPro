@@ -22,8 +22,10 @@ const PRESET_DEFAULTS: Partial<Event> = {
   font: 'Arial', fontSize: 72, color: '#ffffff', bold: false, italic: false,
   anchor: 'middle-center', animation: 'fade', outlineWidth: 0, outlineColor: '#000000',
   shadow: { enabled: false, color: '#000000', offsetX: 0, offsetY: 3, blur: 6 },
-  background: { color: '#000000', opacity: 0, padding: 18 },
+  background: { color: '#000000', opacity: 0, padding: 18, radius: 0, fit: 'block' },
   tracking: 0, wrap: .9, lineSpacing: DEFAULT_LINE_SPACING, highlightColor: DEFAULT_HIGHLIGHT,
+  uppercase: false, hollow: false, gradient: { enabled: false, from: '#ffffff', to: '#ffffff', angle: 0 },
+  highlightBox: false, highlightBoxColor: '#0a0a0a', highlightTextColor: '#3dff8a',
 };
 
 const RAW_PRESETS: TextPreset[] = [
@@ -122,10 +124,80 @@ const RAW_PRESETS: TextPreset[] = [
     note: 'Texto que sube por la pantalla como los títulos de crédito, con interlineado amplio.',
     patch: { font: 'Arial', fontSize: 56, color: '#ffffff', bold: false, italic: false, anchor: 'bottom-center', animation: 'scroll-up', outlineWidth: 0, outlineColor: '#000000', shadow: { enabled: false, color: '#000000', offsetX: 0, offsetY: 2, blur: 4 }, background: { color: '#000000', opacity: 0, padding: 18 }, tracking: 0, wrap: .8, lineSpacing: 1.5 },
   },
+  // ---------------------------------------------------------------------------------------------
+  // Premium 2026: los estilos que están marcando los subtítulos y títulos de redes. Se apoyan en las
+  // capacidades nuevas del motor (mayúsculas, relleno degradado, texto hueco, cajas redondeadas por línea y
+  // la caja que crece detrás de la palabra activa) para que no sean una copia plana de un estilo ajeno.
+  // ---------------------------------------------------------------------------------------------
+  {
+    id: 'premium-grow-verde', name: 'Caja que crece (verde)', group: 'Premium 2026',
+    note: 'La caja oscura crece detrás de cada palabra mientras suena y la palabra se enciende en verde lima: el subtítulo con resalte más copiado de 2026, legible sobre cualquier imagen.',
+    patch: { font: 'Segoe UI', fontSize: 78, color: '#ffffff', bold: true, uppercase: true, anchor: 'bottom-center', animation: 'karaoke', outlineWidth: 0, shadow: { enabled: true, color: '#000000', offsetX: 0, offsetY: 4, blur: 14 }, background: { color: '#000000', opacity: 0, padding: 0 }, highlightBox: true, highlightBoxColor: '#0a0a0a', highlightTextColor: '#3dff8a', tracking: .5, wrap: .9, lineSpacing: 1.15 },
+  },
+  {
+    id: 'premium-pastilla-cristal', name: 'Pastilla de cristal', group: 'Premium 2026',
+    note: 'Cada línea va dentro de una pastilla redondeada translúcida, con aire alrededor: el fondo garantiza el contraste y la transparencia deja ver la imagen.',
+    patch: { font: 'Segoe UI', fontSize: 64, color: '#ffffff', bold: true, anchor: 'bottom-center', animation: 'slide-up', outlineWidth: 0, shadow: { enabled: true, color: '#000000', offsetX: 0, offsetY: 8, blur: 18 }, background: { color: '#0b1220', opacity: .62, padding: 22, radius: 28, fit: 'line' }, tracking: 0, wrap: .86, lineSpacing: 1.18 },
+  },
+  {
+    id: 'premium-tarjeta-blanca', name: 'Tarjeta blanca', group: 'Premium 2026',
+    note: 'Texto oscuro sobre una tarjeta blanca redondeada, línea a línea: limpio, editorial y con el contraste resuelto sin contorno.',
+    patch: { font: 'Segoe UI', fontSize: 66, color: '#101010', bold: true, anchor: 'bottom-center', animation: 'pop', outlineWidth: 0, shadow: { enabled: true, color: '#000000', offsetX: 0, offsetY: 6, blur: 16 }, background: { color: '#ffffff', opacity: .96, padding: 26, radius: 22, fit: 'line' }, tracking: 0, wrap: .86, lineSpacing: 1.16 },
+  },
+  {
+    id: 'premium-gradiente-atardecer', name: 'Degradado atardecer', group: 'Premium 2026',
+    note: 'Relleno degradado de naranja a magenta sobre mayúsculas gruesas, con un resplandor del mismo tono: el título de gancho de los vídeos de moda.',
+    patch: { font: 'Segoe UI', fontSize: 104, color: '#ffffff', bold: true, uppercase: true, anchor: 'middle-center', animation: 'zoom-in', outlineWidth: 0, shadow: { enabled: true, color: '#ff2e9a', offsetX: 0, offsetY: 0, blur: 38 }, background: { color: '#000000', opacity: 0, padding: 18 }, gradient: { enabled: true, from: '#ff7a18', to: '#ff2e9a', angle: 90 }, tracking: 1, wrap: .9, lineSpacing: 1.05 },
+  },
+  {
+    id: 'premium-cromo-liquido', name: 'Cromo líquido', group: 'Premium 2026',
+    note: 'Solo contorno claro y frío sobre letras enormes, con un halo azul y una sombra dura: la tipografía metálica de los títulos de cine y música.',
+    patch: { font: 'Impact', fontSize: 128, color: '#ffffff', bold: true, uppercase: true, anchor: 'middle-center', animation: 'spin-in', outlineWidth: 4, outlineColor: '#dcecff', hollow: true, shadow: { enabled: true, color: '#2f8dff', offsetX: 5, offsetY: 9, blur: 26 }, background: { color: '#000000', opacity: 0, padding: 18 }, tracking: 2, wrap: .9, lineSpacing: 1.05 },
+  },
+  {
+    id: 'premium-neon-tubo', name: 'Neón de tubo', group: 'Premium 2026',
+    note: 'Contorno cian hueco con un resplandor azul muy abierto: el cartel de neón, pero sin relleno, para que la imagen respire por dentro de las letras.',
+    patch: { font: 'Segoe UI', fontSize: 96, color: '#eaffff', bold: true, uppercase: true, anchor: 'middle-center', animation: 'pulse', outlineWidth: 3, outlineColor: '#00e5ff', hollow: true, shadow: { enabled: true, color: '#00b3ff', offsetX: 0, offsetY: 0, blur: 70 }, background: { color: '#000000', opacity: 0, padding: 18 }, tracking: 2, wrap: .9, lineSpacing: 1.1 },
+  },
+  {
+    id: 'premium-karaoke-ambar', name: 'Karaoke ámbar', group: 'Premium 2026',
+    note: 'Blanco con contorno negro que se enciende en ámbar palabra a palabra: la versión cálida y legible del karaoke para entrevistas y tutoriales.',
+    patch: { font: 'Segoe UI', fontSize: 84, color: '#ffffff', bold: true, anchor: 'bottom-center', animation: 'karaoke', outlineWidth: 8, outlineColor: '#000000', highlightColor: '#ffb020', shadow: { enabled: true, color: '#000000', offsetX: 0, offsetY: 5, blur: 10 }, background: { color: '#000000', opacity: 0, padding: 18 }, tracking: 0, wrap: .9, lineSpacing: 1.15 },
+  },
+  {
+    id: 'premium-minimal-sombra', name: 'Minimal con sombra', group: 'Premium 2026',
+    note: 'Blanco sin contorno, con una sombra amplia y suave que lo separa del fondo: el subtítulo discreto de los documentales y las marcas de lujo.',
+    patch: { font: 'Segoe UI', fontSize: 72, color: '#ffffff', bold: true, anchor: 'bottom-center', animation: 'fade', outlineWidth: 0, shadow: { enabled: true, color: '#000000', offsetX: 0, offsetY: 6, blur: 24 }, background: { color: '#000000', opacity: 0, padding: 18 }, tracking: .4, wrap: .9, lineSpacing: 1.2 },
+  },
+  {
+    id: 'premium-cine-serif', name: 'Cine serif', group: 'Premium 2026',
+    note: 'Serifa clara con seguimiento y sombra tenue, abajo y sin caja: el subtítulo de cine contemporáneo, pensado para planos largos.',
+    patch: { font: 'Georgia', fontSize: 62, color: '#f4efe4', bold: false, italic: false, anchor: 'bottom-center', animation: 'fade', outlineWidth: 0, shadow: { enabled: true, color: '#000000', offsetX: 0, offsetY: 3, blur: 14 }, background: { color: '#000000', opacity: 0, padding: 18 }, tracking: 1.2, wrap: .9, lineSpacing: 1.35 },
+  },
+  {
+    id: 'premium-etiqueta-ambar', name: 'Etiqueta ámbar', group: 'Premium 2026',
+    note: 'Mayúsculas oscuras sobre una etiqueta ámbar redondeada: el rótulo de marca que se lee de un vistazo en vertical y en horizontal.',
+    patch: { font: 'Segoe UI', fontSize: 64, color: '#111111', bold: true, uppercase: true, anchor: 'bottom-center', animation: 'slide-up', outlineWidth: 0, shadow: { enabled: true, color: '#000000', offsetX: 0, offsetY: 6, blur: 14 }, background: { color: '#ffb020', opacity: .96, padding: 18, radius: 26, fit: 'line' }, tracking: 1, wrap: .88, lineSpacing: 1.12 },
+  },
+  {
+    id: 'premium-titulo-editorial', name: 'Título editorial', group: 'Premium 2026',
+    note: 'Serifa de gran tamaño con mucho seguimiento y mayúsculas: la portada de revista que abre un reportaje o una marca de autor.',
+    patch: { font: 'Georgia', fontSize: 94, color: '#f7f3ea', bold: true, uppercase: true, anchor: 'middle-center', animation: 'fade', outlineWidth: 0, shadow: { enabled: true, color: '#000000', offsetX: 0, offsetY: 4, blur: 18 }, background: { color: '#000000', opacity: 0, padding: 18 }, tracking: 4, wrap: .86, lineSpacing: 1.2 },
+  },
+  {
+    id: 'premium-palabra-pop', name: 'Palabra pop', group: 'Premium 2026',
+    note: 'Una sola palabra enorme que entra con rebote y contorno grueso: el golpe visual de los primeros segundos, sin adornos.',
+    patch: { font: 'Impact', fontSize: 140, color: '#ffffff', bold: true, uppercase: true, anchor: 'middle-center', animation: 'pop', outlineWidth: 6, outlineColor: '#000000', shadow: { enabled: true, color: '#000000', offsetX: 0, offsetY: 8, blur: 0 }, background: { color: '#000000', opacity: 0, padding: 18 }, tracking: 0, wrap: .9, lineSpacing: 1 },
+  },
+  {
+    id: 'premium-cian-suave', name: 'Cian suave', group: 'Premium 2026',
+    note: 'Degradado de cian a azul con resplandor frío y mayúsculas: un título tecnológico que no recurre al neón duro.',
+    patch: { font: 'Segoe UI', fontSize: 88, color: '#d9fbff', bold: true, uppercase: true, anchor: 'middle-center', animation: 'zoom-in', outlineWidth: 0, shadow: { enabled: true, color: '#3fa9ff', offsetX: 0, offsetY: 0, blur: 28 }, background: { color: '#000000', opacity: 0, padding: 18 }, gradient: { enabled: true, from: '#7df9ff', to: '#2f7cf6', angle: 90 }, tracking: 1.5, wrap: .9, lineSpacing: 1.1 },
+  },
 ];
 
 // Campos que una plantilla puede cambiar. Se usan para aplicar la plantilla y para reconocer cuál está puesta.
-const PRESET_KEYS: (keyof Event)[] = ['font', 'fontSize', 'color', 'bold', 'italic', 'anchor', 'animation', 'outlineWidth', 'outlineColor', 'shadow', 'background', 'tracking', 'wrap', 'lineSpacing', 'highlightColor'];
+export const PRESET_KEYS: (keyof Event)[] = ['font', 'fontSize', 'color', 'bold', 'italic', 'anchor', 'animation', 'outlineWidth', 'outlineColor', 'shadow', 'background', 'tracking', 'wrap', 'lineSpacing', 'highlightColor', 'uppercase', 'hollow', 'gradient', 'highlightBox', 'highlightBoxColor', 'highlightTextColor'];
 
 // Cada plantilla sale con todos los campos del estilo puestos: los suyos y, en lo que no diga nada, el valor
 // neutro de arriba.

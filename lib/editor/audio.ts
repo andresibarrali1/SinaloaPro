@@ -17,7 +17,11 @@ function panLaw(pan: number): [number, number] {
   const angle = (Math.max(-1, Math.min(1, pan)) + 1) * Math.PI / 4;
   return [Math.cos(angle) * PAN_CENTER, Math.sin(angle) * PAN_CENTER];
 }
-export function mix(p:Project,library:MediaLibrary,start:number,count:number,rate=p.sampleRate):Float32Array[]{
+// `options.only` deja sonar solo esos eventos (es lo que usa la transcripción de la selección: el resto del
+// proyecto se calla pero la mezcla es la misma) y `options.ignoreMute` ignora el silencio y el solo, porque lo
+// que se ha seleccionado a propósito se transcribe aunque la pista esté silenciada para escucharla.
+export type MixOptions = { only?:ReadonlySet<string>; ignoreMute?:boolean };
+export function mix(p:Project,library:MediaLibrary,start:number,count:number,rate=p.sampleRate,options?:MixOptions):Float32Array[]{
  const master=[new Float32Array(count),new Float32Array(count)];
  const buses=p.buses??[];
  const busBuffers=new Map<string,Float32Array[]>();
@@ -30,7 +34,7 @@ export function mix(p:Project,library:MediaLibrary,start:number,count:number,rat
  const anySolo=audioTracks.some(t=>t.solo)||buses.some(b=>b.solo);
  const busOf=(track:Track)=>buses.find(b=>b.id===track.busId);
  // Con solo activo en cualquier sitio, se oye lo solista (pista o bus) y lo demás calla.
- const audible=(track:Track,bus?:AudioBus)=>!track.mute&&!(bus?.mute)&&(!anySolo||track.solo||bus?.solo===true);
+ const audible=(track:Track,bus?:AudioBus)=>options?.ignoreMute?true:!track.mute&&!(bus?.mute)&&(!anySolo||track.solo||bus?.solo===true);
  for(const track of audioTracks){
   const bus=busOf(track);
   if(!audible(track,bus))continue;
@@ -39,9 +43,10 @@ export function mix(p:Project,library:MediaLibrary,start:number,count:number,rat
   const dry=[new Float32Array(count),new Float32Array(count)];
   // Los eventos con «Silencio» no se mezclan; si el silencio está en un evento de vídeo, calla también al
   // audio enlazado de su mismo grupo, que es lo que hace el interruptor en VEGAS.
-  const silenced=silencedIds(p);
+  const silenced=options?.ignoreMute?new Set<string>():silencedIds(p);
   for(const e of p.events.filter(e=>e.trackId===track.id&&e.kind==='audio')){
    if(silenced.has(e.id))continue;
+   if(options?.only&&!options.only.has(e.id))continue;
    const pcm=library.items.get(e.mediaId||'')?.pcm;
    if(!pcm)continue;
    const mediaSeconds=seconds(p.media.find(m=>m.id===e.mediaId)?.duration??0);

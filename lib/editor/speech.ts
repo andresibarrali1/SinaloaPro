@@ -1,4 +1,4 @@
-import { Project, seconds } from './project';
+import { Project, seconds, linkedIds } from './project';
 import { MediaLibrary } from './media';
 import { mix } from './audio';
 // Transcripción con la API de Groq (compatible con la de OpenAI) y utilidades de subtítulos.
@@ -22,17 +22,62 @@ export function parseSrt(text:string):Cue[]{
  }
  return cues;
 }
+// Qué audio se envía a transcribir: un tramo del proyecto (`from`..`to`, en segundos) y, cuando trae `events`,
+// solo esos eventos suenan y el resto del proyecto se calla. Son los dos modos del diálogo de subtítulos: todo
+// el proyecto, o solo lo que está seleccionado en la línea de tiempo.
+export type SpeechScope = { from:number; to:number; events:ReadonlySet<string>|null; label:string };
+// «Solo lo seleccionado»: el alcance sale de lo elegido en la línea de tiempo. Si no hay audio que transcribir,
+// se devuelve el motivo para poder explicarlo antes de enviar nada a ningún sitio. `muted` avisa de que lo
+// seleccionado está silenciado para escuchar: se transcribe igual, porque la selección manda.
+export type SpeechPick = { ok:true; scope:SpeechScope; clips:number; tracks:string[]; muted:boolean } | { ok:false; reason:string };
+// Eventos que de verdad suenan: los de audio de una pista de audio. Un vídeo con sonido guarda su audio en un
+// evento enlazado del mismo grupo, así que al seleccionar el vídeo también entra lo que se oye de él.
+function audioEventIdsOf(p:Project,ids:string[]):string[]{
+ const wanted=new Set(linkedIds(p,ids));
+ const audioTracks=new Set(p.tracks.filter(track=>track.kind==='audio').map(track=>track.id));
+ return p.events.filter(event=>wanted.has(event.id)&&event.kind==='audio'&&audioTracks.has(event.trackId)).map(event=>event.id);
+}
+function pickScope(p:Project,ids:string[],label?:string):SpeechPick{
+ const chosen=p.events.filter(event=>ids.includes(event.id));
+ const from=Math.max(0,seconds(Math.min(...chosen.map(event=>event.start))));
+ const to=Math.max(from,seconds(Math.max(...chosen.map(event=>event.start+event.duration))));
+ const tracks=[...new Set(chosen.map(event=>p.tracks.find(track=>track.id===event.trackId)?.name??''))].filter(Boolean);
+ const muted=chosen.some(event=>p.tracks.find(track=>track.id===event.trackId)?.mute===true);
+ const clips=`${ids.length} clip${ids.length===1?'':'s'}`;
+ const scope:SpeechScope={from,to,events:new Set(ids),label:label??(tracks.length===1?`${clips} de la pista «${tracks[0]}»`:`${clips} seleccionado${ids.length===1?'':'s'}`)};
+ return {ok:true,scope,clips:ids.length,tracks,muted};
+}
+// Lo que se transcribe con «Solo lo seleccionado»: mandan los clips elegidos y, si no hay ninguno, la pista
+// seleccionada en su cabecera. Así se puede transcribir una pista entera o solo una parte de esa pista.
+export function speechSelection(p:Project,selectedIds:string[],trackId:string|null):SpeechPick{
+ if(selectedIds.length){
+  const ids=audioEventIdsOf(p,selectedIds);
+  if(!ids.length)return {ok:false,reason:'Lo que está seleccionado no tiene audio: elige un clip de una pista de audio o un vídeo con sonido.'};
+  return pickScope(p,ids);
+ }
+ const track=trackId?p.tracks.find(candidate=>candidate.id===trackId):undefined;
+ if(!track)return {ok:false,reason:'No hay nada seleccionado: pulsa la cabecera de una pista de audio o selecciona uno o varios clips.'};
+ if(track.kind!=='audio')return {ok:false,reason:`La pista «${track.name}» es de vídeo. Elige una pista de audio o selecciona un clip con sonido.`};
+ const ids=p.events.filter(event=>event.trackId===track.id&&event.kind==='audio').map(event=>event.id);
+ if(!ids.length)return {ok:false,reason:`La pista «${track.name}» no tiene clips de audio: no hay nada que transcribir.`};
+ return pickScope(p,ids,`la pista «${track.name}»`);
+}
 // Mezcla lineal a 16 kHz mono, por bloques, para no mantener todo el audio del proyecto en memoria.
 // Al reducir la frecuencia se promedian las muestras de cada intervalo (decimación con filtro de media):
 // así no hay aliasing y la posición temporal se conserva.
-export function renderSpeechAudio(p:Project,library:MediaLibrary,targetRate=16000,blockSeconds=2){
- const total=seconds(p.events.reduce((end,event)=>Math.max(end,event.start+event.duration),0));
+// Con `scope` solo se mezcla ese tramo y solo con esos eventos: el archivo que se envía empieza en `scope.from`,
+// y `from` vuelve en el resultado para poder devolver los tiempos de la transcripción a su sitio.
+export function renderSpeechAudio(p:Project,library:MediaLibrary,targetRate=16000,blockSeconds=2,scope?:SpeechScope){
+ const end=scope?Math.max(0,scope.to):seconds(p.events.reduce((last,event)=>Math.max(last,event.start+event.duration),0));
+ const from=scope?Math.max(0,Math.min(scope.from,end)):0;
+ const total=Math.max(0,end-from);
+ const options=scope?{only:scope.events??undefined,ignoreMute:true}:undefined;
  const ratio=p.sampleRate/targetRate;
  const blocks:Float32Array[]=[];let written=0;
- for(let offset=0;offset<total;offset+=blockSeconds){
-  const length=Math.max(1,Math.round(Math.min(blockSeconds,total-offset)*p.sampleRate));
-  const mixed=mix(p,library,offset,length);
-  const target=Math.max(1,Math.round(Math.min(blockSeconds,total-offset)*targetRate));
+ for(let offset=from;offset<end;offset+=blockSeconds){
+  const length=Math.max(1,Math.round(Math.min(blockSeconds,end-offset)*p.sampleRate));
+  const mixed=mix(p,library,offset,length,p.sampleRate,options);
+  const target=Math.max(1,Math.round(Math.min(blockSeconds,end-offset)*targetRate));
   const mono=new Float32Array(target);
   const sample=(channel:Float32Array,at:number)=>at<0||at>=channel.length?0:channel[at];
   for(let index=0;index<target;index++){
@@ -41,9 +86,9 @@ export function renderSpeechAudio(p:Project,library:MediaLibrary,targetRate=1600
     const a=(sample(mixed[0],low)+sample(mixed[1],low))/2,b=(sample(mixed[0],low+1)+sample(mixed[1],low+1))/2;
     mono[index]=a+(b-a)*fraction;
    }else{
-    const from=Math.floor(index*ratio),to=Math.min(mixed[0].length,Math.max(from+1,Math.floor((index+1)*ratio)));
+    const begin=Math.floor(index*ratio),to=Math.min(mixed[0].length,Math.max(begin+1,Math.floor((index+1)*ratio)));
     let sum=0,count=0;
-    for(let at=from;at<to;at++){sum+=(sample(mixed[0],at)+sample(mixed[1],at))/2;count++;}
+    for(let at=begin;at<to;at++){sum+=(sample(mixed[0],at)+sample(mixed[1],at))/2;count++;}
     mono[index]=count?sum/count:0;
    }
   }
@@ -51,7 +96,13 @@ export function renderSpeechAudio(p:Project,library:MediaLibrary,targetRate=1600
  }
  const samples=new Float32Array(written);let at=0;
  for(const block of blocks){samples.set(block,at);at+=block.length;}
- return {samples,sampleRate:targetRate,duration:total};
+ return {samples,sampleRate:targetRate,duration:total,from};
+}
+// El servicio cuenta los instantes desde el principio del archivo que recibe; como el archivo puede empezar en
+// mitad de la línea de tiempo (transcripción de una selección), los subtítulos hay que devolverlos a su sitio.
+export function shiftCues<T extends {start:number;end:number}>(cues:T[],from:number):T[]{
+ if(!from)return cues;
+ return cues.map(cue=>({...cue,start:cue.start+from,end:cue.end+from}));
 }
 export function encodeWav16(samples:Float32Array,sampleRate:number){
  const buffer=new ArrayBuffer(44+samples.length*2),view=new DataView(buffer);

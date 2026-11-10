@@ -1,6 +1,6 @@
 // Ejecutado en esta sesión con Chrome y Edge del sistema y con los binarios Firefox y WebKit de Playwright.
 // Los tres flujos se saltan explícitamente en motores sin las APIs necesarias.
-import {test,expect,type Download,type Page} from '@playwright/test';import fs from 'node:fs';import path from 'node:path';import {spawnSync} from 'node:child_process';import {createRequire} from 'node:module';const require=createRequire(import.meta.url);
+import {test,expect,type Download,type Page} from '@playwright/test';import fs from 'node:fs';import path from 'node:path';import {spawnSync} from 'node:child_process';import {createRequire} from 'node:module';import {newProject,newEvent,ticks} from '../lib/editor/project';const require=createRequire(import.meta.url);
 const fixture=(s:string)=>path.resolve('tests/fixtures',s);
 // El proyecto autoguardado, para comprobar que lo que se ve en pantalla ha llegado de verdad al modelo.
 type Saved = { events: Record<string, unknown>[] };
@@ -36,6 +36,87 @@ test('archivo corrupto muestra un error comprensible',async({page})=>{await page
 test('exportación se puede cancelar y volver a iniciar',async({page})=>{await page.getByRole('tab',{name:'Generadores de medios',exact:true}).click();await page.getByRole('button',{name:'Color sólido',exact:true}).click();await page.getByLabel('Duración (s)',{exact:true}).fill('90');await page.getByRole('button',{name:'Cerrar',exact:true}).click();await page.getByRole('button',{name:'Renderizar como…',exact:true}).click();const render=page.getByRole('button',{name:'Renderizar y descargar'});await expect(render).toBeVisible();if(await render.isDisabled()){ // Sin codificadores disponibles el editor avisa y bloquea en lugar de fallar al pulsar.
   await expect(page.locator('.export-warning')).toBeVisible();test.skip(true,'El motor no expone codificadores (H.264/AAC ni VP9/Opus): se verificó el aviso y el bloqueo del botón.');return;}
  await render.click();await expect(page.getByRole('button',{name:'Cancelar renderización'})).toBeVisible();await page.getByRole('button',{name:'Cancelar renderización'}).click();await expect(page.locator('.export-status')).toContainText('cancelada',{timeout:30000});await expect(page.getByRole('button',{name:'Renderizar y descargar'})).toBeEnabled();});
+test('«Renderizar y guardar» escribe el vídeo directamente en el archivo elegido, sin pasar por memoria',async({page},info)=>{
+ const missing=await page.evaluate(()=>['VideoEncoder','AudioEncoder','AudioContext'].filter(name=>typeof (globalThis as Record<string,unknown>)[name]==='undefined'));
+ test.skip(missing.length>0,`El motor no expone: ${missing.join(', ')}.`);
+ // El diálogo del sistema no se puede manejar desde una prueba, así que se le pone delante uno falso que entrega
+ // un flujo escribible y guarda en la página lo que el motor escribe. Es la misma API que usa la aplicación.
+ await page.addInitScript(()=>{
+  const win=window as unknown as {__rendered?:{size:number;signature:number[]};showSaveFilePicker?:unknown};
+  win.showSaveFilePicker=async(options:{suggestedName?:string})=>({
+   name:options?.suggestedName??'render.mp4',
+   createWritable:async()=>{
+    let bytes=new Uint8Array(0),size=0;
+    const grow=(end:number)=>{if(end<=bytes.length)return;const next=new Uint8Array(Math.max(end,bytes.length*2,1024));next.set(bytes);bytes=next;};
+    return new WritableStream({
+     write(chunk:{type:'write';data:Uint8Array;position:number}){const end=chunk.position+chunk.data.byteLength;grow(end);bytes.set(chunk.data,chunk.position);size=Math.max(size,end);},
+     close(){win.__rendered={size,signature:[...bytes.slice(0,12)]};}
+    });
+   }
+  });
+ });
+ await page.reload();
+ // Un proyecto mínimo y rápido; se carga como archivo para no depender de los diálogos del editor.
+ const project=newProject();project.width=640;project.height=360;
+ const track=project.tracks.find(candidate=>candidate.kind==='video')!;
+ project.events.push({...newEvent(track.id,'color',0,ticks(2)),name:'Color de prueba',color:'#28688d'});
+ await page.locator('input[type=file][accept*=".sinaloapro"]').setInputFiles({name:'Render-directo.sinaloapro',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(project))});
+ await expect(page.locator('.timeline-event')).toHaveCount(1,{timeout:20000});
+ await page.getByRole('button',{name:'Renderizar como…',exact:true}).click();
+ await page.getByLabel('Ancho',{exact:true}).fill('320');
+ await page.getByLabel('Alto',{exact:true}).fill('180');
+ // El destino se elige en la ventana: «Guardar en un archivo» no pasa por memoria y no tiene tope de tamaño.
+ await page.getByLabel('Destino del render').click();
+ await page.getByRole('option',{name:/Guardar en un archivo/}).click();
+ await expect(page.getByRole('dialog')).toContainText('no hay tope de tamaño');
+ if(info.project.name==='chrome')await page.screenshot({path:path.resolve('evidencias','render-guardar-archivo.png')});
+ await page.getByRole('button',{name:'Renderizar y guardar',exact:true}).click();
+ await expect(page.getByRole('status').first()).toContainText('guardado en',{timeout:180000});
+ const rendered=await page.evaluate(()=>(window as unknown as {__rendered?:{size:number;signature:number[]}}).__rendered??null);
+ const bytes=rendered?.signature??[];
+ // El archivo elegido recibió un contenedor de verdad: MP4 lleva «ftyp» en los bytes 4-8, WebM empieza por el EBML
+ // (0x1A45DFA3) y, donde el motor no expone codificadores de vídeo (Firefox en esta prueba), la salida es WAV (RIFF).
+ const isMp4=String.fromCharCode(...bytes.slice(4,8))==='ftyp';
+ const isWebm=bytes[0]===0x1a&&bytes[1]===0x45&&bytes[2]===0xdf&&bytes[3]===0xa3;
+ const isWav=String.fromCharCode(...bytes.slice(0,4))==='RIFF'&&String.fromCharCode(...bytes.slice(8,12))==='WAVE';
+ expect(isMp4||isWebm||isWav,`firma del contenedor: ${bytes.map(byte=>byte.toString(16).padStart(2,'0')).join('')}`).toBe(true);
+ expect(rendered!.size).toBeGreaterThan(1000);
+ // Y la confirmación dice que se guardó donde se eligió, no que esté en la carpeta de descargas.
+ await expect(page.getByTestId('render-completado')).toContainText('Guardado en el archivo que elegiste');
+ await page.getByRole('button',{name:'Seguir editando'}).click();
+ // Con «Descargar al terminar» todo sigue como antes: el archivo llega como descarga del navegador.
+ await page.getByRole('button',{name:'Renderizar como…',exact:true}).click();
+ await page.getByLabel('Destino del render').click();
+ await page.getByRole('option',{name:'Descargar al terminar'}).click();
+ const arriving=page.waitForEvent('download',{timeout:180000});
+ await page.getByRole('button',{name:'Renderizar y descargar',exact:true}).click();
+ const downloaded=await arriving;
+ expect(downloaded.suggestedFilename()).toMatch(/\.(mp4|webm|wav)$/);
+ await expect(page.getByTestId('render-completado')).toContainText('Está en tu carpeta');
+});
+test('un render que pasa de 256 MB se plantea solo para guardarse en un archivo',async({page})=>{
+ const missing=await page.evaluate(()=>['VideoEncoder','AudioEncoder','AudioContext'].filter(name=>typeof (globalThis as Record<string,unknown>)[name]==='undefined'));
+ test.skip(missing.length>0,`El motor no expone: ${missing.join(', ')}.`);
+ // Basta con que el navegador anuncie la escritura directa: no se pulsa el botón, así que no se abre nada.
+ await page.addInitScript(()=>{
+  const win=window as unknown as {showSaveFilePicker?:unknown};
+  win.showSaveFilePicker=async()=>({name:'largo.mp4',createWritable:async()=>new WritableStream({})});
+ });
+ await page.reload();
+ // Dos horas a 1080p: más de un giga de salida, muy por encima de los 256 MB que se retenían en memoria.
+ const project=newProject();project.width=1920;project.height=1080;
+ const track=project.tracks.find(candidate=>candidate.kind==='video')!;
+ project.events.push({...newEvent(track.id,'color',0,ticks(2*60*60)),name:'Proyecto largo',color:'#28688d'});
+ await page.locator('input[type=file][accept*=".sinaloapro"]').setInputFiles({name:'Largo.sinaloapro',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(project))});
+ await expect(page.locator('.timeline-event')).toHaveCount(1,{timeout:20000});
+ await page.getByRole('button',{name:'Renderizar como…',exact:true}).click();
+ const dialog=page.getByRole('dialog');
+ // Con destino «auto» el archivo se elige solo: el botón ya dice que se guarda y el diagnóstico no bloquea por peso.
+ await expect(dialog).toContainText('no hay tope de tamaño');
+ await expect(dialog.getByRole('button',{name:'Renderizar y guardar',exact:true})).toBeEnabled();
+ await expect(dialog).toContainText('Sin límite de tamaño');
+ await expect(dialog).toContainText('Todo en orden');
+});
 test('exportación a 1280×720: resolución, audio y texto visibles en el archivo',async({page},info)=>{
  const missing=await page.evaluate(()=>['VideoEncoder','AudioEncoder','AudioContext'].filter(name=>typeof (globalThis as Record<string,unknown>)[name]==='undefined'));
  test.skip(missing.length>0,`El motor no expone: ${missing.join(', ')}.`);
@@ -361,9 +442,12 @@ test('los subtítulos se generan, se añaden al proyecto como .srt y aparecen en
  await expect(page.locator('.timeline-event').filter({hasText:'prueba de'})).toHaveCount(1);
  await expect(page.locator('.timeline-event').filter({hasText:'subtítulos automáticos'})).toHaveCount(1);
  await expect(page.locator('.timeline-event').filter({hasText:'automáticos'})).toHaveCount(1);
- // El .srt guardado tiene esas cuatro líneas.
- const savedSrt=await page.evaluate(()=>JSON.parse(localStorage.getItem('corte15-autosave-v1')??'{}').media?.find((item:{kind:string})=>item.kind==='subtitle')?.text??'');
- expect(String(savedSrt).split('-->').length-1,'cuatro líneas en el .srt').toBe(4);
+ // El .srt guardado tiene esas cuatro líneas. El autoguardado espera 450 ms desde el último cambio, así que se
+ // espera a que llegue en vez de leerlo en el instante: la lectura directa dependía de lo rápido que fuera el
+ // navegador y fallaba con el paquete de producción.
+ const savedSrtOf=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('corte15-autosave-v1')??'{}').media?.find((item:{kind:string})=>item.kind==='subtitle')?.text??'');
+ await expect.poll(async()=>String(await savedSrtOf()).split('-->').length-1,{timeout:20000}).toBe(4);
+ const savedSrt=await savedSrtOf();
  expect(String(savedSrt)).toContain('Hola, esto');
  expect(String(savedSrt)).toContain('subtítulos automáticos');
  // Doble clic en el .srt lo lleva otra vez a la línea de tiempo (es el gesto de insertar subtítulos); se
@@ -405,6 +489,70 @@ test('los subtítulos se generan, se añaden al proyecto como .srt y aparecen en
   return media.filter(item=>item.kind==='subtitle').at(-1)?.text??'';
  });
  expect(String(phraseSrt)).toContain('Hola, esto es una prueba');
+});
+test('«Transcribir la selección» manda solo el audio elegido y devuelve los subtítulos a su sitio',async({page})=>{
+ // Igual que la transcripción del proyecto, necesita decodificar el audio del proyecto.
+ const missing=await page.evaluate(()=>['AudioDecoder','AudioContext'].filter(name=>typeof (globalThis as Record<string,unknown>)[name]==='undefined'));
+ test.skip(missing.length>0,`El motor no expone: ${missing.join(', ')}.`);
+ await mockGroq(page,{text:'Hola, esto es la selección de una parte del audio.',language:'spanish',duration:3,segments:[{start:.2,end:1.4,text:' Hola, esto es la selección'},{start:1.6,end:2.4,text:' de una parte del audio'}]});
+ await page.addInitScript(()=>{localStorage.setItem('corte15-groq-key','clave-de-prueba');});
+ await page.reload();
+ await page.locator('input[type=file]').nth(0).setInputFiles([fixture('Audio.wav')]);
+ await expect(page.locator('.media-item')).toHaveCount(1,{timeout:60000});
+ await page.locator('.media-item').first().dblclick();
+ const audioClips=page.locator('.timeline-event.audio');
+ await expect(audioClips).toHaveCount(1,{timeout:20000});
+ // Una segunda copia al final de la línea de tiempo: así el segundo clip no empieza en el 0 y se puede comprobar
+ // que los tiempos de la transcripción vuelven a su sitio.
+ await audioClips.first().click();
+ await page.keyboard.press('Control+c');
+ await page.locator('.bottom-toolbar .transport').getByRole('button',{name:'Ir al final',exact:true}).click();
+ await page.keyboard.press('Control+v');
+ await expect(audioClips).toHaveCount(2,{timeout:20000});
+ await audioClips.nth(1).click();
+ // La duración la pone el archivo importado, así que se lee del autoguardado en vez de darla por sabida.
+ const audioClipsOf=()=>page.evaluate(()=>{
+  const saved=JSON.parse(localStorage.getItem('corte15-autosave-v1')??'{}') as {events?:{kind:string;start:number;duration:number}[]};
+  return (saved.events??[]).filter(event=>event.kind==='audio').map(event=>({start:event.start/705600000,duration:event.duration/705600000})).sort((a,b)=>a.start-b.start);
+ });
+ await expect.poll(async()=>(await audioClipsOf()).length,{timeout:20000}).toBe(2);
+ const [primero,segundo]=await audioClipsOf();
+ // Timecode del proyecto (30 fps) para el diálogo y marcas del .srt (HH:MM:SS,mmm) para el archivo.
+ const hms=(value:number)=>{const total=Math.floor(value);return `${String(Math.floor(total/3600)).padStart(2,'0')}:${String(Math.floor(total/60)%60).padStart(2,'0')}:${String(total%60).padStart(2,'0')}`;};
+ const tc=(value:number)=>`${hms(value)}:${String(Math.min(29,Math.round((value-Math.floor(value))*30))).padStart(2,'0')}`;
+ // El diálogo se abre en el modo de la selección y dice qué se va a enviar y desde dónde.
+ await page.getByRole('button',{name:'Transcribir la selección',exact:true}).click();
+ const subtitleDialog=page.getByRole('dialog');
+ await expect(subtitleDialog.getByLabel('Audio que se transcribe')).toContainText('Solo lo seleccionado');
+ await expect(subtitleDialog).toContainText('Se transcribe solo el audio seleccionado');
+ await expect(subtitleDialog).toContainText('1 clip de la pista «Audio»');
+ await expect(subtitleDialog).toContainText(`${segundo.duration.toFixed(1)} s de 1 clip`);
+ await expect(subtitleDialog).toContainText(`de ${tc(segundo.start)} a ${tc(segundo.start+segundo.duration)}`);
+ if(test.info().project.name==='chrome')await page.screenshot({path:path.resolve('evidencias','transcribir-seleccion.png')});
+ await subtitleDialog.getByRole('button',{name:'Transcribir y crear subtítulos'}).click();
+ await expect(page.getByRole('status').first()).toContainText('Solo se transcribió 1 clip de la pista «Audio»',{timeout:60000});
+ await expect(page.locator('.media-item').filter({hasText:'subtitulos-seleccion.srt'})).toHaveCount(1);
+ // El .srt guarda los tiempos del sitio del que salió el audio: empieza donde empieza el clip elegido y no en el
+ // 0, así que el primer clip del proyecto no se transcribió.
+ const lastSrt=()=>page.evaluate(()=>{
+  const media=(JSON.parse(localStorage.getItem('corte15-autosave-v1')??'{}') as {media?:{kind:string;text?:string}[]}).media??[];
+  return String(media.filter(item=>item.kind==='subtitle').at(-1)?.text??'');
+ });
+ const srtStart=segundo.start+.2;
+ await expect.poll(lastSrt,{timeout:20000}).toContain(`${hms(srtStart)},`);
+ const selectionSrt=await lastSrt();
+ expect(selectionSrt).toMatch(new RegExp(`${hms(srtStart)},\\d{3} -->`));
+ expect(selectionSrt).not.toContain(`${hms(primero.start)},`);
+ // Con la cabecera de la pista se transcribe la pista entera: el diálogo lo dice antes de enviar nada.
+ await page.locator('.track-header.audio .track-label span').first().click();
+ await page.getByRole('button',{name:'Transcribir la selección',exact:true}).click();
+ await expect(page.getByRole('dialog')).toContainText('la pista «Audio»');
+ await expect(page.getByRole('dialog')).toContainText(`${(segundo.start+segundo.duration).toFixed(1)} s`);
+ // Se espera a que el diálogo acabe de aparecer para que la captura no lo pille a medio fundido.
+ await page.waitForTimeout(300);
+ if(test.info().project.name==='chrome')await page.screenshot({path:path.resolve('evidencias','transcribir-seleccion-pista.png')});
+ await page.getByRole('dialog').getByRole('button',{name:'Cancelar'}).click();
+ await expect(page.getByRole('dialog')).toHaveCount(0);
 });
 test('los recursos de Pexels se descargan, se colocan en la línea de tiempo y se añaden al proyecto',async({page})=>{
  // El clip descargado se importa de verdad, así que hace falta poder decodificarlo.

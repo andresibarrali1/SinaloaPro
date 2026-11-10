@@ -1,14 +1,20 @@
-import { Output, BufferTarget, Mp4OutputFormat, WebMOutputFormat, WavOutputFormat, CanvasSource, AudioBufferSource, canEncodeVideo, canEncodeAudio, Quality } from 'mediabunny';
+import { Output, BufferTarget, StreamTarget, Mp4OutputFormat, WebMOutputFormat, WavOutputFormat, CanvasSource, AudioBufferSource, canEncodeVideo, canEncodeAudio, Quality } from 'mediabunny';
 import { Project, seconds, ticks, FPS, endTime } from './project';
 import { MediaLibrary } from './media';
 import { compose } from './compositor';
 import { mix } from './audio';
+import type { RenderWritable } from './export-file';
 export type ExportFormat = 'mp4'|'webm'|'wav';
 export type ExportQuality = 'draft'|'medium'|'high'|'master';
 export type ExportSettings = { width:number; height:number; fps:FPS; format:ExportFormat; quality:ExportQuality; scope:'full'|'range'; start:number; end:number; includeVideo:boolean; includeAudio:boolean; bitrateMbps:number|null };
 export type ExportStage = 'preparando'|'video'|'audio'|'finalizando';
 export type ExportProgress = { done:number; total:number; rate:number; elapsedMs:number; etaMs:number; stage:ExportStage; bytes:number };
-export type ExportResult = { blob:Blob; elapsedMs:number; frames:number; format:ExportFormat };
+/** `blob` es null cuando el render se escribió directamente en un archivo: entonces `file` es true. */
+export type ExportResult = { blob:Blob|null; bytes:number; file:boolean; elapsedMs:number; frames:number; format:ExportFormat };
+/** Destino del render: un flujo escribible donde se vuelca mientras se codifica (el archivo que elige el usuario). */
+export type ExportDestination = { stream:RenderWritable };
+/** A partir de este peso conviene escribir a disco. Es el umbral del aviso en memoria, no un tope. */
+export const EXPORT_MEMORY_WARN = 256*1024*1024;
 export const QUALITY_FACTOR:Record<ExportQuality,number> = {draft:.06,medium:.12,high:.2,master:.32};
 export const QUALITY_LABEL:Record<ExportQuality,string> = {draft:'Borrador',medium:'Media',high:'Alta',master:'Máxima'};
 const QUALITY_LEVEL:Record<ExportQuality,'low'|'medium'|'high'|'very-high'> = {draft:'low',medium:'medium',high:'high',master:'very-high'};
@@ -23,7 +29,10 @@ export async function capabilities(width=1280,height=720,sampleRate=48000){
 // A MessageChannel hop yields to the event loop so the interface can paint and the cancel button stays
 // responsive, without the one-second clamping that timers suffer in background tabs.
 const yielder=()=>{const channel=new MessageChannel();return ()=>new Promise<void>(resolve=>{channel.port1.onmessage=()=>resolve();channel.port2.postMessage(null);});};
-export async function renderProject(p:Project,library:MediaLibrary,s:ExportSettings,signal:AbortSignal,onProgress:(progress:ExportProgress)=>void):Promise<ExportResult>{
+// `destination` es el archivo del usuario: el render se escribe ahí conforme se codifica (sin pasar por memoria y
+// sin tope de tamaño), que es lo que permite exportar vídeos largos a buena calidad. Sin destino se acumula en
+// memoria y se devuelve un Blob, que es lo que hace un navegador sin File System Access.
+export async function renderProject(p:Project,library:MediaLibrary,s:ExportSettings,signal:AbortSignal,onProgress:(progress:ExportProgress)=>void,destination?:ExportDestination):Promise<ExportResult>{
  const fps=s.fps.num/s.fps.den,audioCodec=s.format==='mp4'?'aac':s.format==='webm'?'opus':'pcm-s16';
  const wantsVideo=s.includeVideo&&s.format!=='wav',wantsAudio=s.includeAudio;
  const range=resolveRange(p,s),{frames}=plannedFrames(s.fps,range);
@@ -37,7 +46,10 @@ export async function renderProject(p:Project,library:MediaLibrary,s:ExportSetti
  const videoQuality=new Quality(s.bitrateMbps?{bitrate:Math.round(s.bitrateMbps*1e6)}:QUALITY_LEVEL[s.quality]);
  const audioQuality=new Quality({bitrate:s.quality==='draft'?96000:s.quality==='master'?256000:192000});
  const canvas=document.createElement('canvas');canvas.width=s.width;canvas.height=s.height;
- const target=new BufferTarget();target.on('write',({end})=>{if(end>256*1024*1024)throw new Error('La salida supera 256 MB en memoria. Exporta un tramo más corto o baja la calidad.');});
+ // El contador sale de los avisos de escritura del destino, que valen para las dos formas de guardar: el archivo
+ // (donde también se reescriben zonas al final) y el búfer en memoria.
+ const target=destination?new StreamTarget(destination.stream,{chunked:true,chunkSize:4*1024*1024}):new BufferTarget();
+ let written=0;target.on('write',({end})=>{if(end>written)written=end;});
  const output=new Output({format:s.format==='mp4'?new Mp4OutputFormat():s.format==='webm'?new WebMOutputFormat():new WavOutputFormat(),target});
  const video=wantsVideo?new CanvasSource(canvas,{codec:s.format==='mp4'?'avc':'vp9',quality:videoQuality}):null;
  const audio=wantsAudio?new AudioBufferSource({codec:audioCodec,...(s.format==='wav'?{}:{quality:audioQuality}),transform:{sampleRate:p.sampleRate,numberOfChannels:2}}):null;
@@ -48,7 +60,7 @@ export async function renderProject(p:Project,library:MediaLibrary,s:ExportSetti
  let success=false,cancelPromise:Promise<void>|null=null,audioCursor=0;
  const cancel=()=>{cancelPromise ||= output.cancel();void cancelPromise.catch(()=>{});};
  const check=()=>{if(signal.aborted)throw new DOMException('Exportación cancelada','AbortError');};
- const report=(done:number,stage:ExportStage)=>{const elapsedMs=performance.now()-started,rate=done/Math.max(.001,elapsedMs/1000);onProgress({done,total:frames,rate,elapsedMs,etaMs:rate>0?(frames-done)/rate*1000:0,stage,bytes:target.buffer?.byteLength??0});};
+ const report=(done:number,stage:ExportStage)=>{const elapsedMs=performance.now()-started,rate=done/Math.max(.001,elapsedMs/1000);onProgress({done,total:frames,rate,elapsedMs,etaMs:rate>0?(frames-done)/rate*1000:0,stage,bytes:written});};
  try{
   check();onProgress({done:0,total:frames,rate:0,elapsedMs:0,etaMs:0,stage:'preparando',bytes:0});
   await output.start();signal.addEventListener('abort',cancel,{once:true});
@@ -70,7 +82,9 @@ export async function renderProject(p:Project,library:MediaLibrary,s:ExportSetti
   video?.close();audio?.close();await output.finalize();check();
   const elapsedMs=performance.now()-started;success=true;
   const mime=s.format==='mp4'?'video/mp4':s.format==='webm'?'video/webm':'audio/wav';
-  return {blob:new Blob([target.buffer!],{type:mime}),elapsedMs,frames,format:s.format};
+  // Con destino no hay Blob: el archivo ya está en disco (el flujo lo cerró `finalize`) y solo vuelve su tamaño.
+  const blob=!destination&&target instanceof BufferTarget&&target.buffer?new Blob([target.buffer],{type:mime}):null;
+  return {blob,bytes:blob?.size??written,file:!!destination,elapsedMs,frames,format:s.format};
  }finally{
   signal.removeEventListener('abort',cancel);
   if(!success){try{cancel();await cancelPromise;}catch{}}

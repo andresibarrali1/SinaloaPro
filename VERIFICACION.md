@@ -83,6 +83,7 @@ además por separado en su motor (Firefox y WebKit).
 | Un `.veg` que solo imita la firma avisa en vez de inventar datos | ✅ | ✅ | ✅ | ✅ |
 | El botón «Generar subtítulos» está en la barra del panel de medios, junto al buscador | ✅ | ✅ | ✅ | ✅ |
 | Subtítulos generados: `.srt` en Medios de proyecto y eventos en la línea de tiempo | ✅ | ✅ | ✅ | ⏭️ omitida (sin decodificadores de audio) |
+| Transcripción de solo la selección: un clip, o la pista entera, con los tiempos devueltos a su sitio | ✅ | ✅ | ✅ | ⏭️ omitida (sin decodificadores) |
 | Recursos de Pexels descargados, colocados en la línea de tiempo y en Medios de proyecto | ✅ | ✅ | ✅ | ⏭️ omitida (sin decodificadores) |
 | Recursos colocados según la transcripción, una palabra cada uno | ✅ | ✅ | ✅ | ⏭️ omitida (sin decodificadores) |
 | El proyecto se recupera solo al recargar la página | ✅ | ✅ | ✅ | ✅ |
@@ -1034,6 +1035,164 @@ Se pidió que, al generar los subtítulos, el editor **pregunte cuántas palabra
   muy larga puede ocupar más de lo que convendría en una línea de 8; para eso está el editor de textos de cada
   evento.
 
+## Transcribir solo lo seleccionado en la línea de tiempo
+
+Se pidió una **segunda forma de transcribir**: no solo el audio del proyecto, sino **solo el audio que está
+seleccionado en la línea de tiempo** —«si selecciono toda una pista de audio, debo poder hacer la transcripción de
+esa pista o lo que se seleccionó en esa misma pista»—.
+
+- **Qué hace ahora**: el diálogo **Generar subtítulos** tiene un alcance nuevo, *Audio que se transcribe*:
+  - *Todo el audio del proyecto*: lo de siempre.
+  - *Solo lo seleccionado en la línea de tiempo*: `speechSelection` (`lib/editor/speech.ts`) mira primero los
+    **clips seleccionados** (y el audio enlazado cuando lo elegido es un vídeo, para poder transcribir el sonido de
+    un plano) y, si no hay ninguno, la **pista marcada en su cabecera**, que se transcribe entera. Devuelve el
+    tramo (`from`/`to`) y el conjunto de eventos; si no hay nada que transcribir devuelve el motivo, y el diálogo lo
+    enseña con el botón desactivado en vez de fallar después de enviar audio.
+  - `renderSpeechAudio` mezcla **solo esos eventos** —`mix` acepta `only` e `ignoreMute`, así que el resto del
+    proyecto se calla pero la cadena de mezcla es la misma, y una pista silenciada se transcribe igual porque manda
+    la selección— y el archivo empieza en `from`. Al volver, `shiftCues` devuelve los tiempos a su sitio: los
+    subtítulos caen **donde está el audio**, no al principio de la línea de tiempo.
+  - El `.srt` se guarda como `subtitulos-seleccion.srt` y la barra de estado dice qué se transcribió y entre qué dos
+    instantes. Los tres accesos son el selector del diálogo, el botón de micrófono junto a *Generar subtítulos* y el
+    clic derecho en un clip de audio o en la cabecera de una pista.
+- **Comprobado**:
+  - `npm test` **533/533**, con seis pruebas nuevas en `tests/speech-selection.test.ts`: el clip suelto (alcance y
+    desde dónde empieza), la pista entera sin la música de otra pista, el audio enlazado de un vídeo, los tres
+    motivos de «no hay nada que transcribir», y las muestras —solo suena lo elegido, el desfase devuelve los
+    tiempos a su sitio, la pista silenciada se transcribe y la mezcla del proyecto entero sí respeta el silencio—.
+  - E2E `browser.spec.ts` ««Transcribir la selección» manda solo el audio elegido y devuelve los subtítulos a su
+    sitio», en Chrome, Edge y Firefox (**WebKit se omite** porque no expone decodificadores de audio, igual que el
+    resto de flujos de transcripción): se importa `Audio.wav` (6 s), se copia el clip al final de la línea de
+    tiempo, se selecciona **solo la copia** y se transcribe. El diálogo dice «6.0 s de 1 clip de la pista «Audio»,
+    de 00:00:06:00 a 00:00:12:00»; el `.srt` guardado empieza en **00:00:06,y** y **no** contiene ninguna marca en
+    00:00:00, así que el primer clip no se transcribió; con la cabecera de la pista el diálogo anuncia «12.0 s».
+  - La prueba vieja de los subtítulos del proyecto se hizo más estable en el mismo paso: leía el autoguardado en el
+    instante en que aparecía el mensaje, y con el paquete de producción llegaba antes de los 450 ms del
+    autoguardado; ahora espera a que el `.srt` esté guardado (`expect.poll`).
+- **Evidencia**: `evidencias/transcribir-seleccion.png` (el diálogo en modo selección, con el clip elegido en la
+  pista «Audio» y el resumen de qué se envía) y `evidencias/transcribir-seleccion-pista.png` (la pista marcada en su
+  cabecera y el diálogo diciendo «12.0 s de la pista «Audio»», con `subtitulos-seleccion.srt` ya en Medios).
+- **Límite honesto**: el archivo enviado cubre del primer clip al último, así que una selección muy dispersa manda
+  también el silencio de en medio (se dice cuántos segundos son antes de enviar). El límite de tamaño de la API es
+  el mismo que en el modo de proyecto entero, y la transcripción de una selección no borra ni sustituye la del
+  proyecto: convive con ella y queda en su propio `.srt`.
+
+## Renderizar vídeos largos sin límite de tamaño
+
+Se pidió poder **renderizar vídeos largos a buena calidad, sin límites**. El tope real era la salida en memoria: el
+motor la acumulaba en un `ArrayBuffer` y cortaba a los 256 MB («La salida supera 256 MB en memoria»), así que un
+vídeo de más de unos minutos a buena calidad no se podía exportar.
+
+- **Qué hace ahora**:
+  - La ventana de renderizado tiene **Destino**: *Guardar en un archivo (sin límite de tamaño)* —que se elige solo
+    cuando el navegador puede escribir en disco y el peso estimado pasa de 256 MB— o *Descargar al terminar*.
+  - Con archivo, `renderProject` recibe un `ExportDestination` y usa `StreamTarget` de mediabunny sobre el flujo
+    escribible del archivo elegido (File System Access API): el MP4/WebM se escribe **mientras se codifica**, no pasa
+    por la memoria del navegador y no tiene tope de peso. Devuelve `blob: null` y el tamaño real; la pantalla de
+    confirmación dice «Guardado en el archivo que elegiste» (el navegador no comparte la ruta completa).
+  - El **lote** pide una carpeta y escribe cada trabajo dentro; si se cancela el diálogo, el lote no empieza.
+  - El aviso de 256 MB ya **no bloquea**: sin escritura directa (Firefox, Safari) el diagnóstico avisa de que el
+    archivo se generará en memoria y de que en Chrome o Edge se guarda en disco.
+- **Comprobado**:
+  - `npm test` **538/538**: 5 pruebas nuevas de `lib/editor/export-file.ts` (detección de la API, nombre y tipo que
+    se piden al sistema, cancelar devuelve null, carpeta del lote y creación de cada archivo) y el diagnóstico
+    actualizado: un proyecto de cuatro horas ya no da error, avisa en memoria y pasa limpio con escritura directa.
+  - E2E ««Renderizar y guardar» escribe el vídeo directamente en el archivo elegido, sin pasar por memoria», en
+    Chrome, Edge y Firefox (WebKit se omite: no expone codificadores): un selector de archivos falso entrega un
+    `WritableStream` y se comprueba que el motor **escribió ahí** un contenedor de verdad (MP4 `ftyp`, WebM EBML o
+    WAV RIFF según lo que codifique el motor) y que la confirmación dice «Guardado en el archivo que elegiste». La
+    misma prueba elige después *Descargar al terminar* y comprueba que el archivo sigue llegando como descarga.
+  - E2E «un render que pasa de 256 MB se plantea solo para guardarse en un archivo», en los tres motores: con un
+    proyecto de **dos horas a 1080p** (más de un giga de salida) la ventana abre el destino «Guardar en un archivo»,
+    el botón dice «Renderizar y guardar» y el diagnóstico da «Todo en orden» con «Sin límite de tamaño»: el peso ya
+    no bloquea ninguna exportación.
+  - `tsc` sin errores. `npm run lint` mantiene los mismos errores previos de `event-opacity.tsx` y
+    `event-pan-crop.tsx`, ajenos a este cambio; los archivos tocados no añaden ninguno.
+- **Evidencia**: `evidencias/render-guardar-archivo.png` (la ventana con *Destino → Guardar en un archivo (sin
+  límite)*, la explicación de que no pasa por la memoria y el botón «Renderizar y guardar»).
+- **Límite honesto**: la escritura directa depende de la File System Access API, que hoy solo está en Chromium; en
+  Firefox y Safari el archivo se genera en memoria, sin tope declarado pero con la memoria del navegador como límite
+  real. El render sigue en el hilo principal y la cola es serie. Lo medido es que el tamaño ya no corta el render y
+  que el archivo elegido recibe el contenedor completo; **no** se ha medido una exportación de varias horas de punta
+  a punta en este equipo.
+
+## Estudio de renderizado: la ventana de salida, más premium y con más funciones
+
+La ventana *Renderizar como…* deja de ser un formulario y pasa a ser un estudio: cabecera con el proyecto y el
+formato de salida, columna de ajustes por tarjetas, riel con la vista del fotograma, el resumen, el diagnóstico y
+la comparación de peso, barra de progreso con anillo y etapas, y la cola de trabajos siempre a la vista.
+
+- **Funciones nuevas**
+  - Diagnóstico previo (`renderDiagnostics`): códec, Web Audio, salidas, duración, tramo, medios revinculados,
+    peso, ampliación y velocidad. Los errores bloquean la exportación y los avisos se explican; las
+    comprobaciones correctas se despliegan aparte.
+  - Plantillas propias en `localStorage` (máximo ocho, validadas al leer, reemplazadas por nombre) junto a las trece
+    plantillas del motor.
+  - Peso estimado, barra contra el límite y las cuatro calidades con su tamaño, seleccionables desde el riel.
+  - Tiempo estimado a partir del último render medido en el equipo; sin medición dice «Aún sin medir» en vez de
+    inventar una cifra.
+  - Bitrate continuo con «Auto», tamaños Proyecto/Horizontal/Vertical/Cuadrado, resumen copiable al portapapeles.
+  - Progreso con anillo, etapas, fps, transcurrido, restante y MB escritos; cola con barra por trabajo y progreso
+    global.
+- **Verificación**
+  - `npx tsc --noEmit`: sin errores.
+  - `npm test`: **499/499** (incluye `tests/render-estudio.test.ts`, 13 pruebas nuevas de peso, diagnóstico, tiempo
+    medido y plantillas propias).
+  - `npx playwright test --config=playwright.render-estudio.config.ts --project=chrome`: **2/2**. La segunda
+    renderiza de verdad a 320×180, ve el progreso y la confirmación, y comprueba que al reabrir ya hay tiempo
+    estimado.
+  - Flujos comprobados a mano: tramo (descarga un MP4 de 2,17 s), WAV (solo audio), cancelación (el estado dice
+    «cancelada» y vuelve el botón) y cola de dos trabajos (MP4 + WAV, dos descargas).
+- **Evidencia**: `evidencias/render-estudio-final.png`, `render-estudio-cola.png`, `render-estudio-progreso.png`,
+  `render-estudio-tramo.png`, `render-estudio-wav.png`, `render-estudio-cancelado.png`,
+  `render-estudio-completado.png`.
+- **Límites honestos**: el tiempo es una estimación escalada por megapíxeles a partir de un render medido, no una
+  promesa; el diagnóstico comprueba lo que el navegador declara (`canEncodeVideo`), no codifica una muestra; la cola
+  sigue sin guardarse entre sesiones; el destino «Guardar en un archivo» escribe en disco sin tope y el modo de
+  descarga mantiene el archivo en memoria, donde 256 MB es solo un aviso.
+
+## Packs premium 2026: texto, subtítulos, transiciones y efectos
+
+Se añadieron tres packs de tendencia, con la referencia de estilo que los inspira y sin depender de recursos
+externos: todo se compone con Canvas y se exporta con el mismo motor que el resto del proyecto.
+
+- **Texto y subtítulos (13 plantillas, familia «Premium 2026»)**: caja que crece detrás de la palabra activa
+  (grow highlight), pastilla de cristal, tarjeta blanca, degradado atardecer, cromo líquido, neón de tubo,
+  karaoke ámbar, minimal con sombra, cine serif, etiqueta ámbar, título editorial, palabra pop y cian suave.
+  Estrenan **mayúsculas antes de medir**, **relleno degradado con ángulo**, **texto hueco**, **cajas
+  redondeadas por bloque o por línea** y **caja de palabra que crece** con color de acento. Los controles
+  viven en *Estilo → Acabados premium*. Al generar los subtítulos también se elige el estilo: clásico con
+  contorno o una de las seis plantillas premium de subtítulo, para que la transcripción nazca con el look
+  elegido.
+- **Transiciones (9, familia «Premium»**: zoom con desenfoque, giro 3D, barrido rápido a la izquierda,
+  barrido diagonal suave, apertura central, glitch digital, fuga de luz, quemado de película y destello negro.
+- **Efectos (8) y looks (5)**: aberración cromática, grano de película animado a 24 pasos por segundo,
+  posterizar, teal & naranja con reparto de sombras, bleach bypass, VHS, fuga de luz y halación; los looks
+  Cine 2026, VHS ochentero, Ensueño, Noir y Editorial limpio añaden su pila completa de un clic.
+
+- **Referencias de tendencia consultadas**: [Trendy Caption Styles 2026](https://vidno.ai/blog/trendy-caption-styles-2026),
+  [Grow-in highlight box captions](https://github.com/varghq/skills/blob/6a46d4dc1c2ea043cf726514673d00edcb7c8fa3/caption-styles/references/grow-highlight-captions.md),
+  [8 CapCut Text Effects](https://www.devdoido.com.br/p/8-capcut-text-effects-that-look-premium-fast/),
+  [Best Video Transitions 2026](https://elements.envato.com/curated-collections/best-video-transitions/J2v7PG-vW4SPFjjxFTBstg)
+  y [Boris Sapphire 2026](https://www.post-logic.com/post/boris-sapphire-2026-les-nouveautes). Los estilos se
+  reinterpretan con las capacidades reales de este motor; no se copian recursos ajenos.
+- **Verificación**
+  - `npx tsc --noEmit`: sin errores.
+  - `npm test`: **527/527**. Nuevas: `premium-text.test.ts` (8), `premium-effects.test.ts` (10),
+    `premium-transitions.test.ts` (9) y el caso de estilo premium en `subtitles.test.ts`.
+  - `npx playwright test --config=playwright.premium-pack.config.ts --project=chrome`: **1/1**, aplica la
+    plantilla de caja verde, comprueba los controles, la familia Premium de transiciones, que un look añade
+    sus cuatro efectos y que el estilo de subtítulo se puede elegir al generarlos.
+  - Regresión: `playwright.titles-modern.config.ts` **2/2** (incluye doble clic y ƒx en texto y subtítulo
+    abriendo la ventana de efectos, no las propiedades), `playwright.effects-opening.config.ts` **2/2** y
+    `playwright.stretch-fx.config.ts` **3/3**.
+- **Evidencia**: `evidencias/premium-titulos.png`, `premium-transiciones.png`, `premium-looks.png`,
+  `premium-efectos.png`, `premium-subtitulos.png`.
+- **Límites honestos**: el giro 3D es una escala horizontal sin iluminación; el glitch es un revelado por
+  bandas en 2D, sin separar canales; el quemado no lleva partículas ni polvo; la fuga de luz es un degradado
+  sintético; la halación depende de que el motor aplique filtros de Canvas (se avisa en la nota si no); el
+  grano usa una semilla determinista que cambia a 24 pasos por segundo, no una emulsión real.
+
 ## 3. Comprobaciones del encargo, una por una
 
 | Comprobación pedida | Estado | Cómo se comprobó |
@@ -1152,7 +1311,8 @@ Consecuencias aplicadas al producto:
    efectos no neutros). El mapeo 3D está medido por fotograma (12 ms a 640×360 y 103 ms a 1080p por evento
    girado, `outputs/probe-3d-rendimiento.ts`), pero **no** se midió una exportación completa a 1080p con muchas
    pistas, efectos no neutros y varios eventos en 3D a la vez, ni el consumo de memoria con proyectos largos;
-   la salida se retiene en memoria con un límite declarado de 256 MB.
+   la salida se puede escribir directamente en disco (sin tope) y, en el modo de descarga, se retiene en memoria
+   con un aviso a partir de 256 MB.
 7. **Sonoridad:** el medidor sigue el método de ITU-R BS.1770 con las puertas de EBU R128 y está anclado en el
    punto de calibración de la norma, pero **no se ha contrastado con un medidor homologado ni con el banco de
    pruebas de EBU**, y los coeficientes del filtro K solo son exactos a 48 kHz. El pico, el pico real y el RMS

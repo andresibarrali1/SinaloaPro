@@ -37,8 +37,8 @@ const blue=(pixel:[number,number,number])=>pixel[2]>200&&pixel[0]<60;
 const red=(pixel:[number,number,number])=>pixel[0]>200&&pixel[2]<60;
 const mixed=(pixel:[number,number,number])=>pixel[0]>60&&pixel[0]<200&&pixel[2]>60&&pixel[2]<200;
 
-test('catálogo: cuarenta transiciones con nombre y familia',()=>{
-  assert.equal(TRANSITION_KINDS.length,40);
+test('catálogo: cuarenta y nueve transiciones con nombre y familia',()=>{
+  assert.equal(TRANSITION_KINDS.length,49);
   for(const kind of TRANSITION_KINDS){
     assert.ok(TRANSITION_LABEL[kind],`falta el nombre de ${kind}`);
     assert.ok(TRANSITION_GROUP[kind],`falta la familia de ${kind}`);

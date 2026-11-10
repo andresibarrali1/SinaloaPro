@@ -100,7 +100,7 @@ test('pegar solo los grupos pedidos, y nunca en un evento que no los admite',()=
  assert.equal(onlyEffects.brightness,1);
  assert.equal(onlyEffects.speed,1);
  // Lo propio del texto no se pega en un vídeo, aunque se pida (el encuadre, el color y los fundidos sí valen).
- const textSource=copyAttributes(Object.assign(newEvent('t','text'),{bold:true,outlineWidth:4,animation:'pop'}));
+ const textSource=copyAttributes(Object.assign(newEvent('t','text'),{bold:true,outlineWidth:4,animation:'pop',uppercase:true,gradient:{enabled:true,from:'#ff7a18',to:'#ff2e9a',angle:90},highlightBox:true,highlightTextColor:'#3dff8a'}));
  assert.deepEqual(pasteableGroups(textSource,'video'),['panCrop','colorCorrection','fades']);
  const asVideo=pasteAttributes(target,textSource,['text']);
  assert.equal(asVideo.bold,undefined);
@@ -110,6 +110,10 @@ test('pegar solo los grupos pedidos, y nunca en un evento que no los admite',()=
  const asText=pasteAttributes(textTarget,textSource,['text']);
  assert.equal(asText.bold,true);
  assert.equal(asText.outlineWidth,4);
+ assert.equal(asText.uppercase,true);
+ assert.equal(asText.gradient?.to,'#ff2e9a');
+ assert.equal(asText.highlightBox,true);
+ assert.equal(asText.highlightTextColor,'#3dff8a');
  assert.equal(asText.animation,'pop');
 });
 

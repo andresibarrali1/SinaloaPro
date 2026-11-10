@@ -43,7 +43,7 @@ export function TitlesWindow({ project, library, event, onChange, onClose, onApp
   // A stable instant inside this event, independent of the timeline playhead.
   // Avoid the first/last instant where entrance/exit fades can hide the title.
   const previewTime=event.start+Math.floor(Math.max(0,event.duration-1)/2);
-  const dependency = `${event.text}|${event.font}|${event.fontSize}|${event.color}|${event.align}|${event.anchor}|${event.animation}|${event.bold}|${event.italic}|${event.lineSpacing}|${event.tracking}|${event.wrap}|${event.outlineWidth}|${event.outlineColor}|${event.highlightColor}|${JSON.stringify(style.shadow)}|${JSON.stringify(style.background)}|${event.transform.x},${event.transform.y},${event.transform.scale}`;
+  const dependency = `${event.text}|${event.font}|${event.fontSize}|${event.color}|${event.align}|${event.anchor}|${event.animation}|${event.bold}|${event.italic}|${event.lineSpacing}|${event.tracking}|${event.wrap}|${event.outlineWidth}|${event.outlineColor}|${event.highlightColor}|${event.uppercase}|${event.hollow}|${event.highlightBox}|${event.highlightBoxColor}|${event.highlightTextColor}|${JSON.stringify(event.gradient)}|${JSON.stringify(style.shadow)}|${JSON.stringify(style.background)}|${event.transform.x},${event.transform.y},${event.transform.scale}`;
   useEffect(() => {
     let cancelled = false;
     const paint = async () => {
@@ -63,6 +63,7 @@ export function TitlesWindow({ project, library, event, onChange, onClose, onApp
 
   const patchShadow = (change: Partial<typeof style.shadow>) => onChange({ shadow: { ...style.shadow, ...change } });
   const patchBackground = (change: Partial<typeof style.background>) => onChange({ background: { ...style.background, ...change } });
+  const patchGradient = (change: Partial<typeof style.gradient>) => onChange({ gradient: { ...style.gradient, ...change } });
   const safe = (value: string | undefined, fallback: string) => HEX.test(value ?? '') ? (value as string) : fallback;
 
   return (
@@ -166,6 +167,23 @@ export function TitlesWindow({ project, library, event, onChange, onClose, onApp
             <Field label="Margen" value={style.background.padding} min={0} max={400} step={1} onChange={v => patchBackground({ padding: v })} />
           </div>
         </section>
+        <section>
+          <h4>Acabados premium</h4>
+          <div className="form-grid">
+            <label className="field">Mayúsculas<Choice label="Mayúsculas" value={style.uppercase ? 'si' : 'no'} items={[['no', 'No'], ['si', 'Sí']]} onChange={v => onChange({ uppercase: v === 'si' })} /></label>
+            <label className="field">Solo contorno<Choice label="Solo contorno" value={style.hollow ? 'si' : 'no'} items={[['no', 'No'], ['si', 'Sí']]} onChange={v => onChange({ hollow: v === 'si' })} /></label>
+            <label className="field">Relleno degradado<Choice label="Relleno degradado" value={style.gradient.enabled ? 'si' : 'no'} items={[['no', 'No'], ['si', 'Sí']]} onChange={v => patchGradient({ enabled: v === 'si' })} /></label>
+            <label className="field">Degradado desde<input type="color" value={safe(style.gradient.from, '#ffffff')} aria-label="Color inicial del degradado" onChange={e => patchGradient({ from: e.target.value })} /></label>
+            <label className="field">Degradado hasta<input type="color" value={safe(style.gradient.to, '#ffffff')} aria-label="Color final del degradado" onChange={e => patchGradient({ to: e.target.value })} /></label>
+            <Field label="Ángulo del degradado" value={style.gradient.angle} min={-360} max={360} step={1} onChange={v => patchGradient({ angle: v })} />
+            <Field label="Radio de la caja" value={style.background.radius ?? 0} min={0} max={200} step={1} onChange={v => patchBackground({ radius: v })} />
+            <label className="field">Caja por línea<Choice label="Caja por línea" value={style.background.fit ?? 'block'} items={[['block', 'Bloque'], ['line', 'Línea']]} onChange={v => patchBackground({ fit: v as 'block' | 'line' })} /></label>
+            <label className="field">Caja en la palabra activa<Choice label="Caja en la palabra activa" value={style.highlightBox ? 'si' : 'no'} items={[['no', 'No'], ['si', 'Sí']]} onChange={v => onChange({ highlightBox: v === 'si' })} /></label>
+            <label className="field">Color de la caja<input type="color" value={safe(style.highlightBoxColor, '#0a0a0a')} aria-label="Color de la caja de palabra" onChange={e => onChange({ highlightBoxColor: e.target.value })} /></label>
+            <label className="field">Color de acento<input type="color" value={safe(style.highlightTextColor, '#3dff8a')} aria-label="Color de acento de la palabra" onChange={e => onChange({ highlightTextColor: e.target.value })} /></label>
+          </div>
+          <p><small>Mayúsculas y degradado se aplican antes de medir, así el ajuste de línea es el real. La caja de palabra crece con el karaoke; el radio suaviza las esquinas del fondo.</small></p>
+        </section>
         </>}
         {section==='animation'&&<>
           <h3>Dale movimiento</h3><p className="titles-hint">Elige una animación. Pasa el ratón sobre una muestra para verla.</p>
@@ -203,7 +221,7 @@ export function TitlesWindow({ project, library, event, onChange, onClose, onApp
         </div>
       </div>
       <div className="dialog-actions titles-actions">
-        <button onClick={() => onChange({ bold: false, italic: false, lineSpacing: undefined, tracking: undefined, wrap: undefined, outlineWidth: undefined, outlineColor: undefined, shadow: undefined, background: undefined, anchor: undefined, animation: undefined })}>Restablecer estilo</button>
+        <button onClick={() => onChange({ bold: false, italic: false, lineSpacing: undefined, tracking: undefined, wrap: undefined, outlineWidth: undefined, outlineColor: undefined, shadow: undefined, background: undefined, anchor: undefined, animation: undefined, gradient: undefined, uppercase: undefined, hollow: undefined, highlightBox: undefined, highlightBoxColor: undefined, highlightTextColor: undefined })}>Restablecer estilo</button>
         <span className="titles-save-note">Cambios aplicados al proyecto</span><button className="titles-done" onClick={onClose}>Listo</button>
       </div>
     </div>

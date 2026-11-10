@@ -7,8 +7,8 @@
 // interfaz. Las acciones llegan en un objeto estable (ver `TimelineActions`) cuyas propiedades se leen **al
 // llamarlas**, así que el gesto siempre usa la versión actual del editor aunque la fila no se haya repintado.
 import type { WaveformSourceReader } from "@/lib/editor/waveform-source";
-import { memo, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
-import { Crop, Link } from "lucide-react";
+import { memo, type PointerEvent as ReactPointerEvent } from "react";
+import { Crop, Link, Type } from "lucide-react";
 import { AudioWaveform } from "./audio-waveform";
 import { EventOpacity } from "./event-opacity";
 import { TRANSITION_LABEL } from "@/lib/editor/transitions";
@@ -21,7 +21,7 @@ export type TimelineDragMode = "move" | "left" | "right" | "fadeIn" | "fadeOut";
 export type TimelineActions = {
   drag: (ev: ReactPointerEvent, event: Event, mode: TimelineDragMode) => void;
   select: (ids: string[]) => void;
-  open: (dialog: "event" | "titles" | "pancrop") => void;
+  open: (dialog: "event" | "titles" | "pancrop" | "effects") => void;
   beginOpacity: (id: string) => void;
   previewOpacity: (value: number) => void;
   endOpacity: (cancel: boolean) => void;
@@ -44,16 +44,7 @@ export type TimelineEventRowProps = {
   actions: TimelineActions;
 };
 
-// El icono del complemento de texto (el mismo dibujo que usa la barra del evento).
-function TextEditorIcon({ size = 11 }: { size?: number }): ReactNode {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.25" aria-hidden="true" focusable="false">
-      <rect x="1.1" y="1.6" width="10.2" height="7.6" rx="1" />
-      <rect x="7.1" y="6.6" width="7.8" height="7.8" rx="1" fill="#1e2429" />
-      <path d="M8.7 9.1h4.6M8.7 10.7h4.6M8.7 12.3h2.8" strokeLinecap="round" />
-    </svg>
-  );
-}
+// El icono del editor de texto: una «T» clara, mejor que el dibujo de dos ventanas, que parecía «copiar».
 
 export const TimelineEventRow = memo(function TimelineEventRow({
   event,
@@ -70,6 +61,9 @@ export const TimelineEventRow = memo(function TimelineEventRow({
   actions,
 }: TimelineEventRowProps) {
   const width = Math.max(4, seconds(event.duration) * zoom);
+  // El botón ƒx y el doble clic abren la ventana de efectos; en un texto (o subtítulo) siempre, aunque la pila
+  // esté vacía, porque ahí se añaden los acabados. Para un vídeo sin efectos, ƒx sigue abriendo sus propiedades.
+  const fxDialog = event.kind === "text" || event.effects?.length ? "effects" : "event";
   return (
     <div
       // El navegador arrastra imágenes y SVG por su cuenta, y eso cancela el gesto del editor: aquí se apaga.
@@ -84,14 +78,14 @@ export const TimelineEventRow = memo(function TimelineEventRow({
       onPointerDown={(ev) => actions.drag(ev, event, "move")}
       onDoubleClick={() => {
         actions.select([event.id]);
-        actions.open("event");
+        actions.open(fxDialog);
       }}
     >
       <div className="event-title">
-        <span>{event.name}</span>
+        <span>{event.name}{(event.kind==="video"||event.kind==="audio")&&Math.abs(event.speed-1)>.001?` · ${event.speed.toFixed(2)}×`:""}</span>
         {event.kind === "text" && (
           <button
-            className="event-button"
+            className="event-button text-editor"
             title="Abrir el editor de texto"
             aria-label={`Abrir el editor de texto de ${event.name}`}
             onPointerDown={(ev) => ev.stopPropagation()}
@@ -100,7 +94,7 @@ export const TimelineEventRow = memo(function TimelineEventRow({
               actions.open("titles");
             }}
           >
-            <TextEditorIcon />
+            <Type size={12} />
           </button>
         )}
         {event.kind !== "audio" && (
@@ -119,11 +113,12 @@ export const TimelineEventRow = memo(function TimelineEventRow({
         )}
         <button
           className="event-button"
-          title="Propiedades y efectos"
+          title={fxDialog === "effects" ? "Editar los efectos del recurso" : "Propiedades del recurso"}
+          aria-label={fxDialog === "effects" ? `Editar efectos de ${event.name}` : `Propiedades de ${event.name}`}
           onPointerDown={(ev) => ev.stopPropagation()}
           onClick={() => {
             actions.select([event.id]);
-            actions.open("event");
+            actions.open(fxDialog);
           }}
         >
           {event.group && <Link size={11} />}
@@ -144,6 +139,10 @@ export const TimelineEventRow = memo(function TimelineEventRow({
           <span className="event-color" style={{ backgroundColor: event.color }} />
         )}
       </div>
+      {(event.kind==='video'||event.kind==='audio')&&Math.abs(event.speed-1)>.001&&<div className={`event-speed-overlay ${event.speed>1?'fast':'slow'}`} title={`Velocidad: ${event.speed.toFixed(2)}× · ${event.speed>1?'Rápido':'Lento'}`} aria-label={`Velocidad ${event.speed.toFixed(2)}×, ${event.speed>1?'rápido':'lento'}`}>
+        <svg aria-hidden="true" width="100%" height="18"><defs><pattern id={`speed-${event.id}`} width={Math.max(5,Math.min(40,18/event.speed))} height="18" patternUnits="userSpaceOnUse"><path d={`M0 15L${Math.max(5,Math.min(40,18/event.speed))/2} 3L${Math.max(5,Math.min(40,18/event.speed))} 15`} fill="none" stroke="currentColor" strokeWidth="1.4"/></pattern></defs><rect width="100%" height="18" fill={`url(#speed-${event.id})`}/></svg>
+        <span>{event.speed.toFixed(2)}× · {event.speed>1?'Rápido':'Lento'}</span>
+      </div>}
       {event.kind !== "audio" && (
         <EventOpacity
           name={event.name}
@@ -159,8 +158,8 @@ export const TimelineEventRow = memo(function TimelineEventRow({
         <svg width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 100 100"><path d="M0 0L100 100M0 100L100 0" fill="none" stroke="#f3df87" strokeWidth="1.5" vectorEffect="non-scaling-stroke"/></svg>
         <span>{seconds(crossfadeIn).toFixed(2)} s</span>
       </div>}
-      <div className="trim-handle left" onPointerDown={(ev) => actions.drag(ev, event, "left")} title="Recortar inicio" />
-      <div className="trim-handle right" onPointerDown={(ev) => actions.drag(ev, event, "right")} title="Recortar final" />
+      <div className="trim-handle left" onPointerDown={(ev) => actions.drag(ev, event, "left")} title="Recortar inicio · Ctrl/Comando + arrastrar: cambiar velocidad" />
+      <div className="trim-handle right" onPointerDown={(ev) => actions.drag(ev, event, "right")} title="Arrastra para alargar o recortar; al superar el original, se repite · Ctrl/Comando: cambiar velocidad" />
       <div
         className="fade-shade in"
         title={event.transition ? `Transición de entrada: ${TRANSITION_LABEL[event.transition]}` : undefined}

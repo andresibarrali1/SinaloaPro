@@ -5,7 +5,7 @@ import { CompositeMode, CropMask, Event, Project, Transform, frameTicks, transfo
 import { fillFrame } from './letterbox';
 import { MediaLibrary } from './media';
 import { contentBox, frameBox, maskAt, sourceRect } from './pancrop';
-import { AnimationState, TextPlan, animationState, highlightedWords, layoutWords, planText, revealText, styleOf } from './titles';
+import { AnimationState, TextPlan, animationState, layoutWords, planText, revealText, styleOf, textCase } from './titles';
 import { CanvasFactory, activeEffects, applyEffects } from './effects';
 import { applyMaskPath, maskActive } from './mask';
 import { Quad, composeQuad, is3D, pose3D, projectQuadAt } from './threed';
@@ -130,10 +130,39 @@ function applyShadow(ctx:CanvasRenderingContext2D,event:Event,scale:number){
  if(!shadow.enabled){ctx.shadowColor='transparent';ctx.shadowBlur=0;ctx.shadowOffsetX=0;ctx.shadowOffsetY=0;return;}
  ctx.shadowColor=shadow.color;ctx.shadowBlur=shadow.blur*scale;ctx.shadowOffsetX=shadow.offsetX*scale;ctx.shadowOffsetY=shadow.offsetY*scale;
 }
+// Caja redondeada sin depender de `roundRect` (no está en todos los lienzos): cuatro tramos rectos y cuatro
+// esquinas con curvas cuadráticas. El radio se recorta a la mitad del lado más corto.
+function traceRoundedRect(ctx:CanvasRenderingContext2D,x:number,y:number,width:number,height:number,radius:number){
+ const w=Math.max(0,width),h=Math.max(0,height),r=Math.max(0,Math.min(radius,Math.min(w,h)/2));
+ ctx.beginPath();
+ ctx.moveTo(x+r,y);
+ ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+ ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+ ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+ ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);
+ ctx.closePath();
+}
+// Degradado del relleno del texto, medido sobre el bloque: el ángulo 0 va de izquierda a derecha y 90 de
+// arriba abajo, como en las plantillas de diseño.
+function textGradient(ctx:CanvasRenderingContext2D,plan:TextPlan,gradient:{from:string;to:string;angle:number}){
+ const angle=(gradient.angle||0)*Math.PI/180,cos=Math.cos(angle),sin=Math.sin(angle);
+ const cx=plan.blockLeft+plan.blockWidth/2,cy=plan.blockTop+plan.blockHeight/2;
+ const span=Math.abs(cos)*plan.blockWidth/2+Math.abs(sin)*plan.blockHeight/2;
+ const fill=ctx.createLinearGradient(cx-cos*span,cy-sin*span,cx+cos*span,cy+sin*span);
+ fill.addColorStop(0,gradient.from);fill.addColorStop(1,gradient.to);
+ return fill;
+}
+const HEX_ALPHA=/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i;
+function withAlpha(color:string,alpha:number){
+ const match=HEX_ALPHA.exec(color);
+ return match?`rgba(${parseInt(match[1],16)},${parseInt(match[2],16)},${parseInt(match[3],16)},${Math.max(0,Math.min(1,alpha))})`:color;
+}
+const easeGrow=(fraction:number)=>1-Math.pow(1-Math.max(0,Math.min(1,fraction)),3);
 function drawText(ctx:CanvasRenderingContext2D,event:Event,plan:TextPlan,state:AnimationState,scale:number){
  const style=styleOf(event);
  const outline=style.outlineWidth*scale;
  const padding=style.background.padding*scale;
+ const radius=(style.background.radius??0)*scale;
  if(state.opacity<1)ctx.globalAlpha*=Math.max(0,state.opacity);
  // La animación puede escalar y girar el bloque entero (las plantillas de redes): se hace alrededor de su
  // centro, así que el texto crece y gira sobre sí mismo sin moverse de sitio.
@@ -142,33 +171,57 @@ function drawText(ctx:CanvasRenderingContext2D,event:Event,plan:TextPlan,state:A
   const cx=plan.blockLeft+plan.blockWidth/2,cy=plan.blockTop+plan.blockHeight/2;
   ctx.save();ctx.translate(cx,cy);ctx.scale(state.scale,state.scale);ctx.rotate(state.rotation*Math.PI/180);ctx.translate(-cx,-cy);
  }
+ ctx.font=plan.font;
+ // Fondo: el bloque entero (como siempre) o una caja ajustada a cada línea, que es el look de «pastilla».
  if(style.background.opacity>0){
   ctx.save();ctx.globalAlpha*=style.background.opacity;ctx.shadowColor='transparent';ctx.shadowBlur=0;
   ctx.fillStyle=style.background.color;
-  ctx.fillRect(plan.blockLeft-padding,plan.blockTop-padding,plan.blockWidth+padding*2,plan.blockHeight+padding*2);
+  if(style.background.fit==='line'){
+   plan.lines.forEach((line,index)=>{
+    const lineWidth=ctx.measureText(line).width;
+    const left=plan.align==='left'?plan.x:plan.align==='right'?plan.x-lineWidth:plan.x-lineWidth/2;
+    const boxHeight=plan.lineHeight*.92;
+    const top=plan.top+plan.lineHeight*(index+.5)-boxHeight/2;
+    traceRoundedRect(ctx,left-padding,top,lineWidth+padding*2,boxHeight,radius);ctx.fill();
+   });
+  }else{
+   traceRoundedRect(ctx,plan.blockLeft-padding,plan.blockTop-padding,plan.blockWidth+padding*2,plan.blockHeight+padding*2,radius);ctx.fill();
+  }
   ctx.restore();
  }
- ctx.font=plan.font;ctx.textAlign=plan.align;ctx.textBaseline='middle';ctx.fillStyle=event.color;
- // Karaoke: las palabras ya «cantadas» se pintan con el color de resalte. Se pintan palabra a palabra para
- // poder cambiar de color a mitad de línea; sin karaoke se pinta la línea entera de una vez.
- const lit=highlightedWords(revealText(event.text,state.chars),state.highlight);
- const words=lit>=0?layoutWords(plan.lines,(value)=>ctx.measureText(value).width,plan.align,plan.x,ctx.measureText(' ').width):[];
+ ctx.textAlign=plan.align;ctx.textBaseline='middle';
+ const fill=style.gradient.enabled?textGradient(ctx,plan,style.gradient):event.color;
+ const totalWords=plan.lines.reduce((total,line)=>total+line.split(/\s+/).filter(Boolean).length,0);
+ const highlighted=state.highlight>=0?Math.floor(totalWords*Math.max(0,Math.min(1,state.highlight))):-1;
+ const words=state.highlight>=0?layoutWords(plan.lines,(value)=>ctx.measureText(value).width,plan.align,plan.x,ctx.measureText(' ').width):[];
  let word0=0;
  plan.lines.forEach((line,index)=>{
   const y=plan.top+plan.lineHeight*(index+.5);
   if(outline>0){applyShadow(ctx,event,scale);ctx.lineWidth=outline;ctx.lineJoin='round';ctx.miterLimit=2;ctx.strokeStyle=style.outlineColor;ctx.strokeText(line,plan.x,y);}
+  // El texto hueco solo deja ver el contorno: el relleno se salta.
+  if(style.hollow){word0+=line.split(/\s+/).filter(Boolean).length;return;}
   if(!words.length){
    applyShadow(ctx,event,scale);
-   ctx.fillStyle=event.color;
+   ctx.fillStyle=fill;
    ctx.fillText(line,plan.x,y);
    return;
   }
   const count=line.split(/\s+/).filter(Boolean).length;
   const slice=words.slice(word0,word0+count);
-  let painted: boolean | null = null;
+  let paintedFill: string|CanvasGradient|null=null;
   slice.forEach((word,position)=>{
-   const on=word0+position<lit;
-   if(on!==painted){ctx.fillStyle=on?style.highlightColor:event.color;painted=on;}
+   const wordIndex=word0+position;
+   const fraction=state.highlight>=0?Math.max(0,Math.min(1,state.highlight*totalWords-wordIndex)):0;
+   // «Grow highlight»: la caja crece por detrás de la palabra activa y el texto pasa al color de acento.
+   if(style.highlightBox&&fraction>0){
+    const boxWidth=Math.max(2,(ctx.measureText(word.text).width+plan.size*.34)*easeGrow(fraction));
+    const boxHeight=plan.size*1.42;
+    ctx.save();ctx.shadowColor='transparent';ctx.shadowBlur=0;
+    traceRoundedRect(ctx,word.left-plan.size*.17,y-boxHeight/2,boxWidth,boxHeight,Math.min(boxHeight*.32,plan.size*.3));
+    ctx.fillStyle=withAlpha(style.highlightBoxColor,.92);ctx.fill();ctx.restore();
+   }
+   const color=style.highlightBox&&fraction>0?style.highlightTextColor:style.highlightBox?fill:wordIndex<highlighted?style.highlightColor:fill;
+   if(color!==paintedFill){ctx.fillStyle=color;paintedFill=color;}
    applyShadow(ctx,event,scale);
    ctx.textAlign='left';
    ctx.fillText(word.text,word.left,y);
@@ -186,7 +239,7 @@ function textPlanFor(ctx:CanvasRenderingContext2D,event:Event,project:Project,at
  const style=styleOf(event);
  const measure=(value:string,font:string)=>{ctx.font=font;return ctx.measureText(value).width;};
  return planText({
-  text:revealText(event.text,state.chars),
+  text:revealText(textCase(event.text,style.uppercase),state.chars),
   font:event.font,fontSize:event.fontSize,align:event.align,bold:style.bold,italic:style.italic,
   lineSpacing:style.lineSpacing,wrap:style.wrap,anchor:event.anchor,
   x:state.dx/w,y:state.dy/h,
@@ -342,7 +395,7 @@ const eventTime=heldTimes.get(e.id)??time;const local=eventTime-e.start; // A cr
     // «Reducir parpadeo de entrelazado»: mezcla vertical de tres tomas (la capa copiada un píxel arriba y un
     // píxel abajo) sobre la capa del evento, sin tocar el resto del fotograma.
     if(e.reduceFlicker&&createCanvas)reduceFlickerBlend(layer,createCanvas,w,h);
-    if(effects.length)applyEffects(layer,effects,{scale:h/Math.max(1,p.height),createCanvas:createCanvas as NonNullable<typeof createCanvas>,note});
+    if(effects.length)applyEffects(layer,effects,{scale:h/Math.max(1,p.height),createCanvas:createCanvas as NonNullable<typeof createCanvas>,note,time:seconds(time)});
     // La máscara libre recorta la forma del evento; la transición, si la hay, lo revela después.
     if(masked&&e.maskPath)applyMaskPath(layer,e.maskPath,{width:w,height:h,scale:h/Math.max(1,p.height),createCanvas:createCanvas as NonNullable<typeof createCanvas>,note});
     ctx.filter='none';

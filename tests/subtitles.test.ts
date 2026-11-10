@@ -36,6 +36,25 @@ test('frases a eventos: se crea la pista «Subtítulos» delante, con los tiempo
   assert.equal(only[0].duration,ticks(.2));
 });
 
+test('estilo premium: una plantilla de subtítulo se aplica a todas las líneas sin tocar el texto ni los tiempos',()=>{
+  const project=newProject();
+  const events=subtitleEvents(project,cues,undefined,'premium-grow-verde');
+  assert.equal(events.length,2);
+  for(const event of events){
+    assert.equal(event.uppercase,true);
+    assert.equal(event.highlightBox,true);
+    assert.equal(event.anchor,'bottom-center');
+    assert.equal(event.transform.y,0,'la plantilla ya está anclada abajo; no se suma otro desplazamiento');
+    assert.equal(event.animation,'karaoke');
+  }
+  assert.equal(events[0].text,cues[0].text);
+  assert.equal(events[1].start,ticks(1.4));
+  // Un identificador desconocido cae al estilo clásico en vez de dejar los subtítulos sin estilo.
+  const fallback=subtitleEvents(newProject(),cues,undefined,'no-existe' as never);
+  assert.equal(fallback[0].fontSize,SUBTITLE_STYLE.fontSize);
+  assert.equal(fallback[0].transform.y,SUBTITLE_STYLE.offsetY);
+});
+
 test('reconocer un archivo de subtítulos y sacar su duración',()=>{
   const text='1\n00:00:01,000 --> 00:00:02,500\nHola\n\n2\n00:01:03,250 --> 00:01:04,000\nAdiós\n';
   assert.equal(looksLikeSrt('subtitulos.srt',text),true);

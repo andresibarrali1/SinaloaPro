@@ -103,7 +103,7 @@ test('estilo: los valores por defecto son los del pintado anterior y se pueden s
  assert.equal(custom.bold,true);
  assert.equal(custom.anchor,'bottom-center');
  assert.deepEqual(custom.shadow,{enabled:true,color:'#00ff00',offsetX:10,offsetY:-6,blur:3});
- assert.deepEqual(custom.background,{color:'#0000ff',opacity:.5,padding:30});
+ assert.deepEqual(custom.background,{color:'#0000ff',opacity:.5,padding:30,radius:0,fit:'block'});
  assert.equal(styleOf({shadow:{enabled:true,color:'#000000',offsetX:1,offsetY:1,blur:1}}).shadow.offsetX,1);
  // El color de resalte del karaoke tiene su propio valor por defecto.
  assert.equal(plain.highlightColor,DEFAULT_HIGHLIGHT);

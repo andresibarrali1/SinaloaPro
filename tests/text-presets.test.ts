@@ -25,12 +25,19 @@ test('cada plantilla de texto es coherente: identificador único, animación con
   assert.ok(size>=8&&size<=500,`${preset.id} usa un tamaño imposible`);
  }
  // Hay plantillas de las tres familias y al menos una con contorno, una con sombra, una con caja y una karaoke.
- assert.deepEqual(TEXT_PRESET_GROUPS,['Nuevas animaciones','Subtítulos dinámicos','Títulos dinámicos','Redes (vertical)','Subtítulos','Títulos']);
+ assert.deepEqual(TEXT_PRESET_GROUPS,['Nuevas animaciones','Subtítulos dinámicos','Títulos dinámicos','Redes (vertical)','Subtítulos','Títulos','Premium 2026']);
  assert.ok(TEXT_PRESETS.some(preset=>(preset.patch.outlineWidth??0)>0));
  assert.ok(TEXT_PRESETS.some(preset=>preset.patch.shadow?.enabled));
  assert.ok(TEXT_PRESETS.some(preset=>(preset.patch.background?.opacity??0)>0));
- assert.equal(TEXT_PRESETS.filter(preset=>preset.patch.animation==='karaoke').length,1);
- assert.equal(TEXT_PRESETS.find(preset=>preset.patch.animation==='karaoke')!.patch.highlightColor,'#ffe600');
+ assert.ok(TEXT_PRESETS.filter(preset=>preset.patch.animation==='karaoke').length>=1);
+ assert.ok(TEXT_PRESETS.some(preset=>preset.patch.animation==='karaoke'&&preset.patch.highlightColor==='#ffe600'));
+ // Las plantillas premium usan las capacidades nuevas y siguen siendo detectables.
+ assert.ok(TEXT_PRESETS.filter(preset=>preset.group==='Premium 2026').length>=10);
+ assert.ok(TEXT_PRESETS.some(preset=>preset.patch.uppercase));
+ assert.ok(TEXT_PRESETS.some(preset=>preset.patch.hollow));
+ assert.ok(TEXT_PRESETS.some(preset=>preset.patch.highlightBox));
+ assert.ok(TEXT_PRESETS.some(preset=>preset.patch.gradient?.enabled));
+ assert.ok(TEXT_PRESETS.some(preset=>(preset.patch.background?.radius??0)>0||preset.patch.background?.fit==='line'));
  // Todas las plantillas colocan el texto en un anclaje que existe.
  assert.ok(PRESET_ANCHORS.every(anchor=>typeof anchor==='string'&&anchor.includes('-')));
 });

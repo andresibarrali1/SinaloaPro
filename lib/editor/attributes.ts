@@ -29,8 +29,8 @@ export const ATTRIBUTE_GROUPS: AttributeGroup[] = [
     keys: ['transform', 'keys', 'mask', 'maskPath', 'maintainAspect', 'stretchFill'], kinds: ['video', 'image', 'text', 'color'],
   },
   {
-    id: 'text', label: 'Títulos y texto (plantilla)', note: 'Fuente, tamaño, color, contorno, sombra, fondo, anclaje, animación y color de resalte: el estilo y la plantilla, sin cambiar el texto.',
-    keys: ['font', 'fontSize', 'color', 'align', 'bold', 'italic', 'lineSpacing', 'tracking', 'wrap', 'outlineWidth', 'outlineColor', 'shadow', 'background', 'anchor', 'animation', 'highlightColor'],
+    id: 'text', label: 'Títulos y texto (plantilla)', note: 'Fuente, tamaño, color, contorno, sombra, fondo, acabados premium (mayúsculas, degradado, hueco, cajas), anclaje, animación y color de resalte: el estilo y la plantilla, sin cambiar el texto.',
+    keys: ['font', 'fontSize', 'color', 'align', 'bold', 'italic', 'lineSpacing', 'tracking', 'wrap', 'outlineWidth', 'outlineColor', 'shadow', 'background', 'anchor', 'animation', 'highlightColor', 'uppercase', 'hollow', 'gradient', 'highlightBox', 'highlightBoxColor', 'highlightTextColor'],
     kinds: ['text'],
   },
   {

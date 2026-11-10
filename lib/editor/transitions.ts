@@ -23,6 +23,7 @@ export const TRANSITION_KINDS: TransitionKind[] = [
   'squeeze-from-left', 'squeeze-from-right', 'squeeze-from-top', 'squeeze-from-bottom',
   'zoom-in', 'zoom-out',
   'spiral', 'spiral-out', 'page-peel', 'punch-zoom', 'spin-pop', 'whip-right', 'flash-white',
+  'zoom-blur', 'flip-3d', 'whip-left', 'diagonal-wipe', 'split-open', 'glitch-slices', 'light-leak', 'film-burn', 'flash-black',
 ];
 export const TRANSITION_LABEL: Record<TransitionKind, string> = {
   'dissolve-linear': 'Fundido lineal', 'dissolve-slow': 'Fundido lento', 'dissolve-fast': 'Fundido brusco',
@@ -44,6 +45,9 @@ export const TRANSITION_LABEL: Record<TransitionKind, string> = {
   'spiral': 'Remolino', 'spiral-out': 'Espiral exterior',
   'punch-zoom':'Zoom con rebote', 'spin-pop':'Giro rápido', 'whip-right':'Barrido rápido lateral', 'flash-white':'Destello blanco',
   'page-peel': 'Despegado de página',
+  'zoom-blur': 'Zoom con desenfoque', 'flip-3d': 'Giro 3D', 'whip-left': 'Barrido rápido a la izquierda',
+  'diagonal-wipe': 'Barrido diagonal suave', 'split-open': 'Apertura central', 'glitch-slices': 'Glitch digital',
+  'light-leak': 'Fuga de luz', 'film-burn': 'Quemado de película', 'flash-black': 'Destello negro',
 };
 export const TRANSITION_GROUP: Record<TransitionKind, string> = {
   'dissolve-linear': 'Fundidos', 'dissolve-slow': 'Fundidos', 'dissolve-fast': 'Fundidos',
@@ -59,6 +63,8 @@ export const TRANSITION_GROUP: Record<TransitionKind, string> = {
   'spiral': 'Barridos', 'spiral-out': 'Barridos',
   'punch-zoom':'Dinámicas', 'spin-pop':'Dinámicas', 'whip-right':'Dinámicas', 'flash-white':'Dinámicas',
   'page-peel': 'Página',
+  'zoom-blur':'Premium', 'flip-3d':'Premium', 'whip-left':'Premium', 'diagonal-wipe':'Premium', 'split-open':'Premium',
+  'glitch-slices':'Premium', 'light-leak':'Premium', 'film-burn':'Premium', 'flash-black':'Premium',
 };
 // Las familias en el orden en que se enseñan en la pestaña de transiciones.
 export const TRANSITION_GROUPS: string[] = [...new Set(TRANSITION_KINDS.map(kind => TRANSITION_GROUP[kind]))];
@@ -81,6 +87,15 @@ export const TRANSITION_NOTE: Partial<Record<TransitionKind, string>> = {
   'wipe-out-right': 'Como la transición es la entrada del evento, el barrido de salida equivale al de entrada por el lado contrario: el clip anterior se retira hacia la derecha y el entrante aparece por la izquierda.',
   'wipe-out-top': 'Como la transición es la entrada del evento, el barrido de salida equivale al de entrada por el lado contrario: el clip anterior se retira hacia arriba y el entrante aparece por abajo.',
   'wipe-out-bottom': 'Como la transición es la entrada del evento, el barrido de salida equivale al de entrada por el lado contrario: el clip anterior se retira hacia abajo y el entrante aparece por arriba.',
+  'zoom-blur': 'Acerca el clip entrante desde algo más pequeño mientras el desenfoque se cierra: el «zoom con desenfoque» de los montajes de ritmo rápido. Usa el filtro de Canvas cuando el motor lo admite.',
+  'flip-3d': 'Giro en perspectiva aproximado con una escala horizontal: el clip se abre como una tarjeta, sin la iluminación del giro real.',
+  'whip-left': 'El hermano hacia la izquierda del barrido rápido: entra con un desplazamiento lateral y la curva de suavizado de las dinámicas.',
+  'diagonal-wipe': 'Barrido en diagonal con borde suave: descubre el clip entrante desde la esquina superior izquierda, sin la banda dura de los barridos clásicos.',
+  'split-open': 'Apertura central: el clip entrante aparece por una franja vertical que crece desde el centro, como dos puertas que se separan.',
+  'glitch-slices': 'Revelado digital en bandas horizontales con un temblor de pocos píxeles: una aproximación 2D al glitch de los paquetes de efectos, sin desplazar canales de color.',
+  'light-leak': 'Una fuga de luz cálida barre el fotograma mientras el clip entrante aparece por la izquierda: el destello orgánico de las películas y los clips de marca.',
+  'film-burn': 'Un agujero quemado se abre desde el centro con un borde naranja incandescente: aproximación 2D del «FilmBurn» de los paquetes de 2026, sin partículas ni polvo.',
+  'flash-black': 'Un destello negro a mitad de la transición separa dos planos con un golpe seco; el blanco ya existía y este es su opuesto.',
 };
 // «Fundido suave» entra y sale despacio (curva en S) y «Fundido rápido» deja casi todo el cambio para el
 // final; «Fundido lento» y «Fundido brusco» son las dos curvas de VEGAS que ya estaban.
@@ -98,8 +113,10 @@ export const isDissolve = (kind: TransitionKind) => kind.startsWith('dissolve-')
 export const isSlide = (kind: TransitionKind) => kind.startsWith('slide-');
 export const isSqueeze = (kind: TransitionKind) => kind.startsWith('squeeze-');
 // El zoom no recorta la capa: la dibuja más pequeña o más grande y deja ver el clip de debajo alrededor.
-export const isZoom = (kind: TransitionKind) => kind === 'zoom-in' || kind === 'zoom-out';
-export const isGeometric = (kind: TransitionKind) => !isDissolve(kind) && !isSlide(kind) && !isSqueeze(kind) && !isZoom(kind);
+export const isZoom = (kind: TransitionKind) => kind === 'zoom-in' || kind === 'zoom-out' || kind === 'zoom-blur';
+// Las que solo mueven, giran o escalan la capa: no recortan nada, así que no pasan por la máscara.
+export const isTransformOnly = (kind: TransitionKind) => isSlide(kind) || isSqueeze(kind) || isZoom(kind) || kind === 'flip-3d' || kind === 'whip-left';
+export const isGeometric = (kind: TransitionKind) => !isDissolve(kind) && !isTransformOnly(kind);
 
 // ------------------------------------------------------------------ recorte de la capa
 
@@ -117,12 +134,32 @@ function eraser(ctx: CanvasRenderingContext2D): Erase {
 // Un barrido con el borde suave: se borra con un degradado horizontal en lugar de con un canto recto. A la
 // izquierda del borde no se borra nada (ya se ve el clip entrante) y a la derecha se borra todo.
 function gradientErase(ctx: CanvasRenderingContext2D, progress: number, width: number, height: number) {
+  const p = Math.max(0, Math.min(1, progress));
+  // En los extremos no se deja una franja del clip entrante: al 0 % se borra todo y al 100 % no se borra nada.
+  if (p <= 0) { ctx.clearRect(0, 0, width, height); return; }
+  if (p >= 1) return;
   const soft = Math.max(4, Math.min(width, height) * .12);
   ctx.save();
   ctx.globalCompositeOperation = 'destination-out';
-  const gradient = ctx.createLinearGradient(progress * width - soft, 0, progress * width + soft, 0);
+  const gradient = ctx.createLinearGradient(p * width - soft, 0, p * width + soft, 0);
   gradient.addColorStop(0, 'rgba(0,0,0,0)');
   gradient.addColorStop(1, 'rgba(0,0,0,1)');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, width, height);
+  ctx.restore();
+}
+// Barrido diagonal: el mismo borrado con degradado, pero proyectado sobre la diagonal del fotograma. El borde
+// suave se mueve con el progreso y en los extremos no queda ni una franja sin descubrir.
+function diagonalErase(ctx: CanvasRenderingContext2D, progress: number, width: number, height: number) {
+  const p = Math.max(0, Math.min(1, progress));
+  if (p <= 0) { ctx.clearRect(0, 0, width, height); return; }
+  if (p >= 1) return;
+  const soft = .08;
+  const gradient = ctx.createLinearGradient(0, 0, width, height);
+  gradient.addColorStop(Math.max(0, p - soft), 'rgba(0,0,0,0)');
+  gradient.addColorStop(Math.min(1, p + soft), 'rgba(0,0,0,1)');
+  ctx.save();
+  ctx.globalCompositeOperation = 'destination-out';
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, width, height);
   ctx.restore();
@@ -168,6 +205,11 @@ export function maskTransition(layer: HTMLCanvasElement, kind: TransitionKind, p
   if(kind==='flash-white'){
     const ctx=layer.getContext('2d');if(!ctx)return;
     ctx.save();ctx.globalAlpha=Math.sin(Math.max(0,Math.min(1,progress))*Math.PI);ctx.fillStyle='#fff';ctx.fillRect(0,0,width,height);ctx.restore();return;
+  }
+  if(kind==='flash-black'){
+    const ctx=layer.getContext('2d');if(!ctx)return;
+    // Un destello negro que no llega a tapar del todo: el corte se siente, pero el fotograma no desaparece.
+    ctx.save();ctx.globalAlpha=Math.sin(Math.max(0,Math.min(1,progress))*Math.PI)*.82;ctx.fillStyle='#000';ctx.fillRect(0,0,width,height);ctx.restore();return;
   }
 
   if (!isGeometric(kind)) return;
@@ -249,6 +291,60 @@ export function maskTransition(layer: HTMLCanvasElement, kind: TransitionKind, p
     ctx.putImageData(image, 0, 0);
     return;
   }
+  if (kind === 'diagonal-wipe') { diagonalErase(ctx, p, width, height); return; }
+  if (kind === 'split-open') {
+    // Dos puertas que se separan: la franja central crece hasta cubrir el fotograma y deja el clip anterior
+    // fuera de ella. Al 100 % la franja mide el ancho completo, así que no queda una línea sin cubrir.
+    if (p <= 0) { ctx.clearRect(0, 0, width, height); return; }
+    if (p >= 1) return;
+    const half = p * width / 2;
+    eraseOutside(ctx, width, height, () => { ctx.rect(width / 2 - half, 0, half * 2, height); });
+    return;
+  }
+  if (kind === 'glitch-slices') {
+    // Bandas horizontales que se descubren en un orden fijo pero desordenado: el fotograma se rompe en
+    // franjas y el clip entrante aparece por ellas, con el temblor que añade la transformación.
+    const bands = 18;
+    for (let index = 0; index < bands; index++) {
+      const order = (index * 7) % bands;
+      if (p < (order / bands) * .98) erase(0, index * height / bands, width, Math.ceil(height / bands));
+    }
+    return;
+  }
+  if (kind === 'light-leak') {
+    // Fuga de luz cálida sobre el clip entrante, seguida del barrido suave que lo descubre por la izquierda.
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const leak = ctx.createLinearGradient(0, 0, width, height);
+    leak.addColorStop(0, 'rgba(255,190,90,0)');
+    leak.addColorStop(.45, 'rgba(255,150,60,.55)');
+    leak.addColorStop(.8, 'rgba(255,70,20,0)');
+    ctx.globalAlpha = Math.sin(p * Math.PI) * .9;
+    ctx.fillStyle = leak;
+    ctx.fillRect(0, 0, width, height);
+    ctx.restore();
+    gradientErase(ctx, p, width, height);
+    return;
+  }
+  if (kind === 'film-burn') {
+    // Un agujero quemado se abre desde el centro; el borde naranja se pinta solo sobre los píxeles que quedan,
+    // así el resplandor no invade el clip anterior que se ve por el agujero.
+    const cx = width / 2, cy = height / 2;
+    const radius = Math.min(1, Math.max(0, p)) * Math.hypot(width, height) / 2 * 1.02;
+    eraseOutside(ctx, width, height, () => { ctx.moveTo(cx + radius, cy); ctx.arc(cx, cy, radius, 0, Math.PI * 2); });
+    if (radius > 2) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-atop';
+      const ring = ctx.createRadialGradient(cx, cy, radius * .55, cx, cy, radius);
+      ring.addColorStop(0, 'rgba(255,140,30,0)');
+      ring.addColorStop(.85, `rgba(255,90,10,${(.45 * Math.sin(p * Math.PI)).toFixed(3)})`);
+      ring.addColorStop(1, 'rgba(255,205,90,0)');
+      ctx.fillStyle = ring;
+      ctx.fillRect(0, 0, width, height);
+      ctx.restore();
+    }
+    return;
+  }
   if (kind === 'page-peel') {
     // La página se levanta en diagonal desde la esquina superior derecha: se conserva lo que queda por encima
     // de la recta x/w + y/h = umbral y se borra el resto. El umbral baja de 2 (nada conservado) por debajo de
@@ -290,6 +386,23 @@ export function applyTransitionTransform(ctx: CanvasRenderingContext2D, kind: Tr
     ctx.scale(scale,scale);ctx.translate(-width/2,-height/2);return;
   }
   if(kind==='whip-right'){ctx.translate(width*Math.pow(1-p,3),0);return;}
+  if(kind==='whip-left'){ctx.translate(-width*Math.pow(1-p,3),0);return;}
+  if(kind==='flip-3d'){
+    // Tarjeta que se abre: el ancho pasa de casi cero a completo, como un giro sobre el eje vertical.
+    const scale=Math.max(.01,p);
+    ctx.translate(width/2,0);ctx.scale(scale,1);ctx.translate(-width/2,0);return;
+  }
+  if(kind==='zoom-blur'){
+    // Entra algo más pequeño y el desenfoque se cierra hasta el final; el filtro se queda en el contexto
+    // mientras dura el dibujo de la capa y el `save`/`restore` del compositor lo devuelve a «none».
+    const scale=.65+.35*p;
+    ctx.translate(width/2,height/2);ctx.scale(scale,scale);ctx.translate(-width/2,-height/2);
+    ctx.filter=`blur(${((1-p)*10).toFixed(2)}px)`;return;
+  }
+  if(kind==='glitch-slices'){
+    // Temblor lateral que se apaga con la transición: remata el revelado por bandas.
+    ctx.translate(Math.sin(p*Math.PI*18)*width*.012*(1-p),0);return;
+  }
 
   if (kind === 'slide-from-left') { ctx.translate(-(1 - p) * width, 0); return; }
   if (kind === 'slide-from-right') { ctx.translate((1 - p) * width, 0); return; }

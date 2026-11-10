@@ -10,10 +10,12 @@ import type { VideoEffect, VideoEffectKind } from './project';
 
 export type CanvasFactory = (width: number, height: number) => HTMLCanvasElement;
 
-export const EFFECT_KINDS: VideoEffectKind[] = ['blur', 'blackAndWhite', 'sepia', 'invert', 'chromaKey', 'pixelate', 'mirror', 'border', 'vignette', 'glow'];
+export const EFFECT_KINDS: VideoEffectKind[] = ['blur', 'blackAndWhite', 'sepia', 'invert', 'chromaKey', 'pixelate', 'mirror', 'border', 'vignette', 'glow', 'chromaticAberration', 'filmGrain', 'posterize', 'tealOrange', 'bleachBypass', 'vhs', 'lightLeak', 'halation'];
 export const EFFECT_LABEL: Record<VideoEffectKind, string> = {
   blur: 'Desenfoque gaussiano', blackAndWhite: 'Blanco y negro', sepia: 'Sepia', invert: 'Invertir',
   chromaKey: 'Clave cromática', pixelate: 'Pixelar', mirror: 'Espejo', border: 'Borde', vignette: 'Viñeta', glow: 'Centelleo',
+  chromaticAberration: 'Aberración cromática', filmGrain: 'Grano de película', posterize: 'Posterizar',
+  tealOrange: 'Teal & naranja', bleachBypass: 'Bleach bypass', vhs: 'VHS', lightLeak: 'Fuga de luz', halation: 'Halación',
 };
 export const EFFECT_DESCRIPTION: Record<VideoEffectKind, string> = {
   blur: 'Radio del desenfoque, en píxeles del proyecto.',
@@ -26,17 +28,29 @@ export const EFFECT_DESCRIPTION: Record<VideoEffectKind, string> = {
   border: 'Grosor y color del borde que se pinta sobre el fotograma.',
   vignette: 'Oscurecimiento de las esquinas y color de la viñeta.',
   glow: 'Radio del resplandor y cantidad que se suma a la imagen.',
+  chromaticAberration: 'Separa los canales rojo y azul hacia los lados: el borde de color de las lentes y del glitch.',
+  filmGrain: 'Grano fotográfico animado, con su intensidad y el tamaño de la partícula.',
+  posterize: 'Reduce los niveles de color: el look de impresión y de los carteles.',
+  tealOrange: 'Lleva las sombras al verde azulado y las luces al naranja: el contraste de cine.',
+  bleachBypass: 'Desatura y sube el contraste: el revelado químico de las películas de acción.',
+  vhs: 'Desplaza el color, marca las líneas de barrido y añade ruido: la cinta de los ochenta.',
+  lightLeak: 'Una fuga de luz cálida cruza el fotograma en el ángulo elegido.',
+  halation: 'Resplandor rojizo alrededor de las zonas claras, como la emulsión de cine.',
 };
 // Qué parámetros usa cada efecto, para que la interfaz muestre solo los que sirven.
 export const EFFECT_PARAMS: Record<VideoEffectKind, ('amount' | 'size' | 'color' | 'softness' | 'horizontal' | 'vertical')[]> = {
   blur: ['amount'], blackAndWhite: ['amount'], sepia: ['amount'], invert: ['amount'],
   chromaKey: ['color', 'amount', 'softness'], pixelate: ['size'], mirror: ['horizontal', 'vertical'],
   border: ['size', 'color'], vignette: ['amount', 'color'], glow: ['size', 'amount'],
+  chromaticAberration: ['amount', 'size'], filmGrain: ['amount', 'size'], posterize: ['amount', 'size'],
+  tealOrange: ['amount'], bleachBypass: ['amount'], vhs: ['amount'],
+  lightLeak: ['amount', 'color', 'size'], halation: ['amount', 'size', 'color'],
 };
 
 const clamp = (value: number, min: number, max: number) => Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : min;
 const clamp01 = (value: number) => clamp(value, 0, 1);
 const mix = (from: number, to: number, amount: number) => from + (to - from) * amount;
+const clamp255 = (value: number) => Math.max(0, Math.min(255, Math.round(value)));
 
 export function defaultEffect(kind: VideoEffectKind, id: string): VideoEffect {
   const base: VideoEffect = { id, kind, enabled: true, amount: 1, size: 8, color: '#000000', softness: .2, horizontal: true, vertical: false };
@@ -51,6 +65,14 @@ export function defaultEffect(kind: VideoEffectKind, id: string): VideoEffect {
     case 'border': return { ...base, size: 8, color: '#ffffff' };
     case 'vignette': return { ...base, amount: .6, color: '#000000' };
     case 'glow': return { ...base, size: 14, amount: .6 };
+    case 'chromaticAberration': return { ...base, amount: .5, size: 4 };
+    case 'filmGrain': return { ...base, amount: .22, size: 2 };
+    case 'posterize': return { ...base, amount: .4, size: 10 };
+    case 'tealOrange': return { ...base, amount: .4 };
+    case 'bleachBypass': return { ...base, amount: .45 };
+    case 'vhs': return { ...base, amount: .45 };
+    case 'lightLeak': return { ...base, amount: .45, size: 135, color: '#ff9a4d' };
+    case 'halation': return { ...base, amount: .35, size: 14, color: '#ff5a36' };
   }
 }
 export function normalizeEffect(effect: Partial<VideoEffect> & { kind: VideoEffectKind }, id?: string): VideoEffect {
@@ -83,6 +105,59 @@ export function describeEffect(effect: VideoEffect): string {
   if (effect.kind === 'mirror') parts.push([effect.horizontal ? 'horizontal' : '', effect.vertical ? 'vertical' : ''].filter(Boolean).join(' y ') || 'sin ejes');
   return `${EFFECT_LABEL[effect.kind]}: ${parts.join(' · ')}`;
 }
+
+// Looks de un clic: varias tomas de la pila que, juntas, dan un acabado coherente. No son un efecto nuevo:
+// se añaden a la pila como cualquier otro, se pueden reordenar, apagar o quitar una a una.
+export type EffectLook = { id: string; label: string; note: string; effects: (Partial<VideoEffect> & { kind: VideoEffectKind })[] };
+export const EFFECT_LOOKS: EffectLook[] = [
+  {
+    id: 'look-cinematico', label: 'Cine 2026',
+    note: 'Teal & naranja suave, halación cálida y grano fino: el contraste de cine sin lavar la piel.',
+    effects: [
+      { kind: 'tealOrange', amount: .35 },
+      { kind: 'halation', amount: .28, size: 16, color: '#ff6a3d' },
+      { kind: 'filmGrain', amount: .12, size: 2 },
+      { kind: 'vignette', amount: .25, color: '#000000' },
+    ],
+  },
+  {
+    id: 'look-vhs', label: 'VHS ochentero',
+    note: 'Cinta gastada: color desplazado, líneas de barrido y ruido, con un grano grueso encima.',
+    effects: [
+      { kind: 'vhs', amount: .5 },
+      { kind: 'chromaticAberration', amount: .32, size: 2 },
+      { kind: 'filmGrain', amount: .18, size: 3 },
+    ],
+  },
+  {
+    id: 'look-dreamy', label: 'Ensueño',
+    note: 'Halación amplia y una fuga de luz melocotón: el acabado suave de los vídeos de belleza y lifestyle.',
+    effects: [
+      { kind: 'halation', amount: .4, size: 24, color: '#ffb39a' },
+      { kind: 'lightLeak', amount: .3, size: 135, color: '#ffb36b' },
+      { kind: 'glow', amount: .3, size: 18 },
+    ],
+  },
+  {
+    id: 'look-noir', label: 'Noir',
+    note: 'Blanco y negro con grano y viñeta cerrada: el blanco y negro de las entrevistas y los crímenes.',
+    effects: [
+      { kind: 'blackAndWhite', amount: .95 },
+      { kind: 'filmGrain', amount: .22, size: 2 },
+      { kind: 'vignette', amount: .5, color: '#000000' },
+      { kind: 'bleachBypass', amount: .2 },
+    ],
+  },
+  {
+    id: 'look-editorial', label: 'Editorial limpio',
+    note: 'Un contraste de color muy leve y grano casi invisible: el look de marca que no grita.',
+    effects: [
+      { kind: 'tealOrange', amount: .18 },
+      { kind: 'filmGrain', amount: .07, size: 2 },
+      { kind: 'bleachBypass', amount: .12 },
+    ],
+  },
+];
 
 // ------------------------------------------------------------------ aplicación
 
@@ -167,7 +242,7 @@ function giveScratch(canvas: HTMLCanvasElement | null | undefined): void {
   scratchPools.set(key, pool);
 }
 
-export function applyEffects(layer: HTMLCanvasElement, effects: VideoEffect[], options: { scale: number; createCanvas: CanvasFactory; note?: (message: string) => void }): void {
+export function applyEffects(layer: HTMLCanvasElement, effects: VideoEffect[], options: { scale: number; createCanvas: CanvasFactory; note?: (message: string) => void; time?: number }): void {
   const ctx = layer.getContext('2d');
   if (!ctx) return;
   const { createCanvas } = options;
@@ -303,6 +378,144 @@ export function applyEffects(layer: HTMLCanvasElement, effects: VideoEffect[], o
         ctx.drawImage(glowLayer, 0, 0);
         giveScratch(glowLayer);
         ctx.restore();
+        break;
+      }
+      case 'chromaticAberration': {
+        // Los canales rojo y azul se separan a izquierda y derecha; el verde se queda en el centro. La mezcla
+        // controla cuánto se nota, y el tamaño, cuántos píxeles se desplazan.
+        const offset = Math.max(1, Math.round(effect.size * scale));
+        const amount = clamp01(effect.amount);
+        if (!amount) break;
+        const image = ctx.getImageData(0, 0, width, height), data = image.data;
+        const source = new Uint8ClampedArray(data);
+        for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+          const index = (y * width + x) * 4;
+          const right = Math.min(width - 1, x + offset), left = Math.max(0, x - offset);
+          data[index] = clamp255(mix(data[index], source[(y * width + right) * 4], amount));
+          data[index + 2] = clamp255(mix(data[index + 2], source[(y * width + left) * 4 + 2], amount));
+        }
+        ctx.putImageData(image, 0, 0);
+        break;
+      }
+      case 'filmGrain': {
+        // Ruido determinista (la misma semilla da el mismo grano en la vista previa y en el archivo) con un
+        // tamaño de partícula configurable.
+        const amount = clamp01(effect.amount);
+        if (!amount) break;
+        const grain = Math.max(1, Math.round(effect.size * scale));
+        const image = ctx.getImageData(0, 0, width, height), data = image.data;
+        // El grano cambia a 24 pasos por segundo, como el de una película: si no, se queda congelado y se nota.
+        const frame = Math.floor((options.time ?? 0) * 24);
+        const noise = (x: number, y: number) => {
+          let hash = (x * 374761393 + y * 668265263 + frame * 2246822519) >>> 0;
+          hash = ((hash ^ (hash >>> 13)) * 1274126177) >>> 0;
+          return (((hash ^ (hash >>> 16)) >>> 0) / 4294967295) * 2 - 1;
+        };
+        for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+          const index = (y * width + x) * 4;
+          const value = noise(Math.floor(x / grain), Math.floor(y / grain)) * amount * 28;
+          data[index] = clamp255(data[index] + value);
+          data[index + 1] = clamp255(data[index + 1] + value);
+          data[index + 2] = clamp255(data[index + 2] + value);
+        }
+        ctx.putImageData(image, 0, 0);
+        break;
+      }
+      case 'posterize': {
+        const amount = clamp01(effect.amount), levels = Math.max(2, Math.min(64, Math.round(effect.size)));
+        const step = 255 / (levels - 1);
+        pixelPass(layer, ctx, (r, g, b, a) => [
+          mix(r, Math.round(r / step) * step, amount),
+          mix(g, Math.round(g / step) * step, amount),
+          mix(b, Math.round(b / step) * step, amount), a,
+        ]);
+        break;
+      }
+      case 'tealOrange': {
+        const amount = clamp01(effect.amount);
+        pixelPass(layer, ctx, (r, g, b, a) => {
+          const luma = (.2126 * r + .7152 * g + .0722 * b) / 255;
+          // Las sombras se quedan en el verde azulado y solo las luces van al naranja: sin este reparto, un
+          // gris medio ya saldría cobrizo y el grado de color se comería la imagen.
+          const split = Math.max(0, Math.min(1, (luma - .25) / .6));
+          return [
+            mix(r, mix(8, 255, split), amount),
+            mix(g, mix(58, 150, split), amount),
+            mix(b, mix(78, 70, split), amount), a,
+          ];
+        });
+        break;
+      }
+      case 'bleachBypass': {
+        const amount = clamp01(effect.amount);
+        pixelPass(layer, ctx, (r, g, b, a) => {
+          const luma = .2126 * r + .7152 * g + .0722 * b;
+          const contrast = Math.max(0, Math.min(255, (luma - 128) * 1.45 + 128));
+          return [mix(r, mix(r, contrast, .7), amount), mix(g, mix(g, contrast, .7), amount), mix(b, mix(b, contrast, .7), amount), a];
+        });
+        break;
+      }
+      case 'vhs': {
+        const amount = clamp01(effect.amount), offset = Math.max(1, Math.round(2 * scale));
+        const image = ctx.getImageData(0, 0, width, height), data = image.data;
+        const source = new Uint8ClampedArray(data);
+        const line = Math.max(2, Math.round(3 * scale));
+        for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+          const index = (y * width + x) * 4;
+          const right = Math.min(width - 1, x + offset), left = Math.max(0, x - offset);
+          const scan = y % line === 0 ? -.16 * amount : 0;
+          const noise = ((Math.sin(x * 12.9898 + y * 78.233) * 43758.5453) % 1) * amount * 14;
+          data[index] = clamp255(mix(data[index], source[(y * width + right) * 4], .8 * amount) * (1 + scan) + noise);
+          data[index + 1] = clamp255(mix(data[index + 1], source[index + 1], .8 * amount) * (1 + scan) + noise);
+          data[index + 2] = clamp255(mix(data[index + 2], source[(y * width + left) * 4 + 2], .8 * amount) * (1 + scan) + noise);
+        }
+        ctx.putImageData(image, 0, 0);
+        break;
+      }
+      case 'lightLeak': {
+        const amount = clamp01(effect.amount);
+        if (!amount) break;
+        const angle = (effect.size || 0) * Math.PI / 180;
+        const cx = width / 2, cy = height / 2;
+        const dx = Math.cos(angle) * width / 2, dy = Math.sin(angle) * height / 2;
+        const [r, g, b] = hexToRgb(effect.color);
+        const leak = ctx.createLinearGradient(cx - dx, cy - dy, cx + dx, cy + dy);
+        leak.addColorStop(0, `rgba(${r},${g},${b},0)`);
+        leak.addColorStop(.5, `rgba(${r},${g},${b},${(amount * .55).toFixed(3)})`);
+        leak.addColorStop(1, `rgba(${r},${g},${b},0)`);
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen';
+        ctx.fillStyle = leak;
+        ctx.fillRect(0, 0, width, height);
+        ctx.restore();
+        break;
+      }
+      case 'halation': {
+        const radius = Math.max(1, effect.size * scale), amount = clamp01(effect.amount);
+        if (!amount) break;
+        if (!filterSupportFor(createCanvas)) { if (options.note) options.note('Este motor no aplica filtros de Canvas: la halación se omitió.'); break; }
+        const glowLayer = takeScratch(createCanvas, width, height);
+        const glowCtx = glowLayer.getContext('2d');
+        if (!glowCtx) break;
+        glowCtx.filter = `blur(${radius.toFixed(2)}px)`;
+        glowCtx.drawImage(layer, 0, 0);
+        glowCtx.filter = 'none';
+        const tinted = takeScratch(createCanvas, width, height);
+        const tintedCtx = tinted.getContext('2d');
+        if (!tintedCtx) { giveScratch(glowLayer); break; }
+        tintedCtx.drawImage(glowLayer, 0, 0);
+        tintedCtx.globalCompositeOperation = 'source-in';
+        tintedCtx.fillStyle = effect.color;
+        tintedCtx.fillRect(0, 0, width, height);
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen';
+        ctx.globalAlpha = amount;
+        ctx.drawImage(glowLayer, 0, 0);
+        ctx.globalAlpha = amount * .7;
+        ctx.drawImage(tinted, 0, 0);
+        ctx.restore();
+        giveScratch(glowLayer);
+        giveScratch(tinted);
         break;
       }
     }

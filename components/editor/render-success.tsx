@@ -6,7 +6,7 @@
 // No abre la carpeta: los navegadores no exponen esa capacidad a una página. En su lugar da la ruta
 // exacta y el atajo de teclado del sistema para llegar a ella, que es lo que de verdad sirve.
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { FOLDER_NOTE, downloadsFolder, fileLocation, renderDetails, renderTitle, type RenderOutcome } from '@/lib/editor/render-success';
+import { FOLDER_NOTE, SAVED_FILE_NOTE, downloadsFolder, fileLocation, renderDetails, renderTitle, type RenderOutcome } from '@/lib/editor/render-success';
 import { confirmationSoundEnabled, playConfirmation, setConfirmationSoundEnabled } from '@/lib/editor/confirm-sound';
 
 function platformName(): string {
@@ -29,7 +29,7 @@ export function RenderSuccess({ outcome, onDownloadAgain, onClose }: RenderSucce
   const [sonido, setSonido] = useState(() => confirmationSoundEnabled());
   const [copiado, setCopiado] = useState<'listo' | 'error' | null>(null);
   const cerrar = useRef<HTMLButtonElement>(null);
-  const platform = useMemo(platformName, []);
+  const platform = useMemo(() => platformName(), []);
   const carpeta = useMemo(() => downloadsFolder(platform), [platform]);
   const ruta = useMemo(() => fileLocation(outcome, platform), [outcome, platform]);
   const detalles = useMemo(() => renderDetails(outcome), [outcome]);
@@ -75,15 +75,22 @@ export function RenderSuccess({ outcome, onDownloadAgain, onClose }: RenderSucce
           {detalles.map((linea) => <li key={linea}>{linea}</li>)}
         </ul>
 
-        <section className="render-success-folder" aria-label="Carpeta de descargas">
-          <p><strong>Está en tu carpeta {carpeta.label}</strong></p>
-          <p className="render-success-path"><code>{ruta}</code></p>
-          <p className="render-success-hint">{carpeta.hint}</p>
-          <p className="render-success-note">{FOLDER_NOTE}</p>
-          <button type="button" className="render-success-copy" onClick={() => void copiarRuta()}>
-            {copiado === 'listo' ? 'Ruta copiada' : copiado === 'error' ? 'No se pudo copiar' : 'Copiar la ruta'}
-          </button>
-        </section>
+        {outcome.savedToFile ? (
+          <section className="render-success-folder" aria-label="Archivo guardado">
+            <p><strong>Guardado en el archivo que elegiste</strong></p>
+            <p className="render-success-note">{SAVED_FILE_NOTE}</p>
+          </section>
+        ) : (
+          <section className="render-success-folder" aria-label="Carpeta de descargas">
+            <p><strong>Está en tu carpeta {carpeta.label}</strong></p>
+            <p className="render-success-path"><code>{ruta}</code></p>
+            <p className="render-success-hint">{carpeta.hint}</p>
+            <p className="render-success-note">{FOLDER_NOTE}</p>
+            <button type="button" className="render-success-copy" onClick={() => void copiarRuta()}>
+              {copiado === 'listo' ? 'Ruta copiada' : copiado === 'error' ? 'No se pudo copiar' : 'Copiar la ruta'}
+            </button>
+          </section>
+        )}
 
         <label className="render-success-sound">
           <input type="checkbox" checked={sonido} onChange={(evento) => alternarSonido(evento.target.checked)} />

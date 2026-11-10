@@ -4,6 +4,10 @@
 // archivo son funciones puras. Nada de esto abre el Finder: un navegador no puede hacerlo desde una
 // página, así que la pantalla ofrece la ruta para copiarla y explica dónde está la carpeta.
 import type { ExportFormat } from './export';
+// El formato de tamaños y duraciones se comparte con la ventana de renderizado, que enseña las mismas
+// cifras antes de exportar. Se reexporta para no romper a quien ya las importaba de aquí.
+import { formatBytes, formatDuration } from './render-details';
+export { formatBytes, formatDuration } from './render-details';
 
 export type RenderOutcome = {
   fileName: string;
@@ -15,6 +19,8 @@ export type RenderOutcome = {
   durationSeconds: number;
   /** Archivos descargados de una vez: 1 en un render normal, N al terminar un lote. */
   files: number;
+  /** El archivo se escribió directamente donde el usuario lo eligió (sin pasar por la carpeta de descargas). */
+  savedToFile?: boolean;
 };
 
 export function makeOutcome(input: {
@@ -26,6 +32,7 @@ export function makeOutcome(input: {
   startSeconds: number;
   endSeconds: number;
   files?: number;
+  savedToFile?: boolean;
 }): RenderOutcome {
   return {
     fileName: input.fileName,
@@ -35,25 +42,8 @@ export function makeOutcome(input: {
     elapsedMs: input.elapsedMs,
     durationSeconds: Math.round(Math.max(0, input.endSeconds - input.startSeconds) * 1000) / 1000,
     files: input.files ?? 1,
+    ...(input.savedToFile ? { savedToFile: true } : {}),
   };
-}
-
-/** «12,4 MB», «980 kB». Un decimal basta para saber qué se descargó. */
-export function formatBytes(bytes: number): string {
-  if (!Number.isFinite(bytes) || bytes < 0) return '0 B';
-  if (bytes < 1024) return `${Math.round(bytes)} B`;
-  const kb = bytes / 1024;
-  if (kb < 1024) return `${kb.toFixed(kb < 10 ? 1 : 0).replace('.', ',')} kB`;
-  const mb = kb / 1024;
-  return `${mb.toFixed(1).replace('.', ',')} MB`;
-}
-
-/** «0:07,3» a partir de segundos, con la coma decimal del español. */
-export function formatDuration(seconds: number): string {
-  const total = Math.max(0, Number.isFinite(seconds) ? seconds : 0);
-  const minutes = Math.floor(total / 60);
-  const rest = total - minutes * 60;
-  return `${minutes}:${rest.toFixed(1).padStart(4, '0').replace('.', ',')}`;
 }
 
 export function renderTitle(outcome: RenderOutcome): string {
@@ -107,3 +97,9 @@ export function fileLocation(outcome: RenderOutcome, platform: string): string {
  * decirlo es más útil que un botón que no hace nada.
  */
 export const FOLDER_NOTE = 'El navegador no puede abrir la carpeta por su cuenta: copia la ruta y pégala en el buscador del sistema.';
+
+/**
+ * Cuando el render se escribió directamente en el archivo que el usuario eligió, la carpeta de descargas no
+ * pinta nada: el navegador tampoco comparte la ruta completa del archivo elegido.
+ */
+export const SAVED_FILE_NOTE = 'El archivo se escribió directamente donde lo elegiste, sin pasar por la carpeta de descargas. El navegador no comparte su ruta completa: búscalo por su nombre desde la carpeta que hayas abierto en el diálogo del sistema.';

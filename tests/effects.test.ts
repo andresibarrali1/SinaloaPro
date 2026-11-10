@@ -49,8 +49,8 @@ function imageEvent(project:Project,effects?:VideoEffect[]){
   return event;
 }
 
-test('catálogo: los diez efectos tienen nombre, descripción y parámetros',()=>{
-  assert.equal(EFFECT_KINDS.length,10);
+test('catálogo: los dieciocho efectos tienen nombre, descripción y parámetros',()=>{
+  assert.equal(EFFECT_KINDS.length,18);
   for(const kind of EFFECT_KINDS){
     assert.ok(EFFECT_LABEL[kind],`falta el nombre de ${kind}`);
     assert.ok(EFFECT_PARAMS[kind].length,`faltan los parámetros de ${kind}`);

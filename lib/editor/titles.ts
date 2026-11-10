@@ -8,7 +8,7 @@
 // Aquí solo se calcula el plan de dibujo (líneas, fuente, posición del bloque) y el estado de la animación;
 // pintar es cosa de `compositor.ts`. El cálculo no depende del lienzo: la medición del texto se recibe como
 // función, de modo que se puede probar sin navegador y con una regla de medir de mentira.
-import { TextAnchor, TextAnimation } from './project';
+import { TextAnchor, TextAnimation, TextBackground, TextGradient } from './project';
 
 export type Frame = { width: number; height: number };
 export type Align = 'left' | 'center' | 'right';
@@ -190,14 +190,19 @@ export function revealText(text: string, chars: number): string {
 
 // ------------------------------------------------------------------ estado de edición
 
+export const DEFAULT_HIGHLIGHT = '#ffe600';
+export const DEFAULT_GRADIENT: TextGradient = { enabled: false, from: '#ffffff', to: '#ffffff', angle: 0 };
+/** Mayúsculas de las plantillas de redes: se aplican antes de medir para que el ajuste de línea sea el real. */
+export const textCase = (text: string, uppercase?: boolean) => uppercase ? String(text ?? '').toLocaleUpperCase('es') : String(text ?? '');
 export type TextStyle = {
   bold: boolean; italic: boolean; lineSpacing: number; tracking: number; wrap: number;
   outlineWidth: number; outlineColor: string;
   shadow: { enabled: boolean; color: string; offsetX: number; offsetY: number; blur: number };
-  background: { color: string; opacity: number; padding: number };
+  background: TextBackground;
   anchor: TextAnchor; animation: TextAnimation; highlightColor: string;
+  uppercase: boolean; hollow: boolean; gradient: TextGradient;
+  highlightBox: boolean; highlightBoxColor: string; highlightTextColor: string;
 };
-export const DEFAULT_HIGHLIGHT = '#ffe600';
 export function styleOf(event: Partial<TextStyle>): TextStyle {
   return {
     bold: event.bold ?? false,
@@ -208,14 +213,22 @@ export function styleOf(event: Partial<TextStyle>): TextStyle {
     outlineWidth: event.outlineWidth ?? 0,
     outlineColor: event.outlineColor ?? '#000000',
     shadow: { enabled: false, color: '#000000', offsetX: 4, offsetY: 4, blur: 6, ...(event.shadow ?? {}) },
-    background: { color: '#000000', opacity: 0, padding: 18, ...(event.background ?? {}) },
+    background: { color: '#000000', opacity: 0, padding: 18, radius: 0, fit: 'block', ...(event.background ?? {}) },
     anchor: event.anchor ?? DEFAULT_ANCHOR,
     animation: event.animation ?? 'none',
     highlightColor: event.highlightColor ?? DEFAULT_HIGHLIGHT,
+    uppercase: event.uppercase ?? false,
+    hollow: event.hollow ?? false,
+    gradient: { ...DEFAULT_GRADIENT, ...(event.gradient ?? {}) },
+    highlightBox: event.highlightBox ?? false,
+    highlightBoxColor: event.highlightBoxColor ?? '#0a0a0a',
+    highlightTextColor: event.highlightTextColor ?? '#3dff8a',
   };
 }
 export const hasTextStyling = (event: Partial<TextStyle>) => Boolean(
   event.bold || event.italic || event.anchor || event.animation || event.outlineWidth || event.highlightColor ||
   event.shadow?.enabled || (event.background?.opacity ?? 0) > 0 || event.tracking || (event.wrap !== undefined && event.wrap < 1) ||
-  (event.lineSpacing !== undefined && event.lineSpacing !== DEFAULT_LINE_SPACING),
+  (event.lineSpacing !== undefined && event.lineSpacing !== DEFAULT_LINE_SPACING) ||
+  event.uppercase || event.hollow || event.gradient?.enabled || event.highlightBox ||
+  (event.background?.radius ?? 0) > 0 || event.background?.fit === 'line',
 );
