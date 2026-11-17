@@ -17,22 +17,27 @@ test('fitted zoom responds to a smaller viewport and longer project',()=>{
  assert.ok(fit(7200,600).zoom<fit(3600,1200).zoom);
  for(const zoom of [.001,.01,.1,1,10,65,400])assert.ok(timelineTickStep(zoom)*zoom>=79.999);
 });
-test('zoom in and out keep the playhead at its screen coordinate',()=>{
+test('zoom in and out center the playhead regardless of its old screen coordinate',()=>{
  const input={zoom:65,playhead:175,scrollLeft:11000,viewport:1000};
- for(const next of [20,40,120,400]){const plan=planTimelineZoom({...input,next});assert.equal(input.playhead*next-plan.scrollLeft,375);assert.ok(plan.minWidth-plan.scrollLeft>=1000);}
+ for(const next of [20,40,120,400]){const plan=planTimelineZoom({...input,next});assert.equal(input.playhead*next-plan.scrollLeft,500);assert.ok(plan.minWidth-plan.scrollLeft>=1000);}
 });
-test('wheel bursts preserve a pending anchor before DOM scroll has caught up',()=>{
+test('wheel bursts center the playhead before DOM scroll has caught up',()=>{
  const first=planTimelineZoom({next:100,zoom:65,playhead:175,scrollLeft:11000,viewport:1000});
  const second=planTimelineZoom({next:140,zoom:first.zoom,playhead:175,scrollLeft:11000,viewport:1000,pending:first.anchor});
- assert.equal(175*second.zoom-second.scrollLeft,375);
+ assert.equal(175*second.zoom-second.scrollLeft,500);
 });
 test('zoom supplies trailing room so browser clamping cannot shift the anchor',()=>{
  const plan=planTimelineZoom({next:10,zoom:100,playhead:200,scrollLeft:19900,viewport:1200});
- assert.equal(plan.scrollLeft,1900);assert.equal(plan.minWidth,3100);assert.equal(200*plan.zoom-plan.scrollLeft,100);
+ assert.equal(plan.scrollLeft,1400);assert.equal(plan.minWidth,2600);assert.equal(200*plan.zoom-plan.scrollLeft,600);
 });
 test('limits, timeline start and offscreen cursor are handled',()=>{
  const base={zoom:65,playhead:1,scrollLeft:0,viewport:1000};
  assert.equal(planTimelineZoom({...base,next:1}).scrollLeft,0);
  assert.equal(planTimelineZoom({...base,next:999}).zoom,400);
  const plan=planTimelineZoom({...base,playhead:175,next:80});assert.equal(175*80-plan.scrollLeft,500);
+});
+
+test('a pending wheel event does not pin an old cursor or viewport',()=>{
+ const plan=planTimelineZoom({next:100,zoom:65,playhead:180,scrollLeft:0,viewport:1200,pending:{time:175,pointerX:100}});
+ assert.equal(plan.anchor.time,180);assert.equal(180*plan.zoom-plan.scrollLeft,600);
 });

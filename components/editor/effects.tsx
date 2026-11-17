@@ -1,4 +1,7 @@
 'use client';
+import {TrackingModal} from './tracking-modal';
+import {trackingNative} from '@/lib/editor/tracking-native';
+import {sourceTime,seconds} from '@/lib/editor/project';
 import {useState,useRef,useEffect} from 'react';
 import {compose} from '@/lib/editor/compositor';
 import type {MediaLibrary} from '@/lib/editor/media';
@@ -12,7 +15,7 @@ import { uid } from '@/lib/editor/project';
 import { EFFECT_DESCRIPTION, EFFECT_KINDS, EFFECT_LABEL, EFFECT_LOOKS, EFFECT_PARAMS, activeEffects, defaultEffect, type EffectLook } from '@/lib/editor/effects';
 import { Choice, Field } from './controls';
 
-export type EffectsWindowProps = { project?:Project;library?:MediaLibrary;time?:number;scope?: 'event'|'track'; event: Event; onChange: (patch: Partial<Event>) => void; onClose: () => void };
+export type EffectsWindowProps = { onPause?:()=>void;project?:Project;library?:MediaLibrary;time?:number;scope?: 'event'|'track'; event: Event; onChange: (patch: Partial<Event>) => void; onClose: () => void };
 
 const AMOUNT_LABEL: Partial<Record<VideoEffectKind, string>> = {
   blur: 'Radio (px)', blackAndWhite: 'Cantidad de fusión', sepia: 'Cantidad de fusión',
@@ -27,8 +30,13 @@ const SIZE_LABEL: Partial<Record<VideoEffectKind, string>> = {
 };
 const HEX = /^#[0-9a-f]{6}$/i;
 
-export function EffectsWindow({ scope='event', event, onChange, onClose,project,library,time=0 }: EffectsWindowProps) {
+export function EffectsWindow({ scope='event', event, onChange, onClose,onPause,project,library,time=0 }: EffectsWindowProps) {
   const effects = event.effects ?? [];
+  const [trackingId,setTrackingId]=useState<string|null>(null);
+  const asked=useRef(new Set<string>());
+  const runtime=library?.items.get(event.mediaId??'');
+  const canTrack=scope==='event'&&event.kind==='video'&&!!runtime&&!!trackingNative();
+  useEffect(()=>{const pending=effects.find(f=>f.kind==='tracking'&&!f.trackingData&&!asked.current.has(f.id));if(pending&&canTrack){asked.current.add(pending.id);onPause?.();setTrackingId(pending.id);}},[effects,canTrack,onPause]);
   const [view,setView]=useState(effects.length?'adjust':'catalog');
   const [query,setQuery]=useState('');
   const [selected,setSelected]=useState(effects[0]?.id??'');
@@ -45,7 +53,7 @@ export function EffectsWindow({ scope='event', event, onChange, onClose,project,
     return()=>{cancelled=true;};
   },[project,library,time,event.id,event.start,event.duration,event.trackId,scope,before]);
   const update = (id: string, change: Partial<VideoEffect>) => onChange({ effects: effects.map(effect => effect.id === id ? { ...effect, ...change } : effect) });
-  const add = (kind: VideoEffectKind) => {if(effects.length>=24)return;const effect=defaultEffect(kind,uid());onChange({effects:[...effects,effect]});setSelected(effect.id);setView('adjust');setBefore(false);};
+  const add = (kind: VideoEffectKind) => {if(kind==='tracking'&&!canTrack)return;if(effects.length>=24)return;const effect=defaultEffect(kind,uid());onChange({effects:[...effects,effect]});setSelected(effect.id);setView('adjust');setBefore(false);};
   // Un look es una pila preparada: se añade entera y luego se ajusta como cualquier otro efecto.
   const addLook = (look: EffectLook) => {
     if(event.kind==='audio'||effects.length>=24)return;
@@ -94,7 +102,7 @@ export function EffectsWindow({ scope='event', event, onChange, onClose,project,
       </div>
       <div className="preset-list effects-catalog">
         {EFFECT_KINDS.filter(kind=>(EFFECT_LABEL[kind]+' '+EFFECT_DESCRIPTION[kind]).toLocaleLowerCase().includes(query.toLocaleLowerCase())).map(kind => (
-          <button key={kind} disabled={event.kind === 'audio'||effects.length>=24} title={EFFECT_DESCRIPTION[kind]} onClick={() => add(kind)}><PresetPreview kind="effect" id={kind}/><span>{EFFECT_LABEL[kind]}</span></button>
+          <button key={kind} disabled={event.kind === 'audio'||effects.length>=24||(kind==='tracking'&&!canTrack)} title={EFFECT_DESCRIPTION[kind]} onClick={() => add(kind)}><PresetPreview kind="effect" id={kind}/><span>{EFFECT_LABEL[kind]}</span></button>
         ))}
       </div>
       {!EFFECT_KINDS.some(kind=>(EFFECT_LABEL[kind]+' '+EFFECT_DESCRIPTION[kind]).toLocaleLowerCase().includes(query.toLocaleLowerCase()))&&<p role="status">No se encontraron efectos.</p>}</>}
@@ -112,6 +120,7 @@ export function EffectsWindow({ scope='event', event, onChange, onClose,project,
           </header>
           <p><small>{EFFECT_DESCRIPTION[effect.kind]}</small></p>
           <div className="fx-quick-actions"><button onClick={()=>update(effect.id,defaultEffect(effect.kind,effect.id))}>Restablecer</button><button disabled={effects.length>=24} onClick={()=>{const copy={...effect,id:uid()};onChange({effects:[...effects.slice(0,index+1),copy,...effects.slice(index+1)]});setSelected(copy.id);}}>Duplicar efecto</button></div>
+          {effect.kind==='tracking'&&<div><p>{effect.trackingData?`${effect.trackingData.points.length} posiciones guardadas · ${effect.trackingData.points.filter(p=>!p.ok).length} fotogramas sin localizar`:'Selecciona una persona u objeto en la aplicación de escritorio.'}</p><label>Modo<Choice label="Modo de seguimiento" value={effect.trackingMode??'box'} items={[["box","Recuadro"],["camera","Autoencuadre de cámara"]]} onChange={mode=>update(effect.id,{trackingMode:mode as 'box'|'camera'})}/></label>{effect.trackingMode==='camera'&&<Field label="Zoom máximo de cámara" value={effect.trackingZoom??1.5} min={1} max={8} step={.1} onChange={trackingZoom=>update(effect.id,{trackingZoom})}/>}<Field label="Suavizado" value={effect.softness} min={0} max={.95} step={.05} onChange={softness=>update(effect.id,{softness})}/><button disabled={!canTrack} onClick={()=>{onPause?.();setTrackingId(effect.id);}}>Volver a seleccionar</button></div>}
           <div className="form-grid">
             <label className="field">Activar efecto<Choice label={`Aplicado: ${EFFECT_LABEL[effect.kind]}`} value={effect.enabled ? 'si' : 'no'} items={[['si', 'Sí'], ['no', 'No']]} onChange={v => update(effect.id, { enabled: v === 'si' })} /></label>
             {EFFECT_PARAMS[effect.kind].includes('amount') && (
@@ -136,6 +145,7 @@ export function EffectsWindow({ scope='event', event, onChange, onClose,project,
         </section>
       ))}
       </div></div></div>
+      {trackingId&&runtime&&project&&<TrackingModal file={runtime.file} sourceSeconds={sourceTime(event,Math.max(0,Math.min(event.duration-1,time-event.start)),seconds(project.media.find(m=>m.id===event.mediaId)?.duration??0),project.fps)} onDone={trackingData=>{update(trackingId,{trackingData});setTrackingId(null);}} onCancel={()=>{if(!effects.find(f=>f.id===trackingId)?.trackingData)remove(trackingId);setTrackingId(null);}}/>}
       <div className="dialog-actions fx-actions">
         <button onClick={() => onChange({ effects: [] })} disabled={!effects.length}>Quitar todos</button>
         <span>Los cambios se aplican al proyecto.</span><button className="fx-done" onClick={onClose}>Listo</button>

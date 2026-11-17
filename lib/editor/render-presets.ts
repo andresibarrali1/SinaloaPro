@@ -6,6 +6,7 @@ function video(id: string, label: string, width: number, height: number, fps: nu
 }
 // Dimensions and frame rates only; the exporter still checks actual encoder availability.
 export const RENDER_PRESETS: RenderPreset[] = [
+ ...(['draft','medium','high','master'] as ExportQuality[]).map((quality,i)=>({id:`mp3-${quality}`,label:`MP3 · Audio · ${[96,128,192,320][i]} kbps`,settings:{format:'mp3' as const,quality,includeVideo:false,includeAudio:true,bitrateMbps:null}})),
  video('mp4-720','MP4 · 720p 30 · Ligera',1280,720,30),
  video('mp4-1080-60','MP4 · 1080p 60 · Alta',1920,1080,60),
  video('mp4-1080-24','MP4 · Cine 1080p 24 · Alta',1920,1080,24),
@@ -29,7 +30,7 @@ export const RENDER_PRESETS: RenderPreset[] = [
 
 export const SAVED_PRESETS_KEY = 'sinaloa.render.presets.v1';
 export const MAX_SAVED_PRESETS = 8;
-const FORMATS: ExportFormat[] = ['mp4', 'webm', 'wav'];
+const FORMATS: ExportFormat[] = ['mp4', 'webm', 'wav', 'mp3'];
 const QUALITIES: ExportQuality[] = ['draft', 'medium', 'high', 'master'];
 
 export type SavedRenderPreset = { id: string; name: string; settings: Partial<ExportSettings>; savedAt: number };

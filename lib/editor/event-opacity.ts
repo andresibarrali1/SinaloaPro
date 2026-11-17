@@ -21,3 +21,9 @@ export function setEventOpacity(
     ),
   };
 }
+
+/** Apply one opacity value to the selected visual events, respecting locks. */
+export function setEventsOpacity(project:Project,ids:string[],value:number):Project {
+ const selected=new Set(ids),locked=lockedIds(project),opacity=clampOpacity(value);
+ return {...project,events:project.events.map(e=>selected.has(e.id)&&!locked.has(e.id)&&e.kind!=='audio'?{...e,videoOpacity:opacity}:e)};
+}

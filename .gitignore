@@ -55,3 +55,6 @@ next-env.d.ts
 
 # app de escritorio (Tauri): se mantiene fuera del repositorio web
 /sinaloa-tauri/
+
+sinaloa-tauri/vendor/
+

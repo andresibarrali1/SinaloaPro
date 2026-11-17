@@ -10,14 +10,16 @@ import type { VideoEffect, VideoEffectKind } from './project';
 
 export type CanvasFactory = (width: number, height: number) => HTMLCanvasElement;
 
-export const EFFECT_KINDS: VideoEffectKind[] = ['blur', 'blackAndWhite', 'sepia', 'invert', 'chromaKey', 'pixelate', 'mirror', 'border', 'vignette', 'glow', 'chromaticAberration', 'filmGrain', 'posterize', 'tealOrange', 'bleachBypass', 'vhs', 'lightLeak', 'halation'];
+export const EFFECT_KINDS: VideoEffectKind[] = ['tracking','blur', 'blackAndWhite', 'sepia', 'invert', 'chromaKey', 'pixelate', 'mirror', 'border', 'vignette', 'glow', 'chromaticAberration', 'filmGrain', 'posterize', 'tealOrange', 'bleachBypass', 'vhs', 'lightLeak', 'halation'];
 export const EFFECT_LABEL: Record<VideoEffectKind, string> = {
+ tracking:'Seguimiento',
   blur: 'Desenfoque gaussiano', blackAndWhite: 'Blanco y negro', sepia: 'Sepia', invert: 'Invertir',
   chromaKey: 'Clave cromática', pixelate: 'Pixelar', mirror: 'Espejo', border: 'Borde', vignette: 'Viñeta', glow: 'Centelleo',
   chromaticAberration: 'Aberración cromática', filmGrain: 'Grano de película', posterize: 'Posterizar',
   tealOrange: 'Teal & naranja', bleachBypass: 'Bleach bypass', vhs: 'VHS', lightLeak: 'Fuga de luz', halation: 'Halación',
 };
 export const EFFECT_DESCRIPTION: Record<VideoEffectKind, string> = {
+ tracking:'Sigue una persona u objeto con un recuadro. Análisis CSRT local en la aplicación de escritorio.',
   blur: 'Radio del desenfoque, en píxeles del proyecto.',
   blackAndWhite: 'Cantidad de fusión: 1 deja la imagen en gris y 0,5 la mezcla a medias.',
   sepia: 'Cantidad de fusión con el tono sepia.',
@@ -39,7 +41,7 @@ export const EFFECT_DESCRIPTION: Record<VideoEffectKind, string> = {
 };
 // Qué parámetros usa cada efecto, para que la interfaz muestre solo los que sirven.
 export const EFFECT_PARAMS: Record<VideoEffectKind, ('amount' | 'size' | 'color' | 'softness' | 'horizontal' | 'vertical')[]> = {
-  blur: ['amount'], blackAndWhite: ['amount'], sepia: ['amount'], invert: ['amount'],
+  tracking:['size','color'], blur: ['amount'], blackAndWhite: ['amount'], sepia: ['amount'], invert: ['amount'],
   chromaKey: ['color', 'amount', 'softness'], pixelate: ['size'], mirror: ['horizontal', 'vertical'],
   border: ['size', 'color'], vignette: ['amount', 'color'], glow: ['size', 'amount'],
   chromaticAberration: ['amount', 'size'], filmGrain: ['amount', 'size'], posterize: ['amount', 'size'],
@@ -55,6 +57,7 @@ const clamp255 = (value: number) => Math.max(0, Math.min(255, Math.round(value))
 export function defaultEffect(kind: VideoEffectKind, id: string): VideoEffect {
   const base: VideoEffect = { id, kind, enabled: true, amount: 1, size: 8, color: '#000000', softness: .2, horizontal: true, vertical: false };
   switch (kind) {
+    case 'tracking': return {...base,color:'#00ff70',size:4,softness:0};
     case 'blur': return { ...base, amount: 6 };
     case 'blackAndWhite': return { ...base, amount: 1 };
     case 'sepia': return { ...base, amount: 1 };

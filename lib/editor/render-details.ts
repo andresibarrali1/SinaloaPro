@@ -5,7 +5,7 @@
 // Todo es lógica pura (sin navegador ni códecs) para poder probarla con casos concretos. Lo único que
 // guarda algo es la medición de velocidad, y lo hace en el almacén local del navegador, nunca en un
 // servidor: los archivos del proyecto no salen del equipo.
-import { EXPORT_MEMORY_WARN, QUALITY_LABEL, suggestedBitrate, type ExportFormat, type ExportQuality, type ExportSettings } from './export';
+import { MP3_BITRATE, EXPORT_MEMORY_WARN, QUALITY_LABEL, suggestedBitrate, type ExportFormat, type ExportQuality, type ExportSettings } from './export';
 
 /** Peso a partir del cual conviene escribir a disco. Es un umbral de aviso, no un tope: el render no se corta por tamaño. */
 export const RENDER_MEMORY_WARN = EXPORT_MEMORY_WARN;
@@ -15,7 +15,7 @@ export const QUALITY_ORDER: ExportQuality[] = ['draft', 'medium', 'high', 'maste
 export function renderFileName(name: string, format: ExportSettings['format']) {
   const clean = name
     .replace(/[<>:"/\\|?*\x00-\x1f]/g, '_')
-    .replace(/\.(mp4|webm|wav|sinaloapro|corte15)$/i, '')
+    .replace(/\.(mp4|webm|wav|mp3|snlpro|sinaloapro|corte15)$/i, '')
     .trim()
     .replace(/[. ]+$/g, '');
   return `${clean || 'Vídeo'}.${format}`;
@@ -26,14 +26,14 @@ export function estimatedRenderBytes(settings: ExportSettings, duration: number,
   const audio = settings.includeAudio
     ? settings.format === 'wav'
       ? sampleRate * 2 * 16
-      : settings.quality === 'draft'
+      : settings.format === 'mp3' ? MP3_BITRATE[settings.quality] : settings.quality === 'draft'
         ? 96000
         : settings.quality === 'master'
           ? 256000
           : 192000
     : 0;
   const video =
-    settings.includeVideo && settings.format !== 'wav'
+    settings.includeVideo && settings.format !== 'wav' && settings.format !== 'mp3'
       ? (settings.bitrateMbps ?? suggestedBitrate(settings.width, settings.height, settings.fps.num / settings.fps.den, settings.quality)) * 1e6
       : 0;
   return Math.max(0, duration) * (video + audio) / 8;
@@ -107,7 +107,7 @@ const rate = (fps: { num: number; den: number }) => {
   return Number.isInteger(value) ? String(value) : one(value);
 };
 
-const FORMAT_CODEC: Record<ExportFormat, string> = { mp4: 'H.264 / AAC', webm: 'VP9 / Opus', wav: 'PCM 16 bits' };
+const FORMAT_CODEC: Record<ExportFormat, string> = { mp4: 'H.264 / AAC', webm: 'VP9 / Opus', mp3: 'MPEG Audio Layer III', wav: 'PCM 16 bits' };
 
 /**
  * Comprobaciones que se pueden hacer antes de darle a renderizar: códec disponible, audio, salidas,
@@ -117,7 +117,7 @@ export function renderDiagnostics(input: RenderDiagnosticsInput): RenderCheck[] 
   const { settings } = input;
   const checks: RenderCheck[] = [];
   const bytes = estimatedRenderBytes(settings, input.duration, input.sampleRate);
-  const wantsVideo = settings.includeVideo && settings.format !== 'wav';
+  const wantsVideo = settings.includeVideo && settings.format !== 'wav' && settings.format !== 'mp3';
 
   if (!settings.includeVideo && !settings.includeAudio) {
     checks.push({ id: 'outputs', level: 'error', label: 'Sin salidas activas', detail: 'Activa vídeo, audio o ambos para poder exportar.' });
@@ -227,7 +227,7 @@ export function renderDiagnostics(input: RenderDiagnosticsInput): RenderCheck[] 
   }
 
   const fileName = renderFileName(input.name, settings.format);
-  const wanted = input.name.replace(/\.(mp4|webm|wav)$/i, '').trim();
+  const wanted = input.name.replace(/\.(mp4|webm|wav|mp3)$/i, '').trim();
   const saved = fileName.slice(0, fileName.lastIndexOf('.'));
   checks.push(
     saved !== wanted || !wanted

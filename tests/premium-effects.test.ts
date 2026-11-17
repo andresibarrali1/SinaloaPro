@@ -34,8 +34,8 @@ const pixel=(ctx:CanvasRenderingContext2D,x:number,y:number)=>Array.from(ctx.get
 const all=(ctx:CanvasRenderingContext2D)=>ctx.getImageData(0,0,SIZE,SIZE).data;
 const effect=(kind:VideoEffectKind,patch:Partial<VideoEffect>={})=>({...defaultEffect(kind,'fx'),...patch});
 
-test('catálogo: dieciocho efectos y cinco looks con nombres, notas y parámetros válidos',()=>{
- assert.equal(EFFECT_KINDS.length,18);
+test('catálogo: diecinueve efectos y cinco looks con nombres, notas y parámetros válidos',()=>{
+ assert.equal(EFFECT_KINDS.length,19);
  assert.equal(EFFECT_LOOKS.length,5);
  const ids=new Set(EFFECT_LOOKS.map(look=>look.id));
  assert.equal(ids.size,EFFECT_LOOKS.length);

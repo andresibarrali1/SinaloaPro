@@ -80,35 +80,35 @@ test('lote: se rechaza con un motivo lo que no se puede renderizar',()=>{
   assert.match(settingsProblem(p,settings({scope:'range'}))!,/no hay ninguno marcado/);
   p.region={start:ticks(1),end:ticks(1)};
   assert.match(settingsProblem(p,settings({scope:'range'}))!,/tramo del trabajo está vacío/);
-  assert.match(settingsProblem(p,settings(),{mp4:false,webm:true,wav:true})!,/no puede codificar MP4/);
+  assert.match(settingsProblem(p,settings(),{mp4:false,webm:true,mp3:true,wav:true})!,/no puede codificar MP4/);
   const empty=newProject();
   assert.match(settingsProblem(empty,settings())!,/nada que renderizar/);
 });
 
 test('lote: el plan prepara los trabajos válidos y explica los que descarta',()=>{
   const p=scene();
-  const plan=planBatch(p,[settings(),settings({includeVideo:false,includeAudio:false}),settings({format:'wav',includeVideo:false})],{mp4:true,webm:true,wav:true});
+  const plan=planBatch(p,[settings(),settings({includeVideo:false,includeAudio:false}),settings({format:'wav',includeVideo:false})],{mp4:true,webm:true,mp3:true,wav:true});
   assert.equal(plan.jobs.length,2);
   assert.equal(plan.problems.length,1);
   assert.match(plan.problems[0],/al menos una salida/);
   // Una cola sin nada válido no prepara ningún trabajo, pero dice por qué.
-  const empty=planBatch(p,[],{mp4:true,webm:true,wav:true});
+  const empty=planBatch(p,[],{mp4:true,webm:true,mp3:true,wav:true});
   assert.deepEqual(empty,{jobs:[],problems:[]});
 });
 
 test('lote: las plantillas disponibles son las que el motor puede codificar y respetan velocidad y ámbito',()=>{
   const base=settings({fps:{num:25,den:1},scope:'range',start:ticks(1),end:ticks(2)});
-  const all=variantSettings(base,{mp4:true,webm:true,wav:true});
+  const all=variantSettings(base,{mp4:true,webm:true,mp3:true,wav:true});
   assert.equal(all.length,BATCH_VARIANTS.length);
-  assert.deepEqual(all.map(item=>item.format),['mp4','mp4','webm','wav']);
+  assert.deepEqual(all.map(item=>item.format),['mp4','mp4','webm','mp3','wav']);
   for(const item of all){
     assert.deepEqual(item.fps,{num:25,den:1},'la velocidad del proyecto no se cambia');
     assert.equal(item.scope,'range');
   }
   assert.equal(all.at(-1)!.includeVideo,false);
   // Sin codificador de MP4 (por ejemplo Firefox) no se ofrecen trabajos MP4.
-  const noMp4=variantSettings(base,{mp4:false,webm:true,wav:true});
-  assert.deepEqual(noMp4.map(item=>item.format),['webm','wav']);
+  const noMp4=variantSettings(base,{mp4:false,webm:true,mp3:true,wav:true});
+  assert.deepEqual(noMp4.map(item=>item.format),['webm','mp3','wav']);
 });
 
 test('lote: el resumen cuenta estados, fotogramas y bytes',()=>{
@@ -141,7 +141,7 @@ test('una salida por pista de audio: un WAV por pista, con su nombre y sin repet
   p.tracks[2].name='Voz';
   const music={...p.tracks[2],id:'pista-musica',name:'Música'};
   p.tracks.push(music);
-  const jobs=audioTrackJobs(p,settings(),{mp4:true,webm:true,wav:true});
+  const jobs=audioTrackJobs(p,settings(),{mp4:true,webm:true,mp3:true,wav:true});
   assert.equal(jobs.length,2,'una por pista de audio (la pista de vídeo no cuenta)');
   assert.deepEqual(jobs.map(job=>job.trackName),['Voz','Música']);
   assert.deepEqual(jobs.map(job=>job.onlyTrackId),[p.tracks[2].id,'pista-musica']);
@@ -157,21 +157,21 @@ test('una salida por pista de audio: un WAV por pista, con su nombre y sin repet
   assert.notEqual(jobs[0].fileName,jobs[1].fileName,'los nombres no se pisan');
   // Dos pistas con el mismo nombre tampoco se pisan: se numera la segunda.
   const twins={...p,tracks:[{...p.tracks[2],id:'a',name:'Voz'},{...p.tracks[2],id:'b',name:'Voz'}]};
-  const repeated=audioTrackJobs(twins,settings(),{mp4:true,webm:true,wav:true});
+  const repeated=audioTrackJobs(twins,settings(),{mp4:true,webm:true,mp3:true,wav:true});
   assert.equal(repeated.length,2);
   assert.notEqual(repeated[0].fileName,repeated[1].fileName);
   assert.match(repeated[1].fileName,/\[2\]\.wav$/);
   // Sin pistas de audio, o sin WAV en el motor, no se añade nada.
   const silent={...p,tracks:p.tracks.filter(track=>track.kind!=='audio')};
-  assert.deepEqual(audioTrackJobs(silent,settings(),{mp4:true,webm:true,wav:true}),[]);
-  assert.deepEqual(audioTrackJobs(p,settings(),{mp4:true,webm:true,wav:false}),[]);
+  assert.deepEqual(audioTrackJobs(silent,settings(),{mp4:true,webm:true,mp3:true,wav:true}),[]);
+  assert.deepEqual(audioTrackJobs(p,settings(),{mp4:true,webm:true,mp3:true,wav:false}),[]);
 });
 
 test('el proyecto de un trabajo por pista deja audible solo esa pista',()=>{
   const p=scene();
   p.tracks[2].name='Voz';
   p.tracks.push({...p.tracks[2],id:'pista-musica',name:'Música'});
-  const [first]=audioTrackJobs(p,settings(),{mp4:true,webm:true,wav:true});
+  const [first]=audioTrackJobs(p,settings(),{mp4:true,webm:true,mp3:true,wav:true});
   // Un trabajo normal renderiza el proyecto tal cual.
   const plain=appendJobs([],p,[settings()])[0];
   assert.equal(jobProject(p,plain),p);

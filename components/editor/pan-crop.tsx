@@ -38,6 +38,8 @@ import { MAX_DEPTH,MAX_ROTATION_3D,MIN_DEPTH } from '@/lib/editor/threed';
 import { addMaskPoint, maskActive, maskPointAt, moveMaskPoint, normalizeMaskPath, removeMaskPoint } from '@/lib/editor/mask';
 
 export type PanCropWindowProps = {
+  onPause?:()=>void;
+  onEventChange?:(patch:Partial<import('@/lib/editor/project').Event>)=>void;
   project: Project;
   eventId?: string;
   library: MediaLibrary;

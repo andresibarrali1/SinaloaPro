@@ -18,7 +18,7 @@ export function detectInterchange(name:string,text:string):InterchangeFormat{
  if(text.startsWith('riff.')||lower.endsWith('.veg'))return 'veg';
  if(/<xmeml[\s>]/.test(text)||lower.endsWith('.fcpxml'))return 'fcpxml';
  if((/^\s*TITLE:/im.test(text)&&/^\s*\d{3,6}\s+\S+\s+\S+\s+\S+\s+\d/m.test(text))||lower.endsWith('.edl'))return 'edl';
- if(lower.endsWith('.sinaloapro')||lower.endsWith('.corte15')||text.trimStart().startsWith('{'))return 'corte15';
+ if(lower.endsWith('.snlpro')||lower.endsWith('.sinaloapro')||lower.endsWith('.corte15')||text.trimStart().startsWith('{'))return 'corte15';
  return 'unknown';
 }
 // ---------------------------------------------------------------------------------------------------

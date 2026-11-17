@@ -18,6 +18,7 @@ export type FilePickerScope = {
 export const FILE_TYPES: Record<ExportFormat, { description: string; accept: Record<string, string[]> }> = {
   mp4: { description: 'Vídeo MP4', accept: { 'video/mp4': ['.mp4'] } },
   webm: { description: 'Vídeo WebM', accept: { 'video/webm': ['.webm'] } },
+  mp3: { description: 'Audio MP3', accept: { 'audio/mpeg': ['.mp3'] } },
   wav: { description: 'Audio WAV', accept: { 'audio/wav': ['.wav'] } },
 };
 

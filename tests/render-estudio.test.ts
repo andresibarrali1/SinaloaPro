@@ -40,7 +40,7 @@ const settings = (patch: Partial<ExportSettings> = {}): ExportSettings => ({
   ...patch,
 });
 
-const caps = { mp4: true, webm: true, wav: true };
+const caps = { mp4: true, webm: true, mp3: true, wav: true };
 
 const input = (patch: Partial<RenderDiagnosticsInput> = {}): RenderDiagnosticsInput => ({
   settings: settings(),
@@ -100,7 +100,7 @@ test('un proyecto normal pasa el diagnóstico sin errores ni avisos', () => {
 });
 
 test('sin códec o sin salidas el diagnóstico bloquea la exportación', () => {
-  const noCodec = renderDiagnostics(input({ caps: { mp4: false, webm: true, wav: true } }));
+  const noCodec = renderDiagnostics(input({ caps: { mp4: false, webm: true, mp3: true, wav: true } }));
   assert.equal(noCodec.find(check => check.id === 'codec')?.level, 'error');
   const noOutputs = renderDiagnostics(input({ settings: settings({ includeVideo: false, includeAudio: false }) }));
   assert.equal(noOutputs.find(check => check.id === 'outputs')?.level, 'error');

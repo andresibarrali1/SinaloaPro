@@ -89,6 +89,7 @@ const STAGES = [
 const FORMAT_INFO: Record<ExportFormat, { label: string; codec: string; hint: string }> = {
   mp4: { label: 'MP4', codec: 'H.264 · AAC', hint: 'Máxima compatibilidad' },
   webm: { label: 'WebM', codec: 'VP9 · Opus', hint: 'Mejor compresión web' },
+  mp3: { label: 'MP3', codec: 'MP3 · 96–320 kbps', hint: 'Solo audio, archivo comprimido' },
   wav: { label: 'WAV', codec: 'PCM 16 bits', hint: 'Solo audio, sin pérdida' },
 };
 
@@ -132,7 +133,7 @@ export function RenderWorkspace(p: RenderWorkspaceProps) {
   const size = estimatedRenderBytes(settings, p.duration, p.sampleRate);
   // Con escritura directa el peso no presiona a nada: se guarda en disco mientras se codifica.
   const pressure: 'ok' | 'near' | 'over' = p.destination === 'file' ? 'ok' : sizePressure(size);
-  const wantsVideo = settings.includeVideo && settings.format !== 'wav';
+  const wantsVideo = settings.includeVideo && settings.format !== 'wav' && settings.format !== 'mp3';
   const rangeLabel = p.hasRegion ? `${p.formatTick(settings.start)} → ${p.formatTick(settings.end)}` : '';
   const fpsItems: [string, string][] = FPS_ITEMS.some(([value]) => value === fpsKey(settings.fps))
     ? FPS_ITEMS
@@ -297,14 +298,15 @@ export function RenderWorkspace(p: RenderWorkspaceProps) {
                     items={[
                       ['mp4', `MP4 · H.264 / AAC${p.cap.mp4 ? '' : ' (no disponible)'}`],
                       ['webm', `WebM · VP9 / Opus${p.cap.webm ? '' : ' (no disponible)'}`],
+                      ['mp3', `MP3 · Solo audio${p.cap.mp3 ? '' : ' (no disponible)'}`],
                       ['wav', `WAV · PCM 16 bits${p.cap.wav ? '' : ' (no disponible)'}`],
                     ]}
-                    onChange={value => p.onSettings({ format: value as ExportFormat, ...(value === 'wav' ? { includeVideo: false } : {}) })}
+                    onChange={value => p.onSettings({ format: value as ExportFormat, ...((value === 'wav' || value === 'mp3') ? { includeVideo: false, includeAudio: true } : {}) })}
                   />
                 </label>
                 <div className="render-format-hint">{FORMAT_INFO[settings.format].hint}</div>
                 <div className="render-capabilities" aria-label="Códecs de este navegador">
-                  {(['mp4', 'webm', 'wav'] as ExportFormat[]).map(format => (
+                  {(['mp4', 'webm', 'wav', 'mp3'] as ExportFormat[]).map(format => (
                     <span key={format} className={p.cap[format] ? 'on' : 'off'} title={`${FORMAT_INFO[format].label}: ${p.cap[format] ? 'disponible' : 'no disponible'}`}>
                       {FORMAT_INFO[format].label}
                     </span>
@@ -322,19 +324,19 @@ export function RenderWorkspace(p: RenderWorkspaceProps) {
                       onClick={() => p.onSettings({ quality, bitrateMbps: null })}
                     >
                       <strong>{QUALITY_LABEL[quality]}</strong>
-                      <small>{QUALITY_INFO[quality]}</small>
+                      <small>{settings.format === 'mp3' ? ({draft:96,medium:128,high:192,master:320}[quality]+' kbps') : QUALITY_INFO[quality]}</small>
                     </button>
                   ))}
                 </div>
               )}
 
-              <div className="render-dimensions">
+              {wantsVideo && <div className="render-dimensions">
                 <Field label="Ancho" value={settings.width} min={16} max={3840} step={2} onChange={value => p.onSettings({ width: Math.round(value / 2) * 2 })} />
                 <Field label="Alto" value={settings.height} min={16} max={2160} step={2} onChange={value => p.onSettings({ height: Math.round(value / 2) * 2 })} />
                 <label className="field">FPS
                   <Choice label="FPS de exportación" value={fpsKey(settings.fps)} items={fpsItems} onChange={value => p.onSettings({ fps: readFps(value) })} />
                 </label>
-              </div>
+              </div>}
 
               {wantsVideo && (
                 <div className="render-bitrate">
@@ -359,7 +361,7 @@ export function RenderWorkspace(p: RenderWorkspaceProps) {
               )}
 
               <div className="render-switches">
-                <Check checked={settings.includeVideo} onChange={value => p.onSettings({ includeVideo: value })} disabled={settings.format === 'wav'}>Incluir video</Check>
+                <Check checked={settings.includeVideo} onChange={value => p.onSettings({ includeVideo: value })} disabled={settings.format === 'wav' || settings.format === 'mp3'}>Incluir video</Check>
                 <Check checked={settings.includeAudio} onChange={value => p.onSettings({ includeAudio: value })}>Incluir audio</Check>
               </div>            </section>
 

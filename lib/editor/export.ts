@@ -1,10 +1,10 @@
-import { Output, BufferTarget, StreamTarget, Mp4OutputFormat, WebMOutputFormat, WavOutputFormat, CanvasSource, AudioBufferSource, canEncodeVideo, canEncodeAudio, Quality } from 'mediabunny';
+import { Output, BufferTarget, StreamTarget, Mp4OutputFormat, WebMOutputFormat, WavOutputFormat, Mp3OutputFormat, CanvasSource, AudioBufferSource, canEncodeVideo, canEncodeAudio, Quality } from 'mediabunny';
 import { Project, seconds, ticks, FPS, endTime } from './project';
 import { MediaLibrary } from './media';
 import { compose } from './compositor';
 import { mix } from './audio';
 import type { RenderWritable } from './export-file';
-export type ExportFormat = 'mp4'|'webm'|'wav';
+export type ExportFormat = 'mp4'|'webm'|'wav'|'mp3';
 export type ExportQuality = 'draft'|'medium'|'high'|'master';
 export type ExportSettings = { width:number; height:number; fps:FPS; format:ExportFormat; quality:ExportQuality; scope:'full'|'range'; start:number; end:number; includeVideo:boolean; includeAudio:boolean; bitrateMbps:number|null };
 export type ExportStage = 'preparando'|'video'|'audio'|'finalizando';
@@ -23,8 +23,12 @@ const QUALITY_LEVEL:Record<ExportQuality,'low'|'medium'|'high'|'very-high'> = {d
 export function suggestedBitrate(width:number,height:number,fps:number,quality:ExportQuality){return Math.max(1,Math.round(width*height*fps*QUALITY_FACTOR[quality]/1e6*10)/10);}
 export function resolveRange(p:Project,s:ExportSettings){const useRange=s.scope==='range'&&!!p.region;const rawStart=useRange?s.start:0,rawEnd=useRange?s.end:endTime(p);return {start:Math.max(0,Math.min(rawStart,rawEnd)),end:Math.max(0,rawEnd)};}
 export function plannedFrames(fps:FPS,range:{start:number;end:number}){const value=fps.num/fps.den;return {fps:value,frames:Math.max(0,Math.ceil(seconds(range.end-range.start)*value))};}
+let mp3Ready:Promise<void>|undefined;
+async function ensureMp3(){await (mp3Ready??= (async()=>{if(!await canEncodeAudio('mp3')){const {registerMp3Encoder}=await import('@mediabunny/mp3-encoder');registerMp3Encoder();}})());}
+export const MP3_BITRATE:Record<ExportQuality,number>={draft:96000,medium:128000,high:192000,master:320000};
 export async function capabilities(width=1280,height=720,sampleRate=48000){
- return {mp4:await canEncodeVideo('avc',{width,height})&&await canEncodeAudio('aac',{sampleRate,numberOfChannels:2}),webm:await canEncodeVideo('vp9',{width,height})&&await canEncodeAudio('opus',{sampleRate,numberOfChannels:2}),wav:await canEncodeAudio('pcm-s16',{sampleRate,numberOfChannels:2})};
+ await ensureMp3();
+ return {mp3:await canEncodeAudio('mp3',{sampleRate,numberOfChannels:2}),mp4:await canEncodeVideo('avc',{width,height})&&await canEncodeAudio('aac',{sampleRate,numberOfChannels:2}),webm:await canEncodeVideo('vp9',{width,height})&&await canEncodeAudio('opus',{sampleRate,numberOfChannels:2}),wav:await canEncodeAudio('pcm-s16',{sampleRate,numberOfChannels:2})};
 }
 // A MessageChannel hop yields to the event loop so the interface can paint and the cancel button stays
 // responsive, without the one-second clamping that timers suffer in background tabs.
@@ -33,8 +37,9 @@ const yielder=()=>{const channel=new MessageChannel();return ()=>new Promise<voi
 // sin tope de tamaño), que es lo que permite exportar vídeos largos a buena calidad. Sin destino se acumula en
 // memoria y se devuelve un Blob, que es lo que hace un navegador sin File System Access.
 export async function renderProject(p:Project,library:MediaLibrary,s:ExportSettings,signal:AbortSignal,onProgress:(progress:ExportProgress)=>void,destination?:ExportDestination):Promise<ExportResult>{
- const fps=s.fps.num/s.fps.den,audioCodec=s.format==='mp4'?'aac':s.format==='webm'?'opus':'pcm-s16';
- const wantsVideo=s.includeVideo&&s.format!=='wav',wantsAudio=s.includeAudio;
+ if(s.format==='mp3')await ensureMp3();
+ const fps=s.fps.num/s.fps.den,audioCodec=s.format==='mp4'?'aac':s.format==='webm'?'opus':s.format==='mp3'?'mp3':'pcm-s16';
+ const wantsVideo=s.includeVideo&&s.format!=='wav'&&s.format!=='mp3',wantsAudio=s.includeAudio;
  const range=resolveRange(p,s),{frames}=plannedFrames(s.fps,range);
  if(range.end<=range.start)throw new Error('El ámbito de exportación está vacío: elige un tramo con duración o exporta el proyecto completo.');
  if(!wantsVideo&&!wantsAudio)throw new Error('Activa al menos una salida: video o audio.');
@@ -44,13 +49,13 @@ export async function renderProject(p:Project,library:MediaLibrary,s:ExportSetti
  const audioOk=wantsAudio?await canEncodeAudio(audioCodec,{sampleRate:p.sampleRate,numberOfChannels:2}):true;
  if(!audioOk)throw new Error(`Este navegador no puede codificar audio ${audioCodec.toUpperCase()}. Prueba el formato WebM o exporta solo audio en WAV.`);
  const videoQuality=new Quality(s.bitrateMbps?{bitrate:Math.round(s.bitrateMbps*1e6)}:QUALITY_LEVEL[s.quality]);
- const audioQuality=new Quality({bitrate:s.quality==='draft'?96000:s.quality==='master'?256000:192000});
+ const audioQuality=new Quality({bitrate:s.format==='mp3'?MP3_BITRATE[s.quality]:s.quality==='draft'?96000:s.quality==='master'?256000:192000});
  const canvas=document.createElement('canvas');canvas.width=s.width;canvas.height=s.height;
  // El contador sale de los avisos de escritura del destino, que valen para las dos formas de guardar: el archivo
  // (donde también se reescriben zonas al final) y el búfer en memoria.
  const target=destination?new StreamTarget(destination.stream,{chunked:true,chunkSize:4*1024*1024}):new BufferTarget();
  let written=0;target.on('write',({end})=>{if(end>written)written=end;});
- const output=new Output({format:s.format==='mp4'?new Mp4OutputFormat():s.format==='webm'?new WebMOutputFormat():new WavOutputFormat(),target});
+ const output=new Output({format:s.format==='mp4'?new Mp4OutputFormat():s.format==='webm'?new WebMOutputFormat():s.format==='mp3'?new Mp3OutputFormat():new WavOutputFormat(),target});
  const video=wantsVideo?new CanvasSource(canvas,{codec:s.format==='mp4'?'avc':'vp9',quality:videoQuality}):null;
  const audio=wantsAudio?new AudioBufferSource({codec:audioCodec,...(s.format==='wav'?{}:{quality:audioQuality}),transform:{sampleRate:p.sampleRate,numberOfChannels:2}}):null;
  if(video)output.addVideoTrack(video,{frameRate:fps});
@@ -81,7 +86,7 @@ export async function renderProject(p:Project,library:MediaLibrary,s:ExportSetti
   check();report(frames,'finalizando');
   video?.close();audio?.close();await output.finalize();check();
   const elapsedMs=performance.now()-started;success=true;
-  const mime=s.format==='mp4'?'video/mp4':s.format==='webm'?'video/webm':'audio/wav';
+  const mime=s.format==='mp4'?'video/mp4':s.format==='webm'?'video/webm':s.format==='mp3'?'audio/mpeg':'audio/wav';
   // Con destino no hay Blob: el archivo ya está en disco (el flujo lo cerró `finalize`) y solo vuelve su tamaño.
   const blob=!destination&&target instanceof BufferTarget&&target.buffer?new Blob([target.buffer],{type:mime}):null;
   return {blob,bytes:blob?.size??written,file:!!destination,elapsedMs,frames,format:s.format};

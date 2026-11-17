@@ -1,0 +1,20 @@
+import {test,expect} from '@playwright/test';import {newProject,newEvent,ticks} from '../lib/editor/project';
+test('selected clips share fades and opacity, markers span tracks',async({page})=>{
+ const p=newProject(),a=newEvent(p.tracks[0].id,'color',0,ticks(4)),b=newEvent(p.tracks[1].id,'color',0,ticks(4));p.events=[a,b];p.markers=[{id:'mark',time:ticks(5),name:'Corte'}];
+ await page.goto('/?bienvenida=no');await page.locator('input[type=file][accept*=".SNLPRO"]').setInputFiles({name:'Test.SNLPRO',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(p))});
+ const first=page.locator(`[data-event-id="${a.id}"]`);await first.click();await page.keyboard.press('Control+a');
+ await expect(page.locator('.timeline-event.selected')).toHaveCount(2);
+ const fade=(await first.locator('.fade-handle.in').boundingBox())!;
+ await page.mouse.move(fade.x+3,fade.y+3);await page.mouse.down();await page.mouse.move(fade.x+68,fade.y+3,{steps:5});await page.mouse.up();
+ const read=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('corte15-autosave-v1')||'{}').events||[]);
+ await expect.poll(async()=>{const e=await read();return e.length===2&&e[0].fadeIn>0&&e[0].fadeIn===e[1].fadeIn;}).toBe(true);
+ const line=(await first.locator('.event-opacity-line').boundingBox())!;
+ await page.mouse.move(line.x+100,line.y+2);await page.mouse.down();await page.mouse.move(line.x+100,line.y+22,{steps:4});await page.mouse.up();
+ await expect.poll(async()=>{const e=await read();return e.length===2&&e[0].videoOpacity<1&&e[0].videoOpacity===e[1].videoOpacity;}).toBe(true);
+ await expect(page.locator('.timeline-event.selected')).toHaveCount(2);
+ const marker=page.locator('.timeline-marker-line');await expect(marker).toHaveCSS('pointer-events','none');expect((await marker.boundingBox())!.height).toBeGreaterThan(200);
+ await page.keyboard.press('Control+z');await expect.poll(async()=>{const e=await read();return e.every((v:any)=>(v.videoOpacity??1)===1);}).toBe(true);
+ const title=(await first.locator('.event-title').boundingBox())!;
+ await page.mouse.move(title.x+100,title.y+10);await page.mouse.down();await page.mouse.move(title.x+162,title.y+10,{steps:5});await page.mouse.up();
+ await expect.poll(async()=>{const e=await read();return e[0]?.start+e[0]?.duration;}).toBe(ticks(5));
+});

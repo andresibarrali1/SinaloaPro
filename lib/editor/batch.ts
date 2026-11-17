@@ -42,7 +42,7 @@ export const BATCH_STATUS_LABEL: Record<BatchStatus, string> = {
   cancelado: 'Cancelado',
 };
 
-export const FORMAT_LABEL: Record<ExportFormat, string> = { mp4: 'MP4', webm: 'WebM', wav: 'WAV' };
+export const FORMAT_LABEL: Record<ExportFormat, string> = { mp4: 'MP4', webm: 'WebM', wav: 'WAV', mp3: 'MP3' };
 
 // Caracteres que Windows no admite en un nombre de archivo, más los que se ven mal en cualquier sistema.
 const INVALID_FILE_CHARS = /[\\/:*?"<>|\u00d7\u00b7]/g;
@@ -63,7 +63,7 @@ const shortRate = (fps: { num: number; den: number }) => {
 // Etiqueta del trabajo, como las que muestra el diálogo de VEGAS al elegir plantillas.
 export function jobLabel(settings: ExportSettings) {
   const scope = settings.scope === 'range' ? ' · tramo' : '';
-  if (settings.format === 'wav') return `WAV solo audio${scope}`;
+  if (settings.format === 'wav' || settings.format === 'mp3') return `${settings.format.toUpperCase()} solo audio${scope}`;
   return `${FORMAT_LABEL[settings.format]} ${settings.width}x${settings.height} ${shortRate(settings.fps)} fps${scope}`;
 }
 
@@ -127,6 +127,7 @@ export const BATCH_VARIANTS: { id: string; label: string; patch: Partial<ExportS
   { id: 'mp4-1080', label: 'MP4 · 1080p · Alta', patch: { format: 'mp4', width: 1920, height: 1080, quality: 'high', includeVideo: true, includeAudio: true, bitrateMbps: null } },
   { id: 'mp4-720', label: 'MP4 · 720p · Media', patch: { format: 'mp4', width: 1280, height: 720, quality: 'medium', includeVideo: true, includeAudio: true, bitrateMbps: null } },
   { id: 'webm-720', label: 'WebM · 720p · Media', patch: { format: 'webm', width: 1280, height: 720, quality: 'medium', includeVideo: true, includeAudio: true, bitrateMbps: null } },
+  { id: 'mp3', label: 'MP3 · solo audio', patch: { format: 'mp3', quality: 'high', includeVideo: false, includeAudio: true, bitrateMbps: null } },
   { id: 'wav', label: 'WAV · solo audio', patch: { format: 'wav', quality: 'high', includeVideo: false, includeAudio: true, bitrateMbps: null } },
 ];
 

@@ -20,3 +20,16 @@ test('partial opacity blends with the original image',async()=>{const {p,layer}=
 
 test('animated crop changes lower pixels and preserves event data',async()=>{const {p,layer}=fixture();const before=JSON.stringify(p);layer.keys=[{...layer.transform,time:0,cropFrame:defaultCropFrame()},{...layer.transform,time:ticks(1),cropFrame:{...defaultCropFrame(),width:2,height:2}}];const saved=validateProject(JSON.parse(JSON.stringify(p)));assert.deepEqual(pixel(await render(saved,0),2,2),[255,0,0]);assert.deepEqual(pixel(await render(saved,ticks(1)),2,2),[0,0,0]);assert.equal(p.events.length,2);assert.notEqual(JSON.stringify(p),before);});
 test('cancelled adjustment stops before publishing its result',async()=>{const {p}=fixture();let calls=0;const c=factory(64,64);await compose(c,p,new MediaLibrary(),ticks(1),{createCanvas:factory,cancelled:()=>++calls>=2});assert.ok(calls>=2);});
+
+test('Pan/Crop keeps lower composite when adjustment track also has effects',async()=>{
+ const {p,layer}=fixture();p.tracks[0].effects=[defaultEffect('invert','track-invert')];
+ layer.transform.cropFrame={...defaultCropFrame(),width:2,height:2};
+ const c=await render(p);assert.deepEqual(pixel(c),[0,255,255]);assert.deepEqual(pixel(c,2,2),[0,0,0]);
+});
+test('animated adjustment Pan/Crop and track FX survive project reopening',async()=>{
+ const {p,layer}=fixture();p.tracks[0].effects=[defaultEffect('invert','track-invert')];
+ layer.keys=[{...layer.transform,time:0,cropFrame:defaultCropFrame()},{...layer.transform,time:ticks(1),cropFrame:{...defaultCropFrame(),width:2,height:2}}];
+ const saved=validateProject(JSON.parse(JSON.stringify(p)));
+ assert.deepEqual(pixel(await render(saved,0),2,2),[0,255,255]);
+ assert.deepEqual(pixel(await render(saved,ticks(1)),2,2),[0,0,0]);
+});

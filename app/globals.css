@@ -2,6 +2,13 @@
 @import "tw-animate-css";
 @import "../vendor/shadcn-tailwind-4.13.0.css";
 
+/* Explicit shared sources: desktop builds run from sinaloa-tauri, outside these folders. */
+@source "../components";
+@source "../app";
+@source "../hooks";
+@source "../lib";
+
+
 @utility scrollbar-thin {
   scrollbar-width: thin;
 }

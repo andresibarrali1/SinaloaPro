@@ -1,4 +1,5 @@
 "use client";
+import {CameraTracking} from './camera-tracking';
 import { useEffect, useRef, useState } from "react";
 import {
   MaskPen,
@@ -645,7 +646,7 @@ export function EventPanCrop(p: PanCropWindowProps) {
       </div>
       <div className="ec-chain">
         <span>○─</span>
-        <span className="ec-tab">Panoramización/Recorte</span>
+        <span className="ec-tab">Panoramización/Recorte</span><CameraTracking p={p}/>
         <span>─○</span>
       </div>
       <div className="ec-presets">

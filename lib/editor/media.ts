@@ -9,7 +9,7 @@ export class MediaLibrary {
   items=new Map<string,RuntimeMedia>();
   pcmBytes=0;
   dispose(){for(const r of this.items.values()){r.input?.dispose();r.image?.close();}this.items.clear();this.pcmBytes=0;}
-  async import(file:File,id=uid()):Promise<Media>{
+  async import(file:File,id=uid(),preserveAudioRate=false):Promise<Media>{
     if(!file.size)throw new Error(`${file.name}: archivo vacío.`);
     const meta:Media={id,name:file.name,size:file.size,modified:file.lastModified,kind:'video',duration:0,width:0,height:0,hasAudio:false,mime:file.type};
     let image:ImageBitmap|undefined;
@@ -32,7 +32,7 @@ export class MediaLibrary {
       if(!Number.isFinite(meta.duration)||meta.duration<=0)throw new Error('Duración inválida');
       const runtime:RuntimeMedia={file,input,firstVideo:0};
       if(video){if(!await video.canDecode())throw new Error(`El navegador no puede decodificar el video (${await video.getCodec()})`);runtime.canvas=new CanvasSink(video,{poolSize:3});runtime.firstVideo=await video.getFirstTimestamp();const frame=await runtime.canvas.getCanvas(runtime.firstVideo);if(!frame)throw new Error('No se pudo decodificar el primer fotograma');meta.width=video.displayWidth;meta.height=video.displayHeight;const c=document.createElement('canvas');c.width=160;c.height=90;c.getContext('2d')!.drawImage(frame.canvas,0,0,160,90);meta.thumbnail=c.toDataURL('image/jpeg',.7);}else meta.kind='audio';
-      if(audio){if(!await audio.canDecode())throw new Error(`El navegador no puede decodificar el audio (${await audio.getCodec()})`);const pcm=await decodePcmAudio(audio,await input.computeDuration());const bytes=pcm.channels.reduce((n,c)=>n+c.byteLength,0);if(bytes+this.pcmBytes>PCM_TOTAL_BUDGET)throw new Error('El audio de este proyecto ya ocupa demasiada memoria (1 GB). Cierra otros proyectos o divide el trabajo.');runtime.pcm=pcm;meta.hasAudio=true;meta.channelPeaks=pcm.channels.map(canal=>peakBuckets(canal));meta.peaks=meta.channelPeaks[0];}
+      if(audio){if(!await audio.canDecode())throw new Error(`El navegador no puede decodificar el audio (${await audio.getCodec()})`);const pcm=await decodePcmAudio(audio,await input.computeDuration(),preserveAudioRate);const bytes=pcm.channels.reduce((n,c)=>n+c.byteLength,0);if(bytes+this.pcmBytes>PCM_TOTAL_BUDGET)throw new Error('El audio de este proyecto ya ocupa demasiada memoria (1 GB). Cierra otros proyectos o divide el trabajo.');runtime.pcm=pcm;meta.hasAudio=true;meta.channelPeaks=pcm.channels.map(canal=>peakBuckets(canal));meta.peaks=meta.channelPeaks[0];}
       this.replace(id,runtime);return meta;
     }catch(error){input.dispose();throw new Error(`${file.name}: ${error instanceof Error?error.message:'no se pudo leer'}. Prueba convertirlo a MP4 H.264/AAC o WebM VP9/Opus.`);}
   }
@@ -47,10 +47,11 @@ export class MediaLibrary {
 export async function decodePcmAudio(
   audio: NonNullable<Awaited<ReturnType<Input['getPrimaryAudioTrack']>>>,
   duration: number,
+  preserveAudioRate=false,
 ): Promise<PCM> {
   const rate = audio.sampleRate;
   const count = Math.min(2, audio.numberOfChannels);
-  const step = audioDecimationStep(duration, rate, count);
+  const step = preserveAudioRate?1:audioDecimationStep(duration, rate, count);
   const outRate = effectiveSampleRate(rate, step);
   const length = Math.max(1, Math.ceil(duration * outRate));
   const channels = Array.from({ length: count }, () => new Float32Array(length));

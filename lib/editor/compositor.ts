@@ -1,9 +1,10 @@
+import {drawTracking,trackingCamera} from './tracking';
 import {descendants,trackPose,videoTracks} from './track-controls';
 import { transitionJunctions } from './transition-drop';
 import { applyCropFrame } from './crop-frame';
 import { CompositeMode, CropMask, Event, Project, Transform, frameTicks, transform, envelope, pose, seconds, sourceTime } from './project';
 import { fillFrame } from './letterbox';
-import { MediaLibrary } from './media';
+import { MediaLibrary, type RuntimeMedia } from './media';
 import { contentBox, frameBox, maskAt, sourceRect } from './pancrop';
 import { AnimationState, TextPlan, animationState, layoutWords, planText, revealText, styleOf, textCase } from './titles';
 import { CanvasFactory, activeEffects, applyEffects } from './effects';
@@ -260,9 +261,10 @@ function reduceFlickerBlend(layer:HTMLCanvasElement,createCanvas:(w:number,h:num
  if(!ctx)return;
  ctx.clearRect(0,0,w,h);ctx.globalAlpha=1;ctx.drawImage(copy,0,0);
 }
+const trackingLayers=new WeakMap<RuntimeMedia,HTMLCanvasElement>();
 // Dibuja el contenido del evento en coordenadas del fotograma: la posición, la escala y el giro los pone la
 // matriz del contexto (y, cuando hay efectos, la capa se dibuja después dentro de esa misma matriz).
-async function drawContent(ctx:CanvasRenderingContext2D,event:Event,project:Project,library:MediaLibrary,w:number,h:number,time:number,mask:CropMask,at:Transform,adjustmentSource?:HTMLCanvasElement){
+async function drawContent(ctx:CanvasRenderingContext2D,event:Event,project:Project,library:MediaLibrary,w:number,h:number,time:number,mask:CropMask,at:Transform,adjustmentSource?:HTMLCanvasElement,makeCanvas?:CanvasFactory){
  if(adjustmentSource){drawMedia(ctx,adjustmentSource,{width:w,height:h},{width:w,height:h},mask,false);return;}
  const scale=h/Math.max(1,project.height);
  if(event.kind==='text'){
@@ -277,7 +279,26 @@ async function drawContent(ctx:CanvasRenderingContext2D,event:Event,project:Proj
  const runtime=library.items.get(event.mediaId||'');
  if(!runtime){drawMissing(ctx,event.name,w,h);return;}
  const image=runtime.image || (await runtime.canvas?.getCanvas(Math.max(runtime.firstVideo,sourceTime(event,time-event.start,mediaSeconds(project,event),project.fps))))?.canvas;
- if(image)drawMedia(ctx,image,{width:image.width,height:image.height},{width:w,height:h},mask,event.maintainAspect===false);
+ let content=image;
+ if(image&&makeCanvas&&event.effects?.some(f=>f.kind==='tracking'&&f.enabled&&f.trackingData)){
+  const sourceSeconds=sourceTime(event,time-event.start,mediaSeconds(project,event),project.fps);
+  const cameraEffect=event.effects.find(f=>f.kind==='tracking'&&f.enabled&&f.trackingMode==='camera');
+  const camera=cameraEffect?trackingCamera(cameraEffect,sourceSeconds,project.width/project.height):null;
+  const ow=camera?Math.max(2,Math.round(Math.min(image.width,project.width))):image.width;
+  const oh=camera?Math.max(2,Math.round(ow*project.height/project.width)):image.height;
+  let overlay=trackingLayers.get(runtime);if(!overlay){overlay=makeCanvas(ow,oh);trackingLayers.set(runtime,overlay);}
+  if(overlay.width!==ow||overlay.height!==oh){overlay.width=ow;overlay.height=oh;}
+  const oc=overlay.getContext('2d');if(oc){
+   oc.clearRect(0,0,ow,oh);
+   if(camera){const d=cameraEffect!.trackingData!,sx=image.width/d.width,sy=image.height/d.height;
+    oc.drawImage(image,camera.x*sx,camera.y*sy,camera.w*sx,camera.h*sy,0,0,ow,oh);
+    oc.save();oc.scale(ow/(camera.w*sx),oh/(camera.h*sy));oc.translate(-camera.x*sx,-camera.y*sy);
+    drawTracking(oc,event.effects,sourceSeconds,image.width,image.height);oc.restore();
+   }else{oc.drawImage(image,0,0);drawTracking(oc,event.effects,sourceSeconds,image.width,image.height);}
+   content=overlay;
+  }
+ }
+ if(content)drawMedia(ctx,content,{width:content.width,height:content.height},{width:w,height:h},mask,event.maintainAspect===false);
 }
 
 // One pass per frame: events are grouped by track once instead of filtering the whole list per track, and
@@ -308,7 +329,9 @@ export async function compose(canvas:HTMLCanvasElement,p:Project,library:MediaLi
   const children=descendants(visible,track.id);
   const trackEffects=activeEffects(track.effects);
   const blur=track.bypassMotionBlur?0:(track.motionBlurFrames??0);
-  if((children.length||trackEffects.length||blur>0)&&createCanvas){
+  // Adjustment events need the accumulated lower tracks as their input, even with track FX.
+  const adjustmentTrack=!children.length&&blur===0&&byTrack.get(track.id)?.some(e=>e.adjustmentLayer&&!e.muted);
+  if((children.length||trackEffects.length||blur>0)&&createCanvas&&!adjustmentTrack){
    // Isolate the track/group before applying its effects, motion and blend mode.
    const ids=new Set([track.id,...children.map(t=>t.id)]);
    const innerTracks=visible.filter(t=>ids.has(t.id)).map(t=>t.id===track.id
@@ -343,9 +366,9 @@ export async function compose(canvas:HTMLCanvasElement,p:Project,library:MediaLi
     if(strength===0)continue;
     const source=createCanvas(w,h);source.getContext('2d')!.drawImage(canvas,0,0);
     const adjusted=createCanvas(w,h);
-    const layerEvent={...e,adjustmentLayer:false,videoOpacity:1,fadeIn:0,fadeOut:0,gainCurve:undefined,transition:undefined,transitionOut:undefined,
+    const layerEvent={...e,effects:[...(e.effects??[]),...trackEffects],adjustmentLayer:false,videoOpacity:1,fadeIn:0,fadeOut:0,gainCurve:undefined,transition:undefined,transitionOut:undefined,
      transform:{...e.transform,opacity:1},keys:e.keys.map(key=>({...key,opacity:1}))};
-    await compose(adjusted,{...p,tracks:[{...track,keys:[],mute:false,solo:false,composite:'normal',transform:{...track.transform,opacity:1}}],events:[layerEvent]},library,time,{...options,adjustmentSource:source});
+    await compose(adjusted,{...p,tracks:[{...track,effects:[],keys:[],mute:false,solo:false,composite:'normal',transform:{...track.transform,opacity:1}}],events:[layerEvent]},library,time,{...options,adjustmentSource:source});
     if(options.cancelled?.())return;
     ctx.save();ctx.resetTransform();ctx.globalCompositeOperation='source-over';ctx.filter='none';ctx.globalAlpha=strength;ctx.drawImage(adjusted,0,0);ctx.restore();
     continue;
@@ -379,7 +402,7 @@ const eventTime=heldTimes.get(e.id)??time;const local=eventTime-e.start; // A cr
    const graded=e.brightness!==1||e.contrast!==1||e.saturation!==1||e.hue!==0;
    const grade=graded?`brightness(${e.brightness}) contrast(${e.contrast}) saturate(${e.saturation}) hue-rotate(${e.hue}deg)`:'none';
    const mask=maskAt(e,local);
-   const effects=activeEffects(e.effects);
+   const effects=activeEffects(adjustmentTrack?[...(e.effects??[]),...trackEffects]:e.effects);
    const masked=maskActive(e.maskPath);
    const needsLayer=Boolean((effects.length||transition!==null||masked||warped3D||e.reduceFlicker)&&createCanvas);if(needsLayer&&!sharedLayer)sharedLayer=(createCanvas as NonNullable<typeof createCanvas>)(w,h);const layer=needsLayer?sharedLayer:null;
    const layerCtx=layer?layer.getContext('2d'):null;
@@ -389,7 +412,7 @@ const eventTime=heldTimes.get(e.id)??time;const local=eventTime-e.start; // A cr
     // fotograma compuesto, y el giro 3D deforma la capa entera con su transparencia.
     layerCtx.clearRect(0,0,w,h);layerCtx.filter=grade;
     if(warped3D){applyPose(layerCtx,track.transform,w,h);if(at.cropFrame)applyCropFrame(layerCtx,at.cropFrame,w,h);applyPose(layerCtx,at,w,h);}
-    await drawContent(layerCtx,e,p,library,w,h,eventTime,mask,at,options.adjustmentSource);
+    await drawContent(layerCtx,e,p,library,w,h,eventTime,mask,at,options.adjustmentSource,createCanvas);
     if(options.cancelled?.()){ctx.restore();return;}
     layerCtx.filter='none';
     // «Reducir parpadeo de entrelazado»: mezcla vertical de tres tomas (la capa copiada un píxel arriba y un
@@ -412,7 +435,7 @@ const eventTime=heldTimes.get(e.id)??time;const local=eventTime-e.start; // A cr
     }else ctx.drawImage(layer,0,0);
    }else{
     ctx.filter=grade;
-    await drawContent(ctx,e,p,library,w,h,eventTime,mask,at,options.adjustmentSource);
+    await drawContent(ctx,e,p,library,w,h,eventTime,mask,at,options.adjustmentSource,createCanvas);
     if(options.cancelled?.()){ctx.restore();return;}
     ctx.filter='none';
    }

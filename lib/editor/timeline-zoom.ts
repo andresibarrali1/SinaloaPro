@@ -6,9 +6,8 @@ export function planTimelineZoom(input:{next:number;zoom:number;playhead:number;
  const zoom=Math.max(minimum,Math.min(400,input.next));
  const fit=input.span!==undefined&&zoom<=minimum*(1+1e-9);
  if(fit)return {zoom,anchor:{time:input.playhead,pointerX:input.playhead*zoom},scrollLeft:0,minWidth:input.viewport,fit:true};
- const screenX=input.playhead*input.zoom-input.scrollLeft;
- // An offscreen cursor is brought back to the middle of the viewport.
- const anchor=input.pending??{time:input.playhead,pointerX:screenX>=0&&screenX<=input.viewport?screenX:input.viewport/2};
+ // Every zoom follows the current playhead, never the mouse or a stale screen position.
+ const anchor={time:input.playhead,pointerX:input.viewport/2};
  const scrollLeft=Math.max(0,anchor.time*zoom-anchor.pointerX);
  return {zoom,anchor,scrollLeft,minWidth:Math.ceil(scrollLeft+input.viewport),fit:false};
 }
